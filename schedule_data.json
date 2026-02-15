@@ -31,8 +31,8 @@
         "course": "Calculus & Analytical Geometry",
         "teacher": "Dr. Shafqat Ali",
         "day": "MON",
-        "start": "10:00 AM",
-        "end": "11:00 AM",
+        "start": "9:00 AM",
+        "end": "10:00 AM",
         "room": "2.22"
     },
     {
@@ -40,8 +40,8 @@
         "course": "Applied Physics",
         "teacher": "Dr. Mamoona Aslam",
         "day": "MON",
-        "start": "9:00 AM",
-        "end": "10:00 AM",
+        "start": "10:00 AM",
+        "end": "11:00 AM",
         "room": "2.22"
     },
     {
@@ -93,10 +93,10 @@
         "section": "BSARIN-1ST-1M",
         "course": "Applied Physics",
         "teacher": "Dr. Mamoona Aslam",
-        "day": "TUE",
-        "start": "8:00 AM",
-        "end": "9:00 AM",
-        "room": "2.22"
+        "day": "WED",
+        "start": "1:00 PM",
+        "end": "2:00 PM",
+        "room": "2.24"
     },
     {
         "section": "BSARIN-1ST-1M",
@@ -148,8 +148,8 @@
         "course": "Applied Physics",
         "teacher": "Dr. Mamoona Aslam",
         "day": "MON",
-        "start": "8:00 AM",
-        "end": "9:00 AM",
+        "start": "12:00 PM",
+        "end": "1:00 PM",
         "room": "2.23"
     },
     {
@@ -202,9 +202,9 @@
         "course": "Applied Physics",
         "teacher": "Dr. Mamoona Aslam",
         "day": "TUE",
-        "start": "9:00 AM",
-        "end": "10:00 AM",
-        "room": "2.23"
+        "start": "1:30 PM",
+        "end": "2:30 PM",
+        "room": "2.26"
     },
     {
         "section": "BSARIN-1ST-2M",
@@ -373,18 +373,18 @@
         "course": "Functional English",
         "teacher": "Ms. Sadaf Majeed",
         "day": "WED",
-        "start": "1:00 PM",
-        "end": "2:00 PM",
+        "start": "10:30 AM",
+        "end": "11:30 AM",
         "room": "2.24"
     },
     {
         "section": "BSARIN-1ST-1E",
         "course": "Islamic Studies/Religious Education/Ethics",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Sajid",
         "day": "SAT",
-        "start": "11:30 AM",
-        "end": "1:00 PM",
-        "room": "2.32"
+        "start": "12:00 PM",
+        "end": "1:30 PM",
+        "room": "2.30"
     },
     {
         "section": "BSARIN-1ST-1E",
@@ -444,19 +444,19 @@
         "section": "BSARIN-2ND-1M",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
-        "day": "SAT",
-        "start": "3:30 PM",
-        "end": "5:00 PM",
-        "room": "2.32"
+        "day": "MON",
+        "start": "12:30 PM",
+        "end": "2:00 PM",
+        "room": "2.06"
     },
     {
         "section": "BSARIN-2ND-1M",
         "course": "Database Systems",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
-        "day": "WED",
-        "start": "10:00 AM",
-        "end": "11:00 AM",
-        "room": "MATHS-1.56"
+        "day": "MON",
+        "start": "2:00 PM",
+        "end": "3:30 PM",
+        "room": "2.06"
     },
     {
         "section": "BSARIN-2ND-1M",
@@ -470,7 +470,7 @@
     {
         "section": "BSARIN-2ND-1M",
         "course": "QR 2 (Discrete Structures)",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Tahir",
         "day": "WED",
         "start": "8:00 AM",
         "end": "9:00 AM",
@@ -487,12 +487,21 @@
     },
     {
         "section": "BSARIN-2ND-1M",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "FRI",
+        "start": "8:00 AM",
+        "end": "9:30 AM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-2ND-1M",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
-        "day": "MON",
-        "start": "12:00 PM",
-        "end": "1:00 PM",
-        "room": "2.22"
+        "day": "WED",
+        "start": "10:00 AM",
+        "end": "11:00 AM",
+        "room": "MATHS-1.56"
     },
     {
         "section": "BSARIN-2ND-1M",
@@ -507,28 +516,28 @@
         "section": "BSARIN-2ND-1M",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Noman Raja",
-        "day": "SAT",
-        "start": "1:00 PM",
-        "end": "2:00 PM",
-        "room": "2.32"
+        "day": "TUE",
+        "start": "4:00 PM",
+        "end": "5:30 PM",
+        "room": "2.24"
     },
     {
         "section": "BSARIN-2ND-1M",
         "course": "QR 2 (Discrete Structures)",
-        "teacher": "TBA",
-        "day": "SAT",
+        "teacher": "Mr. Muhammad Tahir",
+        "day": "TUE",
         "start": "2:00 PM",
         "end": "3:00 PM",
-        "room": "2.11"
+        "room": "2.27"
     },
     {
         "section": "BSARIN-2ND-1M",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Shafqat Ali",
         "day": "THU",
-        "start": "11:00 AM",
-        "end": "12:00 PM",
-        "room": "MATHS-1.61"
+        "start": "10:00 AM",
+        "end": "11:00 AM",
+        "room": "MATHS-1.62"
     },
     {
         "section": "BSARIN-2ND-2M",
@@ -583,6 +592,15 @@
         "start": "10:00 AM",
         "end": "11:00 AM",
         "room": "MATHS-1.57"
+    },
+    {
+        "section": "BSARIN-2ND-2M",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "FRI",
+        "start": "8:00 AM",
+        "end": "9:30 AM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-2ND-2M",
@@ -616,9 +634,9 @@
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "THU",
-        "start": "10:00 AM",
-        "end": "11:00 AM",
-        "room": "MATHS-1.62"
+        "start": "11:00 AM",
+        "end": "12:00 PM",
+        "room": "MATHS-1.61"
     },
     {
         "section": "BSARIN-2ND-2M",
@@ -685,6 +703,15 @@
     },
     {
         "section": "BSARIN-2ND-3M",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "THU",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-2ND-3M",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Rakib Mustafa",
         "day": "SAT",
@@ -769,8 +796,8 @@
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "MON",
-        "start": "12:00 PM",
-        "end": "1:00 PM",
+        "start": "1:30 PM",
+        "end": "2:30 PM",
         "room": "MATHS-1.61"
     },
     {
@@ -781,6 +808,15 @@
         "start": "11:00 AM",
         "end": "12:00 PM",
         "room": "MATHS-1.61"
+    },
+    {
+        "section": "BSARIN-2ND-4M",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "FRI",
+        "start": "10:00 AM",
+        "end": "11:30 AM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-2ND-4M",
@@ -883,6 +919,15 @@
     },
     {
         "section": "BSARIN-2ND-5M",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "THU",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-2ND-5M",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "SAT",
@@ -982,125 +1027,80 @@
     },
     {
         "section": "BSARIN-2ND-6M",
-        "course": "Object Oriented Programming",
-        "teacher": "Mr. Muzamil ur Rehman",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
         "day": "THU",
-        "start": "8:00 AM",
-        "end": "9:30 AM",
-        "room": "2.23"
-    },
-    {
-        "section": "BSARIN-2ND-6M",
-        "course": "Database Systems",
-        "teacher": "Ms. Tanzeela Kiran",
-        "day": "SAT",
-        "start": "10:00 AM",
-        "end": "11:30 AM",
-        "room": "2.24"
-    },
-    {
-        "section": "BSARIN-2ND-6M",
-        "course": "Artificial Intelligence",
-        "teacher": "Mr. Haseeb Ali",
-        "day": "THU",
-        "start": "9:30 AM",
-        "end": "11:00 AM",
-        "room": "2.23"
-    },
-    {
-        "section": "BSARIN-2ND-6M",
-        "course": "QR 2 (Discrete Structures)",
-        "teacher": "Ms. Farhat Jalil",
-        "day": "SAT",
-        "start": "9:00 AM",
-        "end": "10:00 AM",
-        "room": "2.24"
-    },
-    {
-        "section": "BSARIN-2ND-6M",
-        "course": "Multivariable Calculus",
-        "teacher": "Dr. Sana Goher",
-        "day": "SAT",
-        "start": "8:00 AM",
-        "end": "9:00 AM",
-        "room": "2.24"
-    },
-    {
-        "section": "BSARIN-2ND-7M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-2ND-7M",
-        "course": "Object Oriented Programming",
-        "teacher": "Mr. Muzamil ur Rehman",
-        "day": "WED",
-        "start": "11:30 AM",
-        "end": "12:30 PM",
-        "room": "2.23"
-    },
-    {
-        "section": "BSARIN-2ND-7M",
-        "course": "Database Systems",
-        "teacher": "Ms. Tanzeela Kiran",
-        "day": "TUE",
-        "start": "12:00 PM",
-        "end": "1:00 PM",
-        "room": "MATHS-1.54"
-    },
-    {
-        "section": "BSARIN-2ND-7M",
-        "course": "Artificial Intelligence",
-        "teacher": "Dr. Mobeen Shahroz",
-        "day": "WED",
         "start": "1:00 PM",
         "end": "2:30 PM",
-        "room": "2.27"
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-2ND-7M",
+        "section": "BSARIN-2ND-6M",
+        "course": "Object Oriented Programming",
+        "teacher": "Mr. Muzamil ur Rehman",
+        "day": "THU",
+        "start": "8:00 AM",
+        "end": "9:30 AM",
+        "room": "2.23"
+    },
+    {
+        "section": "BSARIN-2ND-6M",
+        "course": "Database Systems",
+        "teacher": "Ms. Tanzeela Kiran",
+        "day": "SAT",
+        "start": "10:00 AM",
+        "end": "11:30 AM",
+        "room": "2.24"
+    },
+    {
+        "section": "BSARIN-2ND-6M",
+        "course": "Artificial Intelligence",
+        "teacher": "Mr. Haseeb Ali",
+        "day": "THU",
+        "start": "9:30 AM",
+        "end": "11:00 AM",
+        "room": "2.23"
+    },
+    {
+        "section": "BSARIN-2ND-6M",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
-        "day": "FRI",
-        "start": "10:30 AM",
-        "end": "11:30 AM",
-        "room": "2.22"
+        "day": "SAT",
+        "start": "9:00 AM",
+        "end": "10:00 AM",
+        "room": "2.24"
+    },
+    {
+        "section": "BSARIN-2ND-6M",
+        "course": "Multivariable Calculus",
+        "teacher": "Dr. Sana Goher",
+        "day": "SAT",
+        "start": "8:00 AM",
+        "end": "9:00 AM",
+        "room": "2.24"
     },
     {
         "section": "BSARIN-2ND-7M",
-        "course": "Multivariable Calculus",
-        "teacher": "Dr. Muhammad Shahzad Shabbir",
-        "day": "FRI",
-        "start": "9:30 AM",
-        "end": "10:30 AM",
-        "room": "2.23"
+        "course": "COURSE_NAME",
+        "teacher": "TEACHER",
+        "day": "DAY",
+        "start": "START TIME",
+        "end": "END TIME",
+        "room": "ROOM"
     },
     {
         "section": "BSARIN-2ND-7M",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
-        "day": "FRI",
-        "start": "8:00 AM",
-        "end": "9:30 AM",
+        "day": "WED",
+        "start": "11:30 AM",
+        "end": "12:30 PM",
         "room": "2.23"
     },
     {
         "section": "BSARIN-2ND-7M",
         "course": "Database Systems",
         "teacher": "Ms. Tanzeela Kiran",
-        "day": "SAT",
-        "start": "8:00 AM",
-        "end": "9:30 AM",
-        "room": "2.25"
-    },
-    {
-        "section": "BSARIN-2ND-7M",
-        "course": "Artificial Intelligence",
-        "teacher": "Dr. Mobeen Shahroz",
         "day": "TUE",
         "start": "2:00 PM",
         "end": "3:00 PM",
@@ -1108,6 +1108,69 @@
     },
     {
         "section": "BSARIN-2ND-7M",
+        "course": "Artificial Intelligence",
+        "teacher": "Dr. Mobeen Shahroz",
+        "day": "WED",
+        "start": "1:00 PM",
+        "end": "2:30 PM",
+        "room": "2.27"
+    },
+    {
+        "section": "BSARIN-2ND-7M",
+        "course": "QR 2 (Discrete Structures)",
+        "teacher": "Ms. Farhat Jalil",
+        "day": "WED",
+        "start": "9:00 AM",
+        "end": "10:00 AM",
+        "room": "2.25"
+    },
+    {
+        "section": "BSARIN-2ND-7M",
+        "course": "Multivariable Calculus",
+        "teacher": "Dr. Muhammad Shahzad Shabbir",
+        "day": "FRI",
+        "start": "9:30 AM",
+        "end": "10:30 AM",
+        "room": "2.23"
+    },
+    {
+        "section": "BSARIN-2ND-7M",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "THU",
+        "start": "1:00 PM",
+        "end": "2:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-2ND-7M",
+        "course": "Object Oriented Programming",
+        "teacher": "Mr. Muzamil ur Rehman",
+        "day": "FRI",
+        "start": "8:00 AM",
+        "end": "9:30 AM",
+        "room": "2.23"
+    },
+    {
+        "section": "BSARIN-2ND-7M",
+        "course": "Database Systems",
+        "teacher": "Ms. Tanzeela Kiran",
+        "day": "SAT",
+        "start": "8:00 AM",
+        "end": "9:30 AM",
+        "room": "2.25"
+    },
+    {
+        "section": "BSARIN-2ND-7M",
+        "course": "Artificial Intelligence",
+        "teacher": "Dr. Mobeen Shahroz",
+        "day": "TUE",
+        "start": "12:00 PM",
+        "end": "1:00 PM",
+        "room": "MATHS-1.54"
+    },
+    {
+        "section": "BSARIN-2ND-7M",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "SAT",
@@ -1145,11 +1208,11 @@
     {
         "section": "BSARIN-2ND-8M",
         "course": "Database Systems",
-        "teacher": "TBA",
-        "day": "THU",
-        "start": "10:00 AM",
-        "end": "11:30 AM",
-        "room": "2.26"
+        "teacher": "Ms. Sonia Jamil",
+        "day": "FRI",
+        "start": "11:00 AM",
+        "end": "12:00 PM",
+        "room": "2.25"
     },
     {
         "section": "BSARIN-2ND-8M",
@@ -1164,10 +1227,10 @@
         "section": "BSARIN-2ND-8M",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
-        "day": "FRI",
-        "start": "11:00 AM",
-        "end": "12:00 PM",
-        "room": "2.25"
+        "day": "THU",
+        "start": "10:00 AM",
+        "end": "11:30 AM",
+        "room": "2.26"
     },
     {
         "section": "BSARIN-2ND-8M",
@@ -1177,6 +1240,15 @@
         "start": "12:00 PM",
         "end": "1:00 PM",
         "room": "2.25"
+    },
+    {
+        "section": "BSARIN-2ND-8M",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "FRI",
+        "start": "8:00 AM",
+        "end": "9:30 AM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-2ND-8M",
@@ -1190,7 +1262,7 @@
     {
         "section": "BSARIN-2ND-8M",
         "course": "Database Systems",
-        "teacher": "TBA",
+        "teacher": "Ms. Sonia Jamil",
         "day": "SAT",
         "start": "9:00 AM",
         "end": "10:30 AM",
@@ -1209,9 +1281,9 @@
         "section": "BSARIN-2ND-8M",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
-        "day": "THU",
-        "start": "4:00 PM",
-        "end": "5:00 PM",
+        "day": "SAT",
+        "start": "1:30 PM",
+        "end": "2:30 PM",
         "room": "2.24"
     },
     {
@@ -1279,6 +1351,15 @@
     },
     {
         "section": "BSARIN-2ND-1E",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "THU",
+        "start": "1:00 PM",
+        "end": "2:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-2ND-1E",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Asved Gillani",
         "day": "TUE",
@@ -1354,7 +1435,7 @@
         "course": "Artificial Intelligence",
         "teacher": "Mr. Haseeb Ali",
         "day": "MON",
-        "start": "2:00 PM",
+        "start": "2:30 PM",
         "end": "3:30 PM",
         "room": "2.27"
     },
@@ -1375,6 +1456,15 @@
         "start": "9:00 AM",
         "end": "10:00 AM",
         "room": "2.23"
+    },
+    {
+        "section": "BSARIN-2ND-2E",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "THU",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-2ND-2E",
@@ -1460,7 +1550,7 @@
     {
         "section": "BSARIN-2ND-3E",
         "course": "QR 2 (Discrete Structures)",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Tahir",
         "day": "FRI",
         "start": "3:00 PM",
         "end": "4:00 PM",
@@ -1474,6 +1564,15 @@
         "start": "2:00 PM",
         "end": "3:00 PM",
         "room": "MATHS-1.57"
+    },
+    {
+        "section": "BSARIN-2ND-3E",
+        "course": "Ideology and Constitution of Pakistan",
+        "teacher": "Dr. Madni Asghar",
+        "day": "FRI",
+        "start": "10:00 AM",
+        "end": "11:30 AM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-2ND-3E",
@@ -1505,7 +1604,7 @@
     {
         "section": "BSARIN-2ND-3E",
         "course": "QR 2 (Discrete Structures)",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Tahir",
         "day": "MON",
         "start": "4:30 PM",
         "end": "5:30 PM",
@@ -1576,11 +1675,29 @@
     },
     {
         "section": "BSARIN-3RD-1M",
+        "course": "Pak Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "1:30 PM",
+        "end": "3:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-3RD-1M",
+        "course": "Arabic for Understanding Quran",
+        "teacher": "Mr. Ali Raza",
+        "day": "TUE",
+        "start": "1:30 PM",
+        "end": "3:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-3RD-1M",
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "TUE",
         "start": "9:00 AM",
-        "end": "10:30 AM",
+        "end": "10:00 AM",
         "room": "2.26"
     },
     {
@@ -1675,11 +1792,29 @@
     },
     {
         "section": "BSARIN-3RD-2M",
+        "course": "Pak Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "1:30 PM",
+        "end": "3:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-3RD-2M",
+        "course": "Arabic for Understanding Quran",
+        "teacher": "Mr. Ali Raza",
+        "day": "TUE",
+        "start": "1:30 PM",
+        "end": "3:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-3RD-2M",
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "TUE",
-        "start": "10:30 AM",
-        "end": "12:00 PM",
+        "start": "12:30 PM",
+        "end": "1:30 PM",
         "room": "2.27"
     },
     {
@@ -1732,9 +1867,9 @@
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "TUE",
-        "start": "12:00 PM",
-        "end": "1:30 PM",
-        "room": "2.26"
+        "start": "10:00 AM",
+        "end": "11:30 AM",
+        "room": "2.23"
     },
     {
         "section": "BSARIN-3RD-3M",
@@ -1771,6 +1906,24 @@
         "start": "2:30 PM",
         "end": "3:30 PM",
         "room": "2.26"
+    },
+    {
+        "section": "BSARIN-3RD-3M",
+        "course": "Pak Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "1:30 PM",
+        "end": "3:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-3RD-3M",
+        "course": "Arabic for Understanding Quran",
+        "teacher": "Mr. Ali Raza",
+        "day": "MON",
+        "start": "1:00 PM",
+        "end": "2:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-3RD-3M",
@@ -1870,6 +2023,24 @@
         "start": "8:00 AM",
         "end": "9:00 AM",
         "room": "MATHS-1.62"
+    },
+    {
+        "section": "BSARIN-3RD-4M",
+        "course": "Pak Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-3RD-4M",
+        "course": "Arabic for Understanding Quran",
+        "teacher": "Mr. Ali Raza",
+        "day": "MON",
+        "start": "1:00 PM",
+        "end": "2:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-3RD-4M",
@@ -1969,6 +2140,24 @@
         "start": "9:00 AM",
         "end": "10:00 AM",
         "room": "MATHS-1.61"
+    },
+    {
+        "section": "BSARIN-3RD-1E",
+        "course": "Pak Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-3RD-1E",
+        "course": "Arabic for Understanding Quran",
+        "teacher": "Mr. Ali Raza",
+        "day": "TUE",
+        "start": "1:30 PM",
+        "end": "3:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-3RD-1E",
@@ -2074,8 +2263,8 @@
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Mr. Shahzad Rahim",
         "day": "MON",
-        "start": "1:00 PM",
-        "end": "2:30 PM",
+        "start": "12:00 PM",
+        "end": "1:30 PM",
         "room": "MATHS-1.61"
     },
     {
@@ -2154,10 +2343,10 @@
         "section": "BSARIN-4TH-2M",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
-        "day": "MON",
-        "start": "12:30 PM",
-        "end": "2:00 PM",
-        "room": "2.26"
+        "day": "TUE",
+        "start": "4:30 PM",
+        "end": "5:30 PM",
+        "room": "MATHS-1.62"
     },
     {
         "section": "BSARIN-4TH-2M",
@@ -2182,9 +2371,9 @@
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Mr. Shahzad Rahim",
         "day": "TUE",
-        "start": "10:00 AM",
-        "end": "11:30 AM",
-        "room": "2.23"
+        "start": "12:00 PM",
+        "end": "1:30 PM",
+        "room": "2.26"
     },
     {
         "section": "BSARIN-4TH-2M",
@@ -2217,10 +2406,10 @@
         "section": "BSARIN-4TH-2M",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
-        "day": "TUE",
-        "start": "4:30 PM",
-        "end": "5:30 PM",
-        "room": "MATHS-1.62"
+        "day": "MON",
+        "start": "12:30 PM",
+        "end": "1:30 PM",
+        "room": "2.26"
     },
     {
         "section": "BSARIN-4TH-2M",
@@ -2254,7 +2443,7 @@
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "MON",
-        "start": "4:00 PM",
+        "start": "4:30 PM",
         "end": "5:30 PM",
         "room": "2.22"
     },
@@ -2290,8 +2479,8 @@
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Mr. Shahzad Rahim",
         "day": "TUE",
-        "start": "12:30 PM",
-        "end": "2:00 PM",
+        "start": "10:30 AM",
+        "end": "12:00 PM",
         "room": "2.27"
     },
     {
@@ -2379,10 +2568,10 @@
         "section": "BSARIN-4TH-4M",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
-        "day": "TUE",
-        "start": "2:00 PM",
-        "end": "3:00 PM",
-        "room": "2.27"
+        "day": "MON",
+        "start": "2:30 PM",
+        "end": "3:30 PM",
+        "room": "MATHS-1.61"
     },
     {
         "section": "BSARIN-4TH-4M",
@@ -2486,20 +2675,20 @@
     {
         "section": "BSARIN-4TH-5M",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
-        "day": "FRI",
-        "start": "9:30 AM",
-        "end": "10:30 AM",
-        "room": "2.27"
+        "teacher": "Mr. Saad ur Rehman",
+        "day": "WED",
+        "start": "4:00 PM",
+        "end": "5:30 PM",
+        "room": "MATHS-1.56"
     },
     {
         "section": "BSARIN-4TH-5M",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
-        "day": "WED",
-        "start": "3:30 PM",
-        "end": "4:30 PM",
-        "room": "2.25"
+        "day": "FRI",
+        "start": "9:30 AM",
+        "end": "10:30 AM",
+        "room": "2.27"
     },
     {
         "section": "BSARIN-4TH-5M",
@@ -2540,7 +2729,7 @@
     {
         "section": "BSARIN-4TH-5M",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Saad ur Rehman",
         "day": "MON",
         "start": "2:30 PM",
         "end": "3:30 PM",
@@ -2594,7 +2783,7 @@
     {
         "section": "BSARIN-4TH-6M",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Saad ur Rehman",
         "day": "TUE",
         "start": "4:30 PM",
         "end": "5:30 PM",
@@ -2622,10 +2811,10 @@
         "section": "BSARIN-4TH-6M",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
-        "day": "FRI",
+        "day": "MON",
         "start": "3:00 PM",
         "end": "4:00 PM",
-        "room": "2.25"
+        "room": "MATHS-1.55"
     },
     {
         "section": "BSARIN-4TH-6M",
@@ -2648,11 +2837,11 @@
     {
         "section": "BSARIN-4TH-6M",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
-        "day": "MON",
+        "teacher": "Mr. Saad ur Rehman",
+        "day": "FRI",
         "start": "3:00 PM",
         "end": "4:00 PM",
-        "room": "MATHS-1.55"
+        "room": "2.25"
     },
     {
         "section": "BSARIN-4TH-6M",
@@ -2702,16 +2891,16 @@
     {
         "section": "BSARIN-4TH-7M",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Saad ur Rehman",
         "day": "TUE",
-        "start": "4:00 PM",
-        "end": "5:30 PM",
+        "start": "12:30 PM",
+        "end": "2:00 PM",
         "room": "MATHS-1.56"
     },
     {
         "section": "BSARIN-4TH-7M",
         "course": "Probability & Statistics",
-        "teacher": "TBA",
+        "teacher": "Dr. H.M Kashif Rasheed",
         "day": "SAT",
         "start": "2:00 PM",
         "end": "3:00 PM",
@@ -2720,7 +2909,7 @@
     {
         "section": "BSARIN-4TH-7M",
         "course": "Social Sciences (Introduction to Marketing)",
-        "teacher": "TBA",
+        "teacher": "Dr. Waqas Mahmood",
         "day": "SAT",
         "start": "10:00 AM",
         "end": "11:30 AM",
@@ -2740,8 +2929,8 @@
         "course": "Machine Learning",
         "teacher": "Ms. Jasia Ahmad",
         "day": "TUE",
-        "start": "12:30 PM",
-        "end": "2:00 PM",
+        "start": "4:00 PM",
+        "end": "5:30 PM",
         "room": "MATHS-1.56"
     },
     {
@@ -2756,7 +2945,7 @@
     {
         "section": "BSARIN-4TH-7M",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Saad ur Rehman",
         "day": "SAT",
         "start": "1:00 PM",
         "end": "2:00 PM",
@@ -2765,7 +2954,7 @@
     {
         "section": "BSARIN-4TH-7M",
         "course": "Probability & Statistics",
-        "teacher": "TBA",
+        "teacher": "Dr. H.M Kashif Rasheed",
         "day": "TUE",
         "start": "2:00 PM",
         "end": "3:00 PM",
@@ -2784,10 +2973,10 @@
         "section": "BSARIN-4TH-8M",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
-        "day": "FRI",
-        "start": "11:30 AM",
-        "end": "1:00 PM",
-        "room": "2.26"
+        "day": "TUE",
+        "start": "4:00 PM",
+        "end": "5:00 PM",
+        "room": "MATHS-1.55"
     },
     {
         "section": "BSARIN-4TH-8M",
@@ -2810,16 +2999,16 @@
     {
         "section": "BSARIN-4TH-8M",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
-        "day": "TUE",
-        "start": "4:00 PM",
-        "end": "5:00 PM",
-        "room": "MATHS-1.55"
+        "teacher": "Mr. Saad ur Rehman",
+        "day": "FRI",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "2.26"
     },
     {
         "section": "BSARIN-4TH-8M",
         "course": "Probability & Statistics",
-        "teacher": "TBA",
+        "teacher": "Dr. H.M Kashif Rasheed",
         "day": "SAT",
         "start": "10:30 AM",
         "end": "11:30 AM",
@@ -2838,10 +3027,10 @@
         "section": "BSARIN-4TH-8M",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
-        "day": "SAT",
-        "start": "4:30 PM",
-        "end": "5:30 PM",
-        "room": "2.23"
+        "day": "WED",
+        "start": "2:00 PM",
+        "end": "3:00 PM",
+        "room": "MATHS-1.62"
     },
     {
         "section": "BSARIN-4TH-8M",
@@ -2864,16 +3053,16 @@
     {
         "section": "BSARIN-4TH-8M",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
-        "day": "WED",
-        "start": "2:00 PM",
-        "end": "3:00 PM",
-        "room": "MATHS-1.62"
+        "teacher": "Mr. Saad ur Rehman",
+        "day": "SAT",
+        "start": "4:30 PM",
+        "end": "5:30 PM",
+        "room": "2.23"
     },
     {
         "section": "BSARIN-4TH-8M",
         "course": "Probability & Statistics",
-        "teacher": "TBA",
+        "teacher": "Dr. H.M Kashif Rasheed",
         "day": "WED",
         "start": "3:00 PM",
         "end": "4:00 PM",
@@ -2891,7 +3080,7 @@
     {
         "section": "BSARIN-4TH-1E",
         "course": "Computer Organization & Assembly Language",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Amir Khan",
         "day": "WED",
         "start": "11:30 AM",
         "end": "1:00 PM",
@@ -2918,7 +3107,7 @@
     {
         "section": "BSARIN-4TH-1E",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Shahzad",
         "day": "WED",
         "start": "4:30 PM",
         "end": "5:30 PM",
@@ -2945,10 +3134,10 @@
     {
         "section": "BSARIN-4TH-1E",
         "course": "Computer Organization & Assembly Language",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Amir Khan",
         "day": "WED",
-        "start": "9:00 AM",
-        "end": "10:00 AM",
+        "start": "1:30 PM",
+        "end": "2:30 PM",
         "room": "2.23"
     },
     {
@@ -2972,7 +3161,7 @@
     {
         "section": "BSARIN-4TH-1E",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Shahzad",
         "day": "TUE",
         "start": "1:00 PM",
         "end": "2:00 PM",
@@ -2983,8 +3172,8 @@
         "course": "Probability & Statistics",
         "teacher": "Dr Azhar Hussain Shah",
         "day": "WED",
-        "start": "1:30 PM",
-        "end": "2:30 PM",
+        "start": "9:00 AM",
+        "end": "10:00 AM",
         "room": "2.23"
     },
     {
@@ -3026,16 +3215,7 @@
     {
         "section": "BSARIN-4TH-2E",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
-        "day": "TUE",
-        "start": "2:00 PM",
-        "end": "3:00 PM",
-        "room": "MATHS-1.62"
-    },
-    {
-        "section": "BSARIN-4TH-2E",
-        "course": "Probability & Statistics",
-        "teacher": "Dr. Qaisar Rafique",
+        "teacher": "Mr. Muhammad Shahzad",
         "day": "SAT",
         "start": "2:30 PM",
         "end": "3:30 PM",
@@ -3043,8 +3223,17 @@
     },
     {
         "section": "BSARIN-4TH-2E",
-        "course": "Social Sciences (Constitution and Legal System of Pakistan)",
-        "teacher": "TBA",
+        "course": "Probability & Statistics",
+        "teacher": "Dr. Qaisar Rafique",
+        "day": "TUE",
+        "start": "2:00 PM",
+        "end": "3:00 PM",
+        "room": "MATHS-1.62"
+    },
+    {
+        "section": "BSARIN-4TH-2E",
+        "course": "Social Sciences (Economy of Pakistan)",
+        "teacher": "Dr. Qaiser Shakeel",
         "day": "THU",
         "start": "2:30 PM",
         "end": "4:00 PM",
@@ -3080,7 +3269,7 @@
     {
         "section": "BSARIN-4TH-2E",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Shahzad",
         "day": "SAT",
         "start": "3:30 PM",
         "end": "4:30 PM",
@@ -3125,7 +3314,7 @@
     {
         "section": "BSARIN-4TH-3E",
         "course": "Computer Networks",
-        "teacher": "Mr. Muhammad Shafiq",
+        "teacher": "Mr. Muhammad Tahir",
         "day": "THU",
         "start": "1:30 PM",
         "end": "2:30 PM",
@@ -3134,7 +3323,7 @@
     {
         "section": "BSARIN-4TH-3E",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Shahzad",
         "day": "SAT",
         "start": "1:30 PM",
         "end": "2:30 PM",
@@ -3151,8 +3340,8 @@
     },
     {
         "section": "BSARIN-4TH-3E",
-        "course": "Social Sciences (Constitution and Legal System of Pakistan)",
-        "teacher": "TBA",
+        "course": "Social Sciences (Economy of Pakistan)",
+        "teacher": "Muhammad Ashraf Khosa",
         "day": "SAT",
         "start": "4:00 PM",
         "end": "5:30 PM",
@@ -3171,15 +3360,15 @@
         "section": "BSARIN-4TH-3E",
         "course": "Machine Learning",
         "teacher": "Ms. Jasia Ahmad",
-        "day": "FRI",
-        "start": "10:30 AM",
-        "end": "11:30 AM",
-        "room": "MATHS-1.55"
+        "day": "SAT",
+        "start": "12:30 PM",
+        "end": "1:30 PM",
+        "room": "2.22"
     },
     {
         "section": "BSARIN-4TH-3E",
         "course": "Computer Networks",
-        "teacher": "Mr. Muhammad Shafiq",
+        "teacher": "Mr. Muhammad Tahir",
         "day": "FRI",
         "start": "11:30 AM",
         "end": "12:30 PM",
@@ -3188,7 +3377,7 @@
     {
         "section": "BSARIN-4TH-3E",
         "course": "Mobile Application Development",
-        "teacher": "TBA",
+        "teacher": "Mr. Muhammad Shahzad",
         "day": "WED",
         "start": "9:30 AM",
         "end": "10:30 AM",
@@ -3198,10 +3387,10 @@
         "section": "BSARIN-4TH-3E",
         "course": "Probability & Statistics",
         "teacher": "Dr. Qaisar Rafique",
-        "day": "SAT",
-        "start": "12:30 PM",
-        "end": "1:30 PM",
-        "room": "2.22"
+        "day": "FRI",
+        "start": "10:30 AM",
+        "end": "11:30 AM",
+        "room": "MATHS-1.55"
     },
     {
         "section": "BSARIN-5TH-1M",
@@ -3234,10 +3423,10 @@
         "section": "BSARIN-5TH-1M",
         "course": "Artificial Neural Networks",
         "teacher": "Ms. Marrium Aslam",
-        "day": "WED",
-        "start": "10:30 AM",
-        "end": "11:30 AM",
-        "room": "2.24"
+        "day": "THU",
+        "start": "12:30 PM",
+        "end": "2:00 PM",
+        "room": "2.26"
     },
     {
         "section": "BSARIN-5TH-1M",
@@ -3450,7 +3639,7 @@
         "section": "BSARIN-5TH-3M",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
-        "day": "THU",
+        "day": "TUE",
         "start": "9:00 AM",
         "end": "10:00 AM",
         "room": "MATHS-1.56"
@@ -3549,7 +3738,7 @@
         "section": "BSARIN-5TH-3M",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
-        "day": "TUE",
+        "day": "THU",
         "start": "9:00 AM",
         "end": "10:00 AM",
         "room": "MATHS-1.56"
@@ -3576,10 +3765,10 @@
         "section": "BSARIN-5TH-4M",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Aqsa khursheed",
-        "day": "TUE",
-        "start": "9:00 AM",
-        "end": "10:00 AM",
-        "room": "MATHS-1.57"
+        "day": "WED",
+        "start": "3:30 PM",
+        "end": "4:30 PM",
+        "room": "2.25"
     },
     {
         "section": "BSARIN-5TH-4M",
@@ -3621,10 +3810,10 @@
         "section": "BSARIN-5TH-4M",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
-        "day": "SAT",
-        "start": "8:00 AM",
-        "end": "9:00 AM",
-        "room": "2.11"
+        "day": "TUE",
+        "start": "9:00 AM",
+        "end": "10:00 AM",
+        "room": "MATHS-1.57"
     },
     {
         "section": "BSARIN-5TH-4M",
@@ -3736,6 +3925,15 @@
     },
     {
         "section": "BSARIN-6TH-1M",
+        "course": "Pakistan Studies",
+        "teacher": "Muhammad Naeem Khan",
+        "day": "THU",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-6TH-1M",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "FRI",
@@ -3809,7 +4007,7 @@
     {
         "section": "BSARIN-6TH-2M",
         "course": "Domain Elective 5 (Data Mining)",
-        "teacher": "Mr. Haseeb Ali",
+        "teacher": "Mr. Jahanzaib Munir",
         "day": "MON",
         "start": "1:30 PM",
         "end": "2:30 PM",
@@ -3832,6 +4030,15 @@
         "start": "11:30 AM",
         "end": "1:00 PM",
         "room": "2.23"
+    },
+    {
+        "section": "BSARIN-6TH-2M",
+        "course": "Pakistan Studies",
+        "teacher": "Muhammad Naeem Khan",
+        "day": "THU",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-6TH-2M",
@@ -3863,7 +4070,7 @@
     {
         "section": "BSARIN-6TH-2M",
         "course": "Domain Elective 5 (Data Mining)",
-        "teacher": "Mr. Haseeb Ali",
+        "teacher": "Mr. Jahanzaib Munir",
         "day": "TUE",
         "start": "3:00 PM",
         "end": "4:00 PM",
@@ -3934,6 +4141,15 @@
     },
     {
         "section": "BSARIN-6TH-3M",
+        "course": "Pakistan Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-6TH-3M",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Abid Farooq",
         "day": "FRI",
@@ -3981,19 +4197,19 @@
         "section": "BSARIN-6TH-4M",
         "course": "Analysis of Algorithms",
         "teacher": "Dr. Wareesa Sharif",
-        "day": "WED",
+        "day": "TUE",
         "start": "9:00 AM",
         "end": "10:00 AM",
-        "room": "2.25"
+        "room": "2.23"
     },
     {
         "section": "BSARIN-6TH-4M",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
-        "day": "THU",
-        "start": "3:30 PM",
-        "end": "4:30 PM",
-        "room": "MATHS-1.61"
+        "day": "FRI",
+        "start": "4:30 PM",
+        "end": "5:30 PM",
+        "room": "2.26"
     },
     {
         "section": "BSARIN-6TH-4M",
@@ -4007,7 +4223,7 @@
     {
         "section": "BSARIN-6TH-4M",
         "course": "Domain Elective 5 (Data Mining)",
-        "teacher": "Ms. Marrium Aslam",
+        "teacher": "Mr. Jahanzaib Munir",
         "day": "WED",
         "start": "3:30 PM",
         "end": "4:30 PM",
@@ -4033,6 +4249,15 @@
     },
     {
         "section": "BSARIN-6TH-4M",
+        "course": "Pakistan Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-6TH-4M",
         "course": "Analysis of Algorithms",
         "teacher": "Dr. Wareesa Sharif",
         "day": "THU",
@@ -4045,27 +4270,27 @@
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "TUE",
-        "start": "4:00 PM",
-        "end": "5:00 PM",
-        "room": "MATHS-1.57"
+        "start": "8:00 AM",
+        "end": "9:00 AM",
+        "room": "2.22"
     },
     {
         "section": "BSARIN-6TH-4M",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
-        "day": "FRI",
+        "day": "THU",
         "start": "4:30 PM",
         "end": "5:30 PM",
-        "room": "2.26"
+        "room": "MATHS-1.61"
     },
     {
         "section": "BSARIN-6TH-4M",
         "course": "Domain Elective 5 (Data Mining)",
-        "teacher": "Ms. Marrium Aslam",
-        "day": "TUE",
-        "start": "3:00 PM",
-        "end": "4:00 PM",
-        "room": "MATHS-1.57"
+        "teacher": "Mr. Jahanzaib Munir",
+        "day": "THU",
+        "start": "10:00 AM",
+        "end": "11:00 AM",
+        "room": "MATHS-1.61"
     },
     {
         "section": "BSARIN-6TH-1E",
@@ -4124,11 +4349,20 @@
     {
         "section": "BSARIN-6TH-1E",
         "course": "Expository Writing",
-        "teacher": "Mr. Atta ur Rehman",
+        "teacher": "Ms. Javeria Ashraf",
         "day": "MON",
         "start": "1:00 PM",
         "end": "2:30 PM",
         "room": "MATHS-1.62"
+    },
+    {
+        "section": "BSARIN-6TH-1E",
+        "course": "Pakistan Studies",
+        "teacher": "Muhammad Naeem Khan",
+        "day": "THU",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
     },
     {
         "section": "BSARIN-6TH-1E",
@@ -4143,10 +4377,10 @@
         "section": "BSARIN-6TH-1E",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
-        "day": "WED",
-        "start": "2:30 PM",
-        "end": "3:30 PM",
-        "room": "2.26"
+        "day": "SAT",
+        "start": "9:00 AM",
+        "end": "10:00 AM",
+        "room": "2.32"
     },
     {
         "section": "BSARIN-6TH-1E",
@@ -4207,8 +4441,8 @@
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Haseeb Ali",
         "day": "WED",
-        "start": "4:30 PM",
-        "end": "5:30 PM",
+        "start": "3:30 PM",
+        "end": "4:30 PM",
         "room": "MATHS-1.55"
     },
     {
@@ -4225,36 +4459,45 @@
         "course": "Expository Writing",
         "teacher": "Mr. Muahmmad Raza majid",
         "day": "SAT",
+        "start": "4:30 PM",
+        "end": "5:30 PM",
+        "room": "2.25"
+    },
+    {
+        "section": "BSARIN-6TH-2E",
+        "course": "Pakistan Studies",
+        "teacher": "Muhammad Naeem Khan",
+        "day": "THU",
+        "start": "11:30 AM",
+        "end": "1:00 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-6TH-2E",
+        "course": "Analysis of Algorithms",
+        "teacher": "Mr. Umer Farooq",
+        "day": "SAT",
         "start": "3:30 PM",
         "end": "4:30 PM",
         "room": "2.24"
     },
     {
         "section": "BSARIN-6TH-2E",
-        "course": "Analysis of Algorithms",
-        "teacher": "Mr. Umer Farooq",
-        "day": "THU",
-        "start": "3:00 PM",
-        "end": "4:30 PM",
-        "room": "MATHS-1.53"
-    },
-    {
-        "section": "BSARIN-6TH-2E",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
-        "day": "WED",
-        "start": "3:30 PM",
-        "end": "4:30 PM",
-        "room": "MATHS-1.55"
+        "day": "SAT",
+        "start": "1:30 PM",
+        "end": "2:30 PM",
+        "room": "2.22"
     },
     {
         "section": "BSARIN-6TH-2E",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Mohsin Abbas",
-        "day": "SAT",
-        "start": "4:30 PM",
-        "end": "5:30 PM",
-        "room": "2.25"
+        "day": "THU",
+        "start": "3:00 PM",
+        "end": "4:00 PM",
+        "room": "MATHS-1.53"
     },
     {
         "section": "BSARIN-6TH-2E",
@@ -4304,7 +4547,7 @@
     {
         "section": "BSARIN-6TH-3E",
         "course": "Domain Elective 5 (Data Mining)",
-        "teacher": "TBA",
+        "teacher": "Ms. Marrium Aslam",
         "day": "FRI",
         "start": "11:30 AM",
         "end": "12:30 PM",
@@ -4330,6 +4573,15 @@
     },
     {
         "section": "BSARIN-6TH-3E",
+        "course": "Pakistan Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "1:30 PM",
+        "end": "3:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-6TH-3E",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "SAT",
@@ -4341,10 +4593,10 @@
         "section": "BSARIN-6TH-3E",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
-        "day": "THU",
-        "start": "4:30 PM",
-        "end": "5:30 PM",
-        "room": "2.25"
+        "day": "TUE",
+        "start": "2:00 PM",
+        "end": "3:30 PM",
+        "room": "2.06"
     },
     {
         "section": "BSARIN-6TH-3E",
@@ -4358,7 +4610,7 @@
     {
         "section": "BSARIN-6TH-3E",
         "course": "Domain Elective 5 (Data Mining)",
-        "teacher": "TBA",
+        "teacher": "Ms. Marrium Aslam",
         "day": "SAT",
         "start": "1:00 PM",
         "end": "2:00 PM",
@@ -4385,7 +4637,7 @@
     {
         "section": "BSARIN-6TH-4E",
         "course": "Computer Vision",
-        "teacher": "TBA",
+        "teacher": "Mr. Jahanzaib Munir",
         "day": "SAT",
         "start": "11:30 AM",
         "end": "12:30 PM",
@@ -4403,7 +4655,7 @@
     {
         "section": "BSARIN-6TH-4E",
         "course": "Domain Elective 5 (Data Mining)",
-        "teacher": "Mr. Haseeb Ali",
+        "teacher": "Mr. Jahanzaib Munir",
         "day": "TUE",
         "start": "2:00 PM",
         "end": "3:00 PM",
@@ -4429,6 +4681,15 @@
     },
     {
         "section": "BSARIN-6TH-4E",
+        "course": "Pakistan Studies",
+        "teacher": "Dr. Muhammad Rashid",
+        "day": "WED",
+        "start": "1:30 PM",
+        "end": "3:30 PM",
+        "room": "Auditorium Faculty of Agriculture"
+    },
+    {
+        "section": "BSARIN-6TH-4E",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Abid Farooq",
         "day": "SAT",
@@ -4439,7 +4700,7 @@
     {
         "section": "BSARIN-6TH-4E",
         "course": "Computer Vision",
-        "teacher": "TBA",
+        "teacher": "Mr. Jahanzaib Munir",
         "day": "MON",
         "start": "3:00 PM",
         "end": "4:00 PM",
@@ -4457,7 +4718,7 @@
     {
         "section": "BSARIN-6TH-4E",
         "course": "Domain Elective 5 (Data Mining)",
-        "teacher": "Mr. Haseeb Ali",
+        "teacher": "Mr. Jahanzaib Munir",
         "day": "MON",
         "start": "11:30 AM",
         "end": "12:30 PM",
@@ -4485,10 +4746,10 @@
         "section": "BSARIN-7TH-1M",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
-        "day": "FRI",
-        "start": "3:00 PM",
-        "end": "4:00 PM",
-        "room": "2.22"
+        "day": "THU",
+        "start": "11:00 AM",
+        "end": "12:00 PM",
+        "room": "MATHS-1.62"
     },
     {
         "section": "BSARIN-7TH-1M",
@@ -4512,10 +4773,10 @@
         "section": "BSARIN-7TH-1M",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
-        "day": "THU",
-        "start": "11:00 AM",
-        "end": "12:00 PM",
-        "room": "MATHS-1.62"
+        "day": "FRI",
+        "start": "3:00 PM",
+        "end": "4:00 PM",
+        "room": "2.22"
     },
     {
         "section": "BSARIN-7TH-1M",
@@ -4630,8 +4891,8 @@
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "THU",
-        "start": "3:30 PM",
-        "end": "4:30 PM",
+        "start": "2:30 PM",
+        "end": "3:30 PM",
         "room": "MATHS-1.57"
     },
     {
@@ -4639,8 +4900,8 @@
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "THU",
-        "start": "2:30 PM",
-        "end": "3:30 PM",
+        "start": "3:30 PM",
+        "end": "4:30 PM",
         "room": "MATHS-1.57"
     },
     {
