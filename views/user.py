@@ -3,12 +3,12 @@ import db_handler
 import pandas as pd
 from datetime import datetime
 
-# Time slots for the grid (30 min intervals)
+# --- CONFIGURATION ---
 TIME_SLOTS = [
     "08:00 AM", "08:30 AM", "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM",
     "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM",
-    "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM",
-    "05:00 PM", "05:30 PM", "06:00 PM"
+    "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM", 
+    "05:00 PM"
 ]
 DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT"]
 
@@ -18,12 +18,14 @@ def parse_time(t_str):
     except:
         return None
 
-def generate_weekly_grid(df):
-    # 1. Initialize Grid
-    # Structure: grid[time][day] = {status, info}
-    grid = {time: {day: {"status": "Free", "info": ""} for day in DAYS} for time in TIME_SLOTS}
+def generate_html_grid(df, title_text):
+    """Generates a raw HTML table with inline CSS for 100% styling control."""
     
-    # 2. Populate Grid
+    # 1. Initialize empty grid structure
+    # grid[time][day] = HTML_CONTENT
+    grid = {time: {day: "" for day in DAYS} for time in TIME_SLOTS}
+    
+    # 2. Fill Grid
     if not df.empty:
         for _, row in df.iterrows():
             day = row['day'].upper()
@@ -32,14 +34,13 @@ def generate_weekly_grid(df):
             start = parse_time(row['start_time'])
             end = parse_time(row['end_time'])
             
-            # Format the cell content
-            # Showing: Course, Teacher, Section/Semester
-            cell_content = f"""
-            <div style="line-height:1.2;">
-                <strong>{row['course_name']}</strong><br>
-                <span style="font-size:0.9em;">👨‍🏫 {row['teacher']}</span><br>
-                <span style="font-size:0.8em; color:#444;">🎓 {row['section_name']}</span>
-                <br><span style="font-size:0.8em; color:#0056b3;">📍 {row.get('room', '')}</span>
+            # Create the card content
+            card_html = f"""
+            <div style="background-color: #E3F2FD; border-left: 4px solid #002147; padding: 4px; margin-bottom: 2px; text-align: left; border-radius: 4px;">
+                <div style="font-weight: bold; color: #002147; font-size: 0.9em;">{row['course_name']}</div>
+                <div style="color: #333; font-size: 0.8em;">👨‍🏫 {row['teacher']}</div>
+                <div style="color: #555; font-size: 0.75em; font-style: italic;">{row['section_name']} ({row['semester']})</div>
+                <div style="color: #0056b3; font-size: 0.8em; font-weight: bold;">📍 {row['room']}</div>
             </div>
             """
             
@@ -47,61 +48,71 @@ def generate_weekly_grid(df):
                 for time_str in TIME_SLOTS:
                     slot_time = parse_time(time_str)
                     if start <= slot_time < end:
-                        grid[time_str][day]["status"] = "Busy"
-                        grid[time_str][day]["info"] = cell_content
+                        # Append content (in case of overlap/clash)
+                        grid[time_str][day] += card_html
 
-    # 3. Build HTML Table
-    html = """
-    <table style="width:100%; border-collapse: collapse; font-family: Arial, sans-serif;">
+    # 3. Build HTML Table String
+    html = f"""
+    <h3 style="color: #002147; border-bottom: 2px solid #F2A900; padding-bottom: 10px;">{title_text}</h3>
+    <div style="overflow-x: auto;">
+    <table style="width:100%; border-collapse: collapse; min-width: 800px;">
         <thead>
-            <tr style="background-color: #002147; color: #F2A900;">
-                <th style="padding:10px; border:1px solid #ddd;">Time</th>
-                """ + "".join([f"<th style='padding:10px; border:1px solid #ddd;'>{d}</th>" for d in DAYS]) + """
+            <tr style="background-color: #002147; color: white;">
+                <th style="padding: 10px; border: 1px solid #444; width: 100px;">Time</th>
+                {''.join([f'<th style="padding: 10px; border: 1px solid #444;">{d}</th>' for d in DAYS])}
             </tr>
         </thead>
         <tbody>
     """
 
     for time in TIME_SLOTS:
-        row_html = f"<tr><td style='background-color:#f8f9fa; font-weight:bold; border:1px solid #ddd; padding:8px; color:#333;'>{time}</td>"
+        row_html = f"<tr><td style='background-color: #f0f0f0; font-weight: bold; border: 1px solid #ccc; padding: 8px;'>{time}</td>"
         
         for day in DAYS:
-            cell = grid[time][day]
-            if cell["status"] == "Free":
-                # GREEN FOR FREE
-                row_html += "<td style='background-color:#d4edda; color:#155724; text-align:center; border:1px solid #ddd; font-weight:bold;'>FREE</td>"
+            content = grid[time][day]
+            if content == "":
+                # Free Slot
+                row_html += "<td style='background-color: #ffffff; border: 1px solid #ccc; text-align: center; color: #ccc;'>-</td>"
             else:
-                # BLUE FOR BUSY
-                row_html += f"<td style='background-color:#e7f1ff; color:#000; border:1px solid #ddd; padding:5px; font-size:0.85em;'>{cell['info']}</td>"
+                # Busy Slot
+                row_html += f"<td style='background-color: #ffffff; border: 1px solid #ccc; vertical-align: top; padding: 5px;'>{content}</td>"
         
         row_html += "</tr>"
 
-    html += "</tbody></table>"
+    html += "</tbody></table></div>"
     return html
 
 def show_user_page():
-    st.markdown("## 🗓️ University Timetable Portal")
+    st.markdown("## 🗓️ IUB Timetable Portal")
     
-    col1, col2 = st.columns(2)
+    # We use columns to organize the inputs neatly
+    col1, col2 = st.columns([1, 2])
+    
     with col1:
-        mode = st.radio("Search Mode:", ["Find Teacher Schedule", "Check Room Availability"], horizontal=True)
-    
+        st.markdown("### 🔍 Filter")
+        mode = st.radio("Select View:", ["Find Teacher", "Find Room"], label_visibility="collapsed")
+        
+        if mode == "Find Teacher":
+            teachers = db_handler.get_unique_teachers()
+            selection = st.selectbox("Select Teacher:", [""] + teachers)
+        else:
+            rooms = db_handler.get_unique_rooms()
+            selection = st.selectbox("Select Room:", [""] + rooms)
+
+    # Main Display Area
     st.write("---")
-
-    if mode == "Check Room Availability":
-        st.subheader("🚪 Room Schedule")
-        rooms = db_handler.get_unique_rooms()
-        selected_room = st.selectbox("Select Room to Check:", [""] + rooms)
+    
+    if selection:
+        if mode == "Find Teacher":
+            df = db_handler.get_schedule_by_teacher(selection)
+            if not df.empty:
+                st.markdown(generate_html_grid(df, f"Schedule for {selection}"), unsafe_allow_html=True)
+            else:
+                st.warning("No schedule found.")
         
-        if selected_room:
-            df = db_handler.get_schedule_by_room(selected_room)
-            st.markdown(generate_weekly_grid(df), unsafe_allow_html=True)
-
-    elif mode == "Find Teacher Schedule":
-        st.subheader("👨‍🏫 Teacher Timetable")
-        teachers = db_handler.get_unique_teachers()
-        selected_teacher = st.selectbox("Select Teacher:", [""] + teachers)
-        
-        if selected_teacher:
-            df = db_handler.get_schedule_by_teacher(selected_teacher)
-            st.markdown(generate_weekly_grid(df), unsafe_allow_html=True)
+        elif mode == "Find Room":
+            df = db_handler.get_schedule_by_room(selection)
+            if not df.empty:
+                st.markdown(generate_html_grid(df, f"Room Occupancy: {selection}"), unsafe_allow_html=True)
+            else:
+                st.success(f"Room {selection} is completely free this week!")
