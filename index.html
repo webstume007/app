@@ -17,14 +17,14 @@
 
         * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
         
-        /* FLEXBOX LAYOUT TO FIX FOOTER */
+        /* Layout fix: Pushes footer to bottom */
         body { 
             margin: 0; 
             background-color: var(--bg); 
             color: var(--text); 
             display: flex;
             flex-direction: column;
-            min-height: 100vh; /* Full screen height */
+            min-height: 100vh;
         }
 
         header { 
@@ -41,13 +41,15 @@
         }
         .logo { font-size: 1.3rem; font-weight: 900; }
         
-        /* TABS STYLING */
+        /* Navigation Tabs: Back at the top */
         .nav-tabs { 
             display: flex; 
             background: var(--white); 
             padding: 8px; 
             gap: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 54px; /* Sticks below header */
             z-index: 999;
         }
         .tab-btn { 
@@ -64,12 +66,11 @@
         }
         .tab-btn.active { background: var(--primary); color: var(--white); }
 
-        /* CONTENT AREA */
         .container { 
             padding: 15px; 
             max-width: 1200px; 
             margin: 0 auto; 
-            flex: 1; /* Pushes footer down */
+            flex: 1; /* This fills available space */
             width: 100%;
         }
 
@@ -103,7 +104,6 @@
             font-weight: bold;
         }
 
-        /* TABLE STYLING */
         .table-responsive { overflow-x: auto; margin-top: 10px; background: var(--white); border-radius: 12px; }
         table { width: 100%; border-collapse: collapse; min-width: 900px; }
         th { background: var(--primary); color: var(--accent); padding: 15px; border: 1px solid #ddd; }
@@ -121,7 +121,7 @@
         .cc-name { font-weight: bold; font-size: 0.85rem; color: #000; margin-bottom: 3px; }
         .cc-meta { font-size: 0.75rem; color: #555; }
 
-        /* FOOTER STYLING */
+        /* Footer styling */
         .footer {
             text-align: center;
             padding: 25px 15px;
@@ -137,22 +137,9 @@
             font-weight: 700;
         }
 
-        /* MOBILE BOTTOM NAVIGATION */
         @media (max-width: 768px) {
-            body { padding-bottom: 70px; } /* Prevent nav covering footer */
             #schedule-table, .table-responsive h2 { display: none; }
             .mobile-schedule { display: block; }
-            
-            .nav-tabs {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                width: 100%;
-                padding: 10px;
-                box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
-                border-radius: 15px 15px 0 0;
-            }
-
             .day-group { margin-bottom: 25px; }
             .day-header { 
                 background: var(--primary); 
@@ -247,7 +234,6 @@
         let fullDropdownList = [];
         const timeSlots = [];
         
-        // Generate time slots
         let ts = 8*60; 
         while(ts < 18*60) {
             let h = Math.floor(ts/60); let m = ts%60;
@@ -267,20 +253,17 @@
                     rawData = d; 
                     updateDropdownData(); 
                 })
-                .catch(err => console.error("Data file not found."));
+                .catch(err => console.error("Data error."));
         };
 
         function switchTab(t) {
             currentTab = t;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + t).classList.add('active');
-            
             const std = document.getElementById('standard-controls');
             const free = document.getElementById('free-controls');
             const search = document.getElementById('teacher-search');
-            
             search.value = ""; 
-            
             if(t === 'free') {
                 std.classList.add('hidden'); free.classList.remove('hidden');
                 document.querySelector('.mobile-schedule')?.remove();
@@ -319,19 +302,15 @@
         function renderSchedule() {
             const val = document.getElementById('main-dropdown').value;
             if(!val) return;
-            
             const isMobile = window.innerWidth <= 768;
             const table = document.getElementById('schedule-table');
             const container = document.querySelector('.container');
-            
             document.querySelector('.mobile-schedule')?.remove();
             document.getElementById('table-title').innerText = `${currentTab.toUpperCase()}: ${val}`;
-
             let days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
             if(document.getElementById('specific-days-check').checked) {
                 days = Array.from(document.querySelectorAll('#day-checkboxes input:checked')).map(x=>x.value);
             }
-
             const relevant = rawData.filter(x => x[currentTab] === val);
 
             if (isMobile) {
@@ -383,12 +362,10 @@
             const day = document.getElementById('free-day').value;
             const sVal = parseTime(document.getElementById('free-start').value);
             const eVal = parseTime(document.getElementById('free-end').value);
-            if(sVal >= eVal) { alert("Invalid Time Range"); return; }
-            
+            if(sVal >= eVal) { alert("Invalid Range"); return; }
             const table = document.getElementById('schedule-table');
             table.style.display = 'table';
             table.innerHTML = `<tr><th colspan="2" style="background:var(--accent); color:var(--primary)">Available Rooms (${day})</th></tr>`;
-            
             const rooms = [...new Set(rawData.map(d => d.room))].filter(x => x).sort();
             let html = "";
             rooms.forEach(r => {
@@ -399,7 +376,7 @@
                 });
                 if(isFree) html += `<tr><td style="padding:12px; font-weight:bold; color:#28a745; text-align:left; border-bottom: 1px solid #eee;">✅ ${r}</td></tr>`;
             });
-            table.innerHTML += html || "<tr><td style='padding:20px'>No free rooms found.</td></tr>";
+            table.innerHTML += html || "<tr><td>None found.</td></tr>";
         }
 
         function parseTime(t) { 
