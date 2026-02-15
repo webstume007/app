@@ -11,21 +11,18 @@ const TARGET_FILENAME = "schedule.pdf";
 // 🔓 DECRYPTION & UPLOAD LOGIC
 // ==========================================
 async function handleUpload() {
+    alert("1. Function Started! The button works."); // DEBUG 1
+
     const password = document.getElementById('admin-pass').value;
     const fileInput = document.getElementById('hidden-file-input');
-    const statusOverlay = document.getElementById('status-overlay');
-    const statusText = document.getElementById('status-text');
 
-    if (!password) { alert("Please enter your password!"); return; }
-    if (fileInput.files.length === 0) { alert("Please select a PDF file!"); return; }
+    if (!password) { alert("⚠️ Stop: No password entered."); return; }
+    if (fileInput.files.length === 0) { alert("⚠️ Stop: No file selected."); return; }
 
     const file = fileInput.files[0];
-    
-    // Show Loading
-    statusOverlay.classList.remove('hidden');
-    statusText.innerText = "🔐 Unlocking...";
+    alert(`2. File selected: ${file.name}`); // DEBUG 2
 
-    // 1. Decrypt Token using the Password
+    // 1. Decrypt
     let token = "";
     try {
         let hex = ENCRYPTED_TOKEN;
@@ -37,41 +34,41 @@ async function handleUpload() {
             let key_char = password[i % password.length];
             token += String.fromCharCode(str.charCodeAt(i) ^ key_char.charCodeAt(0));
         }
+        alert("3. Token Decrypted (Hidden)"); // DEBUG 3
     } catch(e) {
-        statusOverlay.classList.add('hidden');
-        alert("Decryption failed.");
+        alert("❌ Error Decrypting: " + e.message);
         return;
     }
 
-    // 2. Read File
+    // 2. Upload
     const reader = new FileReader();
     reader.readAsDataURL(file);
     
     reader.onload = async function() {
         const base64Content = reader.result.split(',')[1];
-        statusText.innerText = "☁️ Authenticating...";
+        alert("4. Connecting to GitHub..."); // DEBUG 4
 
         const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TARGET_FILENAME}`;
         
         try {
-            // 3. Verify Token & Get SHA (Overwrite check)
+            // GET SHA
             let sha = null;
             const getRes = await fetch(apiUrl, {
                 method: 'GET',
                 headers: { 'Authorization': `token ${token}` }
             });
 
-            // If GitHub says 401 Unauthorized, the password (and thus token) was wrong
-            if (getRes.status === 401) throw new Error("WRONG PASSWORD");
+            if (getRes.status === 401) {
+                alert("❌ 401 Unauthorized: WRONG PASSWORD"); // DEBUG 5
+                return;
+            }
             
             if (getRes.ok) {
                 const getData = await getRes.json();
                 sha = getData.sha;
             }
 
-            // 4. Upload
-            statusText.innerText = "🚀 Uploading...";
-            
+            // PUT FILE
             const body = {
                 message: `Update schedule: ${file.name}`,
                 content: base64Content
@@ -88,23 +85,17 @@ async function handleUpload() {
             });
 
             if (putRes.ok) {
-                statusText.innerText = "✅ Success!";
-                alert("Upload Successful!\n\nThe robot has started. Site will update in ~60 seconds.");
+                alert("✅ SUCCESS! The file is uploaded.");
                 location.reload(); 
             } else {
-                throw new Error("Upload failed.");
+                const errText = await putRes.text();
+                alert("❌ Upload Failed: " + errText);
             }
         } catch (error) {
-            statusOverlay.classList.add('hidden');
-            if(error.message === "WRONG PASSWORD") {
-                alert("❌ Incorrect Password!");
-            } else {
-                alert("Error: " + error.message);
-            }
+            alert("❌ Network Error: " + error.message);
         }
     };
 }
-
 // ==========================================
 // 📅 STANDARD APP LOGIC (Do not change)
 // ==========================================
