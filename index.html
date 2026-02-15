@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
     
     <style>
-        /* --- MODERN UI VARIABLES --- */
         :root {
             --primary: #002147;   /* IUB Blue */
             --accent: #F2A900;    /* IUB Gold */
@@ -19,7 +18,6 @@
         * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
         body { margin: 0; background-color: var(--bg); color: var(--text); padding-bottom: 40px; }
 
-        /* --- HEADER & NAVIGATION --- */
         header { 
             background: var(--primary); 
             color: var(--accent); 
@@ -57,7 +55,6 @@
 
         .container { padding: 15px; max-width: 1200px; margin: 0 auto; }
 
-        /* --- CARDS & SEARCH --- */
         .controls-card { 
             background: var(--white); 
             padding: 18px; 
@@ -88,7 +85,6 @@
             font-weight: bold;
         }
 
-        /* --- DESKTOP TABLE --- */
         .table-responsive { overflow-x: auto; margin-top: 10px; background: var(--white); border-radius: 12px; }
         table { width: 100%; border-collapse: collapse; min-width: 900px; }
         th { background: var(--primary); color: var(--accent); padding: 15px; border: 1px solid #ddd; }
@@ -106,7 +102,6 @@
         .cc-name { font-weight: bold; font-size: 0.85rem; color: #000; margin-bottom: 3px; }
         .cc-meta { font-size: 0.75rem; color: #555; }
 
-        /* --- MOBILE VIEW --- */
         @media (max-width: 768px) {
             #schedule-table, .table-responsive h2 { display: none; }
             .mobile-schedule { display: block; }
@@ -136,11 +131,10 @@
 
         @media (min-width: 769px) { .mobile-schedule { display: none; } }
 
-        /* Utils */
         .hidden { display: none !important; }
         .admin-btn { background: var(--accent); color: var(--primary); border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .action-btn { background: var(--primary); color: white; width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .slot-free { color: #28a745; font-weight: bold; background: #f0fff4; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; opacity: 0.5; }
+        .slot-free { color: #28a745; font-weight: bold; background: #f0fff4; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; opacity: 0.3; }
     </style>
 </head>
 <body>
@@ -161,9 +155,9 @@
 
     <div class="container">
         <div id="standard-controls" class="controls-card">
-            <input type="text" id="teacher-search" class="search-bar" placeholder="🔍 Type to search name..." oninput="filterDropdown()">
+            <input type="text" id="teacher-search" class="search-bar" placeholder="🔍 Type name to filter results..." oninput="filterDropdown()">
             <select id="main-dropdown" onchange="renderSchedule()">
-                <option value="">-- Select --</option>
+                <option value="">-- Loading --</option>
             </select>
             
             <div style="margin-top:15px; font-size: 0.9rem;">
@@ -202,7 +196,6 @@
     </div>
 
     <script>
-        // --- CONFIG ---
         const ADMIN_PASSWORD = "556655"; 
         const PART_A = "ghp_RhoImktqKxyXeMEVAj"; 
         const PART_B = "Yfwkquun4MM43Nst9V";
@@ -213,7 +206,6 @@
         let fullDropdownList = [];
         const timeSlots = [];
         
-        // Generate 30-min slots
         let ts = 8*60; 
         while(ts < 18*60) {
             let h = Math.floor(ts/60); let m = ts%60;
@@ -223,22 +215,19 @@
         }
 
         window.onload = function() {
-            // Setup time dropdowns for Free Room
             const s = document.getElementById('free-start'); 
             const e = document.getElementById('free-end');
             timeSlots.forEach(t => { s.add(new Option(t,t)); e.add(new Option(t,t)); });
 
-            // Fetch Data
             fetch('schedule_data.json')
                 .then(r => r.json())
                 .then(d => { 
                     rawData = d; 
                     updateDropdownData(); 
                 })
-                .catch(err => console.error("Waiting for data file..."));
+                .catch(err => console.error("Data file not found or corrupted."));
         };
 
-        // --- TAB LOGIC ---
         function switchTab(t) {
             currentTab = t;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -248,11 +237,13 @@
             const free = document.getElementById('free-controls');
             const search = document.getElementById('teacher-search');
             
+            search.value = ""; // Reset search on tab switch
+            
             if(t === 'free') {
                 std.classList.add('hidden'); free.classList.remove('hidden');
-                document.getElementById('output')?.remove(); 
+                document.querySelector('.mobile-schedule')?.remove();
                 document.getElementById('schedule-table').innerHTML = "";
-                document.getElementById('table-title').innerText = "Find Room Availability";
+                document.getElementById('table-title').innerText = "Room Availability Status";
             } else {
                 std.classList.remove('hidden'); free.classList.add('hidden');
                 search.placeholder = `🔍 Search ${t} name...`;
@@ -261,19 +252,26 @@
             }
         }
 
-        // --- SEARCHABLE DROPDOWN ---
         function updateDropdownData() {
-            fullDropdownList = [...new Set(rawData.map(x => x[currentTab]))].sort();
+            fullDropdownList = [...new Set(rawData.map(x => x[currentTab]))].filter(x => x).sort();
             filterDropdown();
         }
 
         function filterDropdown() {
-            const query = document.getElementById('teacher-search').value.toLowerCase();
+            const query = document.getElementById('teacher-search').value.toLowerCase().trim();
             const dd = document.getElementById('main-dropdown');
             dd.innerHTML = '<option value="">-- Select --</option>';
             
-            fullDropdownList.filter(item => item && item.toLowerCase().includes(query))
-                .forEach(i => dd.add(new Option(i, i)));
+            const filtered = fullDropdownList.filter(item => item.toLowerCase().includes(query));
+            
+            filtered.forEach(i => dd.add(new Option(i, i)));
+
+            // REAL-TIME AUTO-SELECT
+            // If only one match remains and user has typed something, select it automatically
+            if (filtered.length === 1 && query.length > 0) {
+                dd.value = filtered[0];
+                renderSchedule();
+            }
         }
 
         function toggleDayCheckboxes() {
@@ -281,7 +279,6 @@
             renderSchedule();
         }
 
-        // --- CORE RENDERING ---
         function renderSchedule() {
             const val = document.getElementById('main-dropdown').value;
             if(!val) return;
@@ -314,7 +311,7 @@
                                     <div class="m-subject">${m.course}</div>
                                     <div class="m-details">
                                         📍 <b>Room:</b> ${m.room} | 👨‍🏫 <b>Teacher:</b> ${m.teacher}<br>
-                                        👥 <b>Sec:</b> ${m.section}
+                                        👥 <b>Section:</b> ${m.section}
                                     </div>
                                 </div>`;
                         });
@@ -345,18 +342,17 @@
             }
         }
 
-        // --- ROOM FINDER ---
         function findFreeRooms() {
             const day = document.getElementById('free-day').value;
             const sVal = parseTime(document.getElementById('free-start').value);
             const eVal = parseTime(document.getElementById('free-end').value);
-            if(sVal >= eVal) { alert("Start time must be before End time"); return; }
+            if(sVal >= eVal) { alert("Invalid Time Range"); return; }
             
             const table = document.getElementById('schedule-table');
             table.style.display = 'table';
             table.innerHTML = `<tr><th colspan="2" style="background:var(--accent); color:var(--primary)">Available Rooms (${day})</th></tr>`;
             
-            const rooms = [...new Set(rawData.map(d => d.room))].sort();
+            const rooms = [...new Set(rawData.map(d => d.room))].filter(x => x).sort();
             let html = "";
             rooms.forEach(r => {
                 const busy = rawData.filter(x => x.room === r && x.day.toUpperCase() === day);
@@ -364,17 +360,20 @@
                 busy.forEach(b => {
                     if(Math.max(sVal, parseTime(b.start)) < Math.min(eVal, parseTime(b.end))) isFree = false;
                 });
-                if(isFree) html += `<tr><td style="padding:12px; font-weight:bold; color:green; text-align:left;">✅ ${r}</td></tr>`;
+                if(isFree) html += `<tr><td style="padding:12px; font-weight:bold; color:#28a745; text-align:left; border-bottom: 1px solid #eee;">✅ ${r}</td></tr>`;
             });
-            table.innerHTML += html || "<tr><td>No rooms found.</td></tr>";
+            table.innerHTML += html || "<tr><td style='padding:20px'>No free rooms found.</td></tr>";
         }
 
-        // --- UTILS ---
         function parseTime(t) { 
             if(!t) return 0; 
-            let [tm, ap] = t.split(' '); let [h, m] = tm.split(':').map(Number); 
+            // Clean PDF artifacts like extra dots or spaces
+            let clean = t.replace(/\./g, '').trim().toUpperCase();
+            let [tm, ap] = clean.split(' '); 
+            if(!tm || !ap) return 0;
+            let [h, m] = tm.split(':').map(Number); 
             if(h===12) h=0; if(ap==='PM') h+=12; 
-            return h*60+m; 
+            return h*60+(m || 0); 
         }
 
         function askPassword() {
@@ -387,7 +386,7 @@
             if(!fileInput.files.length) return;
             const file = fileInput.files[0];
             const token = PART_A + PART_B;
-            alert("🚀 Uploading to GitHub... Page will refresh when done.");
+            alert("🚀 Uploading... Page will reload when finished.");
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -402,10 +401,10 @@
                     const put = await fetch(url, {
                         method: 'PUT',
                         headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: "Update PDF", content, sha })
+                        body: JSON.stringify({ message: "Update PDF Schedule", content, sha })
                     });
-                    if(put.ok) location.reload(); else alert("Upload Failed");
-                } catch(e) { alert("Error: " + e.message); }
+                    if(put.ok) location.reload(); else alert("GitHub upload failed.");
+                } catch(e) { alert("Error connecting to GitHub: " + e.message); }
             };
         }
     </script>
