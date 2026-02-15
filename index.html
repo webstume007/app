@@ -337,18 +337,12 @@
 
     const relevant = rawData.filter(x => x[currentTab] === val);
 
-    // This object will track which cells we should skip because they are covered by a rowspan
-    const skipTracker = {}; 
-
-    timeSlots.forEach((slot, slotIndex) => {
+    timeSlots.forEach(slot => {
         let row = `<tr><td class="time-col">${slot}</td>`;
         let sVal = parseTime(slot);
         
         days.forEach(day => {
-            const skipKey = `${day}-${slot}`;
-            if (skipTracker[skipKey]) return; // Skip this TD because the one above it is spanning into this row
-
-            // Find classes starting exactly at this time or currently happening
+            // Find any class that covers this specific 30-minute block
             let matches = relevant.filter(c => 
                 c.day.toUpperCase() === day && 
                 sVal >= parseTime(c.start) && 
@@ -356,30 +350,14 @@
             );
 
             if(matches.length > 0) {
-                // Determine the longest class in this slot to set the rowspan
-                let maxSpan = 1;
-                let cellContent = matches.map(m => {
-                    const durationMins = parseTime(m.end) - parseTime(m.start);
-                    const span = Math.ceil(durationMins / 30);
-                    if (span > maxSpan) maxSpan = span;
-                    
-                    return `
-                        <div class="class-card">
-                            <div class="cc-name">${m.course}</div>
-                            <div class="cc-meta">${currentTab==='teacher'?m.room:m.teacher}</div>
-                            <div class="cc-meta" style="color:blue">${m.section}</div>
-                        </div>
-                    `;
-                }).join('');
-
-                // Mark future slots as "to be skipped" for this day
-                for(let i = 1; i < maxSpan; i++) {
-                    if (timeSlots[slotIndex + i]) {
-                        skipTracker[`${day}-${timeSlots[slotIndex + i]}`] = true;
-                    }
-                }
-
-                row += `<td rowspan="${maxSpan}">${cellContent}</td>`;
+                let cellContent = matches.map(m => `
+                    <div class="class-card">
+                        <div class="cc-name">${m.course}</div>
+                        <div class="cc-meta">${currentTab==='teacher' ? m.room : m.teacher}</div>
+                        <div class="cc-meta" style="color:blue; font-size:10px;">${m.section}</div>
+                    </div>
+                `).join('');
+                row += `<td>${cellContent}</td>`;
             } else {
                 row += `<td><div class="slot-free">FREE</div></td>`;
             }
