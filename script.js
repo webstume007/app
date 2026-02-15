@@ -1,86 +1,76 @@
-// --- PASTE YOUR SECRET KEY LINE HERE ---
-const SECRET_KEY = "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"; 
+// ==========================================
+// 🔐 PASTE THE LINE FROM PYTHON HERE
+// ==========================================
+const ENCRYPTED_TOKEN = "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"; 
 
-// --- CONFIGURATION ---
 const REPO_OWNER = "webstume007"; 
-const REPO_NAME = "iapp"; 
-
-// We will save WHATEVER you upload as this name in the cloud.
-// This ensures the old file is always overwritten.
+const REPO_NAME = "app"; 
 const TARGET_FILENAME = "schedule.pdf"; 
 
-let rawData = [];
-let currentTab = 'teacher';
-const timeSlots = generateTimeSlots();
+// ==========================================
+// 🔓 DECRYPTION & UPLOAD LOGIC
+// ==========================================
+async function handleUpload() {
+    const password = document.getElementById('admin-pass').value;
+    const fileInput = document.getElementById('hidden-file-input');
+    const statusOverlay = document.getElementById('status-overlay');
+    const statusText = document.getElementById('status-text');
 
-// --- INIT ---
-window.onload = function() {
-    fetch('schedule_data.json')
-        .then(res => res.json())
-        .then(data => {
-            rawData = data;
-            populateMainDropdown();
-            populateTimeDropdowns();
-        })
-        .catch(err => console.error("Error loading data:", err));
-};
+    if (!password) { alert("Please enter your password!"); return; }
+    if (fileInput.files.length === 0) { alert("Please select a PDF file!"); return; }
 
-// --- SECURITY LOGIC ---
-function unlockToken(password) {
-    let hex = SECRET_KEY;
-    let str = "";
-    for (let i = 0; i < hex.length; i += 2) {
-        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-    }
-    let decrypted = "";
-    for (let i = 0; i < str.length; i++) {
-        let key_char = password[i % password.length];
-        decrypted += String.fromCharCode(str.charCodeAt(i) ^ key_char.charCodeAt(0));
-    }
-    return decrypted;
-}
-
-// --- UPLOAD LOGIC ---
-async function uploadToGitHub() {
-    const passwordInput = document.getElementById('admin-pass-input').value;
-    const fileInput = document.getElementById('pdf-upload');
-    const status = document.getElementById('upload-status');
-
-    if (!passwordInput) { alert("Please enter your password"); return; }
-    if (fileInput.files.length === 0) { alert("Please select a PDF file"); return; }
-
-    status.innerText = "🔐 Unlocking...";
+    const file = fileInput.files[0];
     
-    const token = unlockToken(passwordInput);
-    const file = fileInput.files[0]; // The file you selected (ANY NAME)
-    
+    // Show Loading
+    statusOverlay.classList.remove('hidden');
+    statusText.innerText = "🔐 Unlocking...";
+
+    // 1. Decrypt Token using the Password
+    let token = "";
+    try {
+        let hex = ENCRYPTED_TOKEN;
+        let str = "";
+        for (let i = 0; i < hex.length; i += 2) {
+            str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+        }
+        for (let i = 0; i < str.length; i++) {
+            let key_char = password[i % password.length];
+            token += String.fromCharCode(str.charCodeAt(i) ^ key_char.charCodeAt(0));
+        }
+    } catch(e) {
+        statusOverlay.classList.add('hidden');
+        alert("Decryption failed.");
+        return;
+    }
+
+    // 2. Read File
     const reader = new FileReader();
     reader.readAsDataURL(file);
     
     reader.onload = async function() {
         const base64Content = reader.result.split(',')[1];
-        status.innerText = "☁️ Connecting to GitHub...";
+        statusText.innerText = "☁️ Authenticating...";
 
-        // We upload to the FIXED target name to overwrite the old one
         const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TARGET_FILENAME}`;
         
         try {
-            // 1. Check if file exists (to get SHA for overwrite)
+            // 3. Verify Token & Get SHA (Overwrite check)
             let sha = null;
             const getRes = await fetch(apiUrl, {
                 method: 'GET',
                 headers: { 'Authorization': `token ${token}` }
             });
 
-            if (getRes.status === 401) throw new Error("Wrong Password!");
+            // If GitHub says 401 Unauthorized, the password (and thus token) was wrong
+            if (getRes.status === 401) throw new Error("WRONG PASSWORD");
             
             if (getRes.ok) {
                 const getData = await getRes.json();
                 sha = getData.sha;
             }
 
-            // 2. Upload
-            status.innerText = `🚀 Uploading ${file.name}...`;
+            // 4. Upload
+            statusText.innerText = "🚀 Uploading...";
             
             const body = {
                 message: `Update schedule: ${file.name}`,
@@ -98,21 +88,41 @@ async function uploadToGitHub() {
             });
 
             if (putRes.ok) {
-                status.innerText = "✅ Success! Robot is processing...";
-                alert(`Uploaded '${file.name}' successfully!\n\nThe automated robot has started.\nPlease wait 1 minute for the schedule to update.`);
-                toggleModal();
+                statusText.innerText = "✅ Success!";
+                alert("Upload Successful!\n\nThe robot has started. Site will update in ~60 seconds.");
+                location.reload(); 
             } else {
                 throw new Error("Upload failed.");
             }
         } catch (error) {
-            status.innerText = "❌ Error: " + error.message;
-            if(error.message === "Wrong Password!") alert("Incorrect Password.");
+            statusOverlay.classList.add('hidden');
+            if(error.message === "WRONG PASSWORD") {
+                alert("❌ Incorrect Password!");
+            } else {
+                alert("Error: " + error.message);
+            }
         }
     };
 }
 
-// ... KEEP ALL THE HELPER FUNCTIONS BELOW AS THEY WERE ...
-function toggleModal() { document.getElementById('admin-modal').classList.toggle('hidden'); }
+// ==========================================
+// 📅 STANDARD APP LOGIC (Do not change)
+// ==========================================
+let rawData = [];
+let currentTab = 'teacher';
+const timeSlots = generateTimeSlots();
+
+window.onload = function() {
+    fetch('schedule_data.json')
+        .then(res => res.json())
+        .then(data => {
+            rawData = data;
+            populateMainDropdown();
+            populateTimeDropdowns();
+        })
+        .catch(err => console.error("Error loading data:", err));
+};
+
 function generateTimeSlots() {
     let slots = [];
     let start = 8 * 60; let end = 18 * 60;
