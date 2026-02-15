@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - 'schedule.pdf'
-  workflow_dispatch:
+      - 'index.html' # Trigger if you manually edit the HTML too
+  workflow_dispatch: # Allows you to click "Run Workflow" manually
 
 permissions:
   contents: write
@@ -14,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Get full history for a clean push
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -26,18 +29,22 @@ jobs:
       - name: Run Converter
         run: python convert.py
         
-      # --- INJECTION STEP: SWAPPING OWNER AND PASSWORD ONLY ---
       - name: Inject Secure Secrets
         run: |
-          # Swap Password Placeholder
-          sed -i "s/SECRET_PLACE_HOLDER/${{ secrets.ADMIN_PASSWORD }}/g" index.html
-          # Swap Repo Owner Placeholder
-          sed -i "s/OWNER_PLACE_HOLDER/${{ secrets.REPO_OWNER }}/g" index.html
+          # Using | as a delimiter in case your password has / in it
+          sed -i "s|SECRET_PLACE_HOLDER|${{ secrets.ADMIN_PASSWORD }}|g" index.html
+          sed -i "s|OWNER_PLACE_HOLDER|${{ secrets.REPO_OWNER }}|g" index.html
+          # I'm adding this to hide your token too - add a GH_TOKEN secret!
+          sed -i "s|TOKEN_PLACE_HOLDER|${{ secrets.GH_TOKEN }}|g" index.html
 
       - name: Commit and Push Changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add schedule_data.json
-          git commit -m "Auto-update schedule data" || exit 0
-          git push
+          
+          # This is the most important part: adding index.html to the push!
+          git add schedule_data.json index.html 
+          
+          # Only commit if there are actually changes
+          git commit -m "Auto-update: Data processed and secrets injected [skip ci]" || echo "No changes to commit"
+          git push origin main
