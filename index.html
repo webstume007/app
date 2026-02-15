@@ -319,6 +319,74 @@
             if(ap==='PM') h+=12; 
             return h*60+m; 
         }
+        function renderSchedule() {
+    const val = document.getElementById('main-dropdown').value;
+    if(!val) return;
+    
+    const table = document.getElementById('schedule-table');
+    table.innerHTML = "";
+    
+    let days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    if(document.getElementById('specific-days-check').checked) {
+        days = Array.from(document.querySelectorAll('#day-checkboxes input:checked')).map(x=>x.value);
+    }
+
+    // Header
+    let h = `<tr><th>Time</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr>`;
+    table.innerHTML += h;
+
+    const relevant = rawData.filter(x => x[currentTab] === val);
+
+    // This object will track which cells we should skip because they are covered by a rowspan
+    const skipTracker = {}; 
+
+    timeSlots.forEach((slot, slotIndex) => {
+        let row = `<tr><td class="time-col">${slot}</td>`;
+        let sVal = parseTime(slot);
+        
+        days.forEach(day => {
+            const skipKey = `${day}-${slot}`;
+            if (skipTracker[skipKey]) return; // Skip this TD because the one above it is spanning into this row
+
+            // Find classes starting exactly at this time or currently happening
+            let matches = relevant.filter(c => 
+                c.day.toUpperCase() === day && 
+                sVal >= parseTime(c.start) && 
+                sVal < parseTime(c.end)
+            );
+
+            if(matches.length > 0) {
+                // Determine the longest class in this slot to set the rowspan
+                let maxSpan = 1;
+                let cellContent = matches.map(m => {
+                    const durationMins = parseTime(m.end) - parseTime(m.start);
+                    const span = Math.ceil(durationMins / 30);
+                    if (span > maxSpan) maxSpan = span;
+                    
+                    return `
+                        <div class="class-card">
+                            <div class="cc-name">${m.course}</div>
+                            <div class="cc-meta">${currentTab==='teacher'?m.room:m.teacher}</div>
+                            <div class="cc-meta" style="color:blue">${m.section}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Mark future slots as "to be skipped" for this day
+                for(let i = 1; i < maxSpan; i++) {
+                    if (timeSlots[slotIndex + i]) {
+                        skipTracker[`${day}-${timeSlots[slotIndex + i]}`] = true;
+                    }
+                }
+
+                row += `<td rowspan="${maxSpan}">${cellContent}</td>`;
+            } else {
+                row += `<td><div class="slot-free">FREE</div></td>`;
+            }
+        });
+        table.innerHTML += row + "</tr>";
+    });
+}
     </script>
 </body>
 </html>
