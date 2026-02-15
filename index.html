@@ -124,6 +124,27 @@
                 border-radius: 10px; 
                 box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
             }
+            .footer {
+    text-align: center;
+    padding: 25px 15px;
+    font-size: 0.9rem;
+    color: #666;
+    background: var(--white);
+    border-top: 1px solid #dee2e6;
+    margin-top: 30px;
+}
+
+.footer a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 700;
+    transition: color 0.3s;
+}
+
+.footer a:hover {
+    color: var(--accent);
+}
+            
             .m-time { font-weight: 900; color: var(--primary); font-size: 1rem; margin-bottom: 5px; }
             .m-subject { font-weight: bold; font-size: 1.1rem; color: #000; margin-bottom: 8px; }
             .m-details { color: #555; font-size: 0.85rem; line-height: 1.4; }
@@ -369,5 +390,8 @@
             return h*60+(m || 0); 
         }
     </script>
+    <footer class="footer">
+    Made by <a href="http://wa.me/923053296062" target="_blank">Mohsin</a> with ❤️ {3rd-3M}
+</footer>
 </body>
 </html>
