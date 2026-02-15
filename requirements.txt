@@ -1,4 +1,2 @@
-streamlit
-pandas
-pdfplumber
-GitPython
+Flask
+gunicorn
