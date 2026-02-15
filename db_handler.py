@@ -1,12 +1,9 @@
-# db_handler.py
 import sqlite3
 import pandas as pd
-import streamlit as st
 
 DB_FILE = "schedule.db"
 
 def init_db():
-    """Initialize the database tables."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''
@@ -27,7 +24,6 @@ def init_db():
     conn.close()
 
 def clear_db():
-    """Wipe the database clean for a new upload."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("DELETE FROM classes")
@@ -35,7 +31,6 @@ def clear_db():
     conn.close()
 
 def insert_class(data):
-    """Insert a single class record."""
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''
@@ -47,26 +42,36 @@ def insert_class(data):
 
 def get_unique_teachers():
     conn = sqlite3.connect(DB_FILE)
-    df = pd.read_sql_query("SELECT DISTINCT teacher FROM classes WHERE teacher IS NOT NULL AND teacher != '' ORDER BY teacher", conn)
-    conn.close()
-    return df['teacher'].tolist()
+    try:
+        df = pd.read_sql_query("SELECT DISTINCT teacher FROM classes WHERE teacher IS NOT NULL AND teacher != '' ORDER BY teacher", conn)
+        return df['teacher'].tolist()
+    except:
+        return []
+    finally:
+        conn.close()
 
 def get_unique_rooms():
     conn = sqlite3.connect(DB_FILE)
-    df = pd.read_sql_query("SELECT DISTINCT room FROM classes WHERE room IS NOT NULL AND room != '' ORDER BY room", conn)
-    conn.close()
-    return df['room'].tolist()
+    try:
+        df = pd.read_sql_query("SELECT DISTINCT room FROM classes WHERE room IS NOT NULL AND room != '' ORDER BY room", conn)
+        return df['room'].tolist()
+    except:
+        return []
+    finally:
+        conn.close()
 
 def get_schedule_by_teacher(teacher_name):
     conn = sqlite3.connect(DB_FILE)
-    query = "SELECT day, start_time, end_time, course_name, room, section_name FROM classes WHERE teacher = ?"
+    # ADDED 'teacher' to this query to fix the KeyError
+    query = "SELECT day, start_time, end_time, course_name, room, section_name, teacher FROM classes WHERE teacher = ?"
     df = pd.read_sql_query(query, conn, params=(teacher_name,))
     conn.close()
     return df
 
 def get_schedule_by_room(room_name):
     conn = sqlite3.connect(DB_FILE)
-    query = "SELECT day, start_time, end_time, course_name, teacher, section_name FROM classes WHERE room = ?"
+    # Added 'room' to this query for consistency
+    query = "SELECT day, start_time, end_time, course_name, teacher, section_name, room FROM classes WHERE room = ?"
     df = pd.read_sql_query(query, conn, params=(room_name,))
     conn.close()
     return df
