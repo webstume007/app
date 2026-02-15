@@ -8,8 +8,8 @@
     
     <style>
         :root {
-            --primary: #002147;   /* IUB Blue */
-            --accent: #F2A900;    /* IUB Gold */
+            --primary: #002147;
+            --accent: #F2A900;
             --bg: #f0f2f5;
             --white: #ffffff;
             --text: #1a1a1b;
@@ -29,102 +29,132 @@
         header { 
             background: var(--primary); 
             color: var(--accent); 
-            padding: 15px 20px; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center;
+            padding: 15px; 
+            text-align: center;
             position: sticky;
             top: 0;
             z-index: 1000;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
-        .logo { font-size: 1.3rem; font-weight: 900; }
+        .logo { font-size: 1.2rem; font-weight: 900; }
         
         .nav-tabs { 
             display: flex; 
             background: var(--white); 
-            padding: 8px; 
-            gap: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            padding: 5px; 
+            gap: 3px;
             position: sticky;
-            top: 54px;
+            top: 50px;
             z-index: 999;
             overflow-x: auto;
         }
         .tab-btn { 
             flex: 1; 
-            padding: 12px; 
+            padding: 10px 5px; 
             border: none; 
             background: #e9ecef; 
             color: #495057; 
-            font-size: 0.85rem; 
+            font-size: 0.75rem; 
             font-weight: bold; 
             cursor: pointer; 
-            border-radius: 8px; 
+            border-radius: 5px; 
             white-space: nowrap;
         }
         .tab-btn.active { background: var(--primary); color: var(--white); }
 
-        .container { 
-            padding: 15px; 
-            max-width: 1200px; 
-            margin: 0 auto; 
-            flex: 1;
-            width: 100%;
-        }
+        .container { padding: 10px; max-width: 1200px; margin: 0 auto; flex: 1; width: 100%; }
 
         .controls-card { 
             background: var(--white); 
-            padding: 18px; 
+            padding: 15px; 
             border-radius: 12px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
-            margin-bottom: 20px; 
+            margin-bottom: 15px; 
             border-top: 4px solid var(--accent);
         }
         
-        .search-bar {
+        .search-bar, select {
             width: 100%;
             padding: 12px;
             margin-bottom: 10px;
             border: 2px solid #dee2e6;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             outline: none;
-        }
-
-        select { 
-            width: 100%; 
-            padding: 12px; 
-            border: 2px solid var(--primary); 
-            border-radius: 8px; 
-            font-size: 1rem; 
             background: var(--white);
-            font-weight: bold;
-            margin-bottom: 10px;
         }
 
-        .table-responsive { overflow-x: auto; margin-top: 10px; background: var(--white); border-radius: 12px; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th { background: var(--primary); color: var(--accent); padding: 15px; border: 1px solid #ddd; font-size: 0.9rem; }
-        td { border: 1px solid #ddd; padding: 12px; text-align: center; vertical-align: middle; background: #fff; font-size: 0.85rem; }
-        
+        .action-btn { 
+            background: var(--primary); 
+            color: white; 
+            width: 100%; 
+            padding: 14px; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            cursor: pointer; 
+        }
+
+        /* TABLE STYLING FOR DESKTOP */
+        .table-responsive { margin-top: 10px; border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th { background: var(--primary); color: var(--accent); padding: 12px; border: 1px solid #ddd; font-size: 0.85rem; }
+        td { border: 1px solid #ddd; padding: 10px; text-align: center; vertical-align: middle; font-size: 0.85rem; }
+
+        /* MOBILE VIEW: NO SIDE SCROLLING */
+        @media (max-width: 600px) {
+            .table-responsive table, .table-responsive thead, .table-responsive tbody, .table-responsive th, .table-responsive td, .table-responsive tr { 
+                display: block; 
+                width: 100%;
+            }
+            .table-responsive thead { display: none; } /* Hide headers on mobile */
+            
+            .table-responsive tr {
+                margin-bottom: 15px;
+                border: 1px solid #ddd;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            }
+
+            .table-responsive td {
+                text-align: left;
+                padding: 10px;
+                border: none;
+                border-bottom: 1px solid #eee;
+                display: flex;
+                justify-content: space-between;
+            }
+
+            /* Add labels before data on mobile */
+            .table-responsive td::before {
+                content: attr(data-label);
+                font-weight: 900;
+                color: var(--primary);
+                width: 40%;
+                font-size: 0.75rem;
+            }
+            
+            /* Special styling for the Day/Section header in the card */
+            .day-row-mobile {
+                background: var(--primary) !important;
+                color: var(--accent) !important;
+                font-weight: 900;
+                text-align: center !important;
+                display: block !important;
+            }
+        }
+
         .footer {
             text-align: center;
-            padding: 25px 15px;
-            font-size: 0.9rem;
+            padding: 20px;
+            font-size: 0.8rem;
             color: #666;
             background: var(--white);
             border-top: 1px solid #dee2e6;
         }
         .footer a { color: var(--primary); text-decoration: none; font-weight: 700; }
-
         .hidden { display: none !important; }
-        .action-btn { background: var(--primary); color: white; width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        
-        @media (max-width: 768px) {
-            table { min-width: 600px; }
-            th, td { padding: 8px; font-size: 0.8rem; }
-        }
     </style>
 </head>
 <body>
@@ -134,7 +164,7 @@
     </header>
 
     <div class="nav-tabs">
-        <button id="tab-class" class="tab-btn active" onclick="switchTab('class')">📚 Class Schedule</button>
+        <button id="tab-class" class="tab-btn active" onclick="switchTab('class')">📚 Class</button>
         <button id="tab-teacher" class="tab-btn" onclick="switchTab('teacher')">👨‍🏫 Teacher</button>
         <button id="tab-room" class="tab-btn" onclick="switchTab('room')">🚪 Room</button>
         <button id="tab-free" class="tab-btn" onclick="switchTab('free')">🔍 Free Room</button>
@@ -142,44 +172,40 @@
 
     <div class="container">
         <div id="class-controls" class="controls-card">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <select id="semester-select" onchange="updateSectionDropdown()">
-                    <option value="">-- Semester --</option>
-                    <option value="1ST">1st Semester</option>
-                    <option value="2ND">2nd Semester</option>
-                    <option value="3RD">3rd Semester</option>
-                    <option value="4TH">4th Semester</option>
-                </select>
-                <input type="text" id="section-search" class="search-bar" placeholder="🔍 Search Section..." oninput="updateSectionDropdown()">
-            </div>
-            <select id="section-dropdown">
-                <option value="">-- Select Section --</option>
+            <select id="semester-select" onchange="updateSectionDropdown()">
+                <option value="">-- All Semesters --</option>
+                <option value="1ST">1st Semester</option>
+                <option value="2ND">2nd Semester</option>
+                <option value="3RD">3rd Semester</option>
+                <option value="4TH">4th Semester</option>
+                <option value="5TH">5th Semester</option>
+                <option value="6TH">6th Semester</option>
+                <option value="7TH">7th Semester</option>
+                <option value="8TH">8th Semester</option>
             </select>
-            <button class="action-btn" onclick="renderClassSchedule()">Search Schedule</button>
+            <input type="text" id="section-search" class="search-bar" placeholder="🔍 Search Section (e.g. 3M)" oninput="updateSectionDropdown()">
+            <select id="section-dropdown"><option value="">-- Select Section --</option></select>
+            <button class="action-btn" onclick="renderClassSchedule()">Show Schedule</button>
         </div>
 
         <div id="standard-controls" class="controls-card hidden">
-            <input type="text" id="main-search" class="search-bar" placeholder="🔍 Search..." oninput="filterDropdown()">
-            <select id="main-dropdown" onchange="renderStandardSchedule()">
-                <option value="">-- Select --</option>
-            </select>
+            <input type="text" id="main-search" class="search-bar" placeholder="🔍 Search name..." oninput="filterStandardDropdown()">
+            <select id="main-dropdown" onchange="renderStandardSchedule()"></select>
         </div>
 
         <div id="free-controls" class="controls-card hidden">
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
                 <select id="free-day">
-                    <option value="MON">Mon</option><option value="TUE">Tue</option>
-                    <option value="WED">Wed</option><option value="THU">Thu</option>
-                    <option value="FRI">Fri</option><option value="SAT">Sat</option>
+                    <option value="MON">Mon</option><option value="TUE">Tue</option><option value="WED">Wed</option>
+                    <option value="THU">Thu</option><option value="FRI">Fri</option><option value="SAT">Sat</option>
                 </select>
                 <select id="free-start"></select>
-                <select id="free-end"></select>
             </div>
-            <button class="action-btn" onclick="findFreeRooms()">Search Free Rooms</button>
+            <button class="action-btn" onclick="findFreeRooms()">Search Rooms</button>
         </div>
 
         <div class="table-responsive">
-            <h2 id="table-title" style="font-size: 1.1rem; padding: 10px;">Select your schedule</h2>
+            <h2 id="table-title" style="font-size: 1rem; text-align: center;">Ready to Search</h2>
             <table id="schedule-table"></table>
         </div>
     </div>
@@ -194,105 +220,92 @@
         const timeSlots = [];
         
         let ts = 8*60; 
-        while(ts < 18*60) {
-            let h = Math.floor(ts/60); let m = ts%60;
-            let amp = h>=12?'PM':'AM'; let dh = h>12?h-12:h;
+        while(ts <= 18*60) {
+            let h = Math.floor(ts/60), m = ts%60, amp = h>=12?'PM':'AM', dh = h>12?h-12:h;
+            if(dh===0) dh=12;
             timeSlots.push(`${dh}:${m===0?'00':m} ${amp}`);
             ts+=30;
         }
 
         window.onload = function() {
-            const s = document.getElementById('free-start'); 
-            const e = document.getElementById('free-end');
-            timeSlots.forEach(t => { s.add(new Option(t,t)); e.add(new Option(t,t)); });
-
-            fetch('schedule_data.json')
-                .then(r => r.json())
-                .then(d => { rawData = d; updateSectionDropdown(); })
-                .catch(err => console.error("Data error."));
+            const fs = document.getElementById('free-start');
+            timeSlots.forEach(t => fs.add(new Option(t,t)));
+            fetch('schedule_data.json').then(r => r.json()).then(d => { 
+                rawData = d; updateSectionDropdown(); 
+            });
         };
 
         function switchTab(t) {
             currentTab = t;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + t).classList.add('active');
-            
             document.getElementById('class-controls').classList.toggle('hidden', t !== 'class');
             document.getElementById('standard-controls').classList.toggle('hidden', t === 'class' || t === 'free');
             document.getElementById('free-controls').classList.toggle('hidden', t !== 'free');
-            
-            document.getElementById('schedule-table').innerHTML = "";
-            if(t !== 'class' && t !== 'free') updateStandardDropdown();
+            if(t !== 'class' && t !== 'free') filterStandardDropdown();
         }
 
         function updateSectionDropdown() {
             const sem = document.getElementById('semester-select').value;
-            const query = document.getElementById('section-search').value.toUpperCase();
-            const sections = [...new Set(rawData.map(x => x.section))]
-                .filter(s => s.includes(sem) && s.includes(query)).sort();
-            
+            const q = document.getElementById('section-search').value.toUpperCase();
+            const sections = [...new Set(rawData.map(x => x.section))].filter(s => s.includes(sem) && s.includes(q)).sort();
             const dd = document.getElementById('section-dropdown');
             dd.innerHTML = '<option value="">-- Select Section --</option>';
-            sections.forEach(s => dd.add(new Option(s.split('-').pop() + " (" + s + ")", s)));
+            sections.forEach(s => dd.add(new Option(s, s)));
         }
 
-        function updateStandardDropdown() {
-            const list = [...new Set(rawData.map(x => x[currentTab]))].filter(x => x).sort();
+        function filterStandardDropdown() {
+            const q = document.getElementById('main-search').value.toLowerCase();
+            const list = [...new Set(rawData.map(x => x[currentTab]))].filter(x => x && x.toLowerCase().includes(q)).sort();
             const dd = document.getElementById('main-dropdown');
             dd.innerHTML = '<option value="">-- Select --</option>';
             list.forEach(i => dd.add(new Option(i, i)));
         }
 
         function renderClassSchedule() {
-            const section = document.getElementById('section-dropdown').value;
-            if(!section) return;
-            const relevant = rawData.filter(x => x.section === section);
-            document.getElementById('table-title').innerText = `Class Schedule: ${section}`;
-            buildTable(relevant, true);
+            const sec = document.getElementById('section-dropdown').value;
+            if(!sec) return;
+            const data = rawData.filter(x => x.section === sec);
+            document.getElementById('table-title').innerText = "Schedule: " + sec;
+            buildTable(data, true);
         }
 
         function renderStandardSchedule() {
             const val = document.getElementById('main-dropdown').value;
             if(!val) return;
-            const relevant = rawData.filter(x => x[currentTab] === val);
-            document.getElementById('table-title').innerText = `${currentTab.toUpperCase()}: ${val}`;
-            buildTable(relevant, false);
+            const data = rawData.filter(x => x[currentTab] === val);
+            document.getElementById('table-title').innerText = val;
+            buildTable(data, false);
         }
 
-        function buildTable(data, isClassView) {
+        function buildTable(data, isClass) {
             const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
-            let html = `<tr><th>Day</th><th>Course Name</th><th>Time</th><th>${isClassView ? 'Teacher' : 'Room'}</th><th>${isClassView ? 'Room' : 'Section'}</th></tr>`;
+            let html = `<thead><tr><th>Day</th><th>Course</th><th>Time</th><th>${isClass?'Teacher':'Room'}</th><th>${isClass?'Room':'Section'}</th></tr></thead><tbody>`;
             
             days.forEach(day => {
                 const matches = data.filter(x => x.day === day).sort((a,b) => parseTime(a.start) - parseTime(b.start));
-                if(matches.length > 0) {
-                    matches.forEach((m, i) => {
-                        html += `<tr>
-                            ${i === 0 ? `<td rowspan="${matches.length}" style="font-weight:900; background:#f8f9fa;">${day}</td>` : ''}
-                            <td style="text-align:left;"><b>${m.course}</b></td>
-                            <td>${m.start} - ${m.end}</td>
-                            <td>${isClassView ? m.teacher : m.room}</td>
-                            <td style="color:red; font-weight:bold;">${isClassView ? m.room : m.section}</td>
-                        </tr>`;
-                    });
-                }
+                matches.forEach((m, i) => {
+                    html += `<tr>
+                        <td data-label="Day" class="${i===0?'day-row-mobile':''}">${day}</td>
+                        <td data-label="Course"><b>${m.course}</b></td>
+                        <td data-label="Time">${m.start} - ${m.end}</td>
+                        <td data-label="${isClass?'Teacher':'Room'}">${isClass?m.teacher:m.room}</td>
+                        <td data-label="${isClass?'Room':'Section'}" style="color:red; font-weight:bold;">${isClass?m.room:m.section}</td>
+                    </tr>`;
+                });
             });
-            document.getElementById('schedule-table').innerHTML = html;
+            document.getElementById('schedule-table').innerHTML = html + "</tbody>";
         }
 
         function findFreeRooms() {
-            const day = document.getElementById('free-day').value;
-            const sVal = parseTime(document.getElementById('free-start').value);
-            const eVal = parseTime(document.getElementById('free-end').value);
+            const day = document.getElementById('free-day').value, sVal = parseTime(document.getElementById('free-start').value);
             const rooms = [...new Set(rawData.map(d => d.room))].filter(x => x).sort();
-            let html = `<tr><th colspan="2">Available Rooms (${day})</th></tr>`;
+            let html = "<tbody>";
             rooms.forEach(r => {
-                const busy = rawData.filter(x => x.room === r && x.day === day);
-                let isFree = true;
-                busy.forEach(b => { if(Math.max(sVal, parseTime(b.start)) < Math.min(eVal, parseTime(b.end))) isFree = false; });
-                if(isFree) html += `<tr><td style="color:green; font-weight:bold;">✅ ${r}</td></tr>`;
+                const busy = rawData.some(x => x.room === r && x.day === day && sVal >= parseTime(x.start) && sVal < parseTime(x.end));
+                if(!busy) html += `<tr><td style="color:green; font-weight:bold; text-align:center;">✅ Available: ${r}</td></tr>`;
             });
-            document.getElementById('schedule-table').innerHTML = html;
+            document.getElementById('schedule-table').innerHTML = html + "</tbody>";
         }
 
         function parseTime(t) { 
