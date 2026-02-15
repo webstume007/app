@@ -26,10 +26,13 @@ jobs:
       - name: Run Converter
         run: python convert.py
         
-      # This is the "Magic" step that swaps the placeholder for your real secret
-      - name: Inject Admin Password
+      # --- INJECTION STEP: SWAPPING OWNER AND PASSWORD ONLY ---
+      - name: Inject Secure Secrets
         run: |
-          sed -i 's/SECRET_PLACEHOLDER/${{ secrets.ADMIN_PASSWORD }}/g' index.html
+          # Swap Password Placeholder
+          sed -i "s/SECRET_PLACE_HOLDER/${{ secrets.ADMIN_PASSWORD }}/g" index.html
+          # Swap Repo Owner Placeholder
+          sed -i "s/OWNER_PLACE_HOLDER/${{ secrets.REPO_OWNER }}/g" index.html
 
       - name: Commit and Push Changes
         run: |
