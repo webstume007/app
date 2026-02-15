@@ -7,47 +7,64 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
     
     <style>
-        /* --- STYLE SECTION --- */
+        /* --- DESIGN --- */
         * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
         body { margin: 0; background-color: #f4f4f9; color: #000; }
+        
+        /* Header */
         header { background: #002147; color: #F2A900; padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
         .logo { font-size: 1.5rem; font-weight: 900; }
+        
+        /* Update Button (Clean & Simple) */
+        .admin-btn { 
+            padding: 8px 16px; 
+            font-size: 0.9rem; 
+            background: #F2A900; 
+            color: #002147; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: bold; 
+            border-radius: 5px; 
+            transition: 0.2s;
+        }
+        .admin-btn:hover { background: #fff; }
+
+        /* Navigation */
         .nav-tabs { display: flex; justify-content: center; background: #fff; padding: 10px; border-bottom: 2px solid #ddd; }
-        .tab-btn { flex: 1; max-width: 200px; padding: 12px; border: none; background: #eee; color: #555; font-size: 1rem; font-weight: bold; cursor: pointer; margin: 0 5px; border-radius: 5px; transition: 0.3s; }
-        .tab-btn.active { background: #002147; color: #fff; transform: scale(1.05); }
+        .tab-btn { flex: 1; max-width: 200px; padding: 12px; border: none; background: #eee; color: #555; font-size: 1rem; font-weight: bold; cursor: pointer; margin: 0 5px; border-radius: 5px; }
+        .tab-btn.active { background: #002147; color: #fff; }
+
+        /* Layout */
         .container { padding: 20px; max-width: 1200px; margin: 0 auto; }
         .controls-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #F2A900; }
-        select, input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #002147; border-radius: 5px; font-size: 1rem; font-weight: bold; }
-        .hidden { display: none !important; }
+        select { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #002147; border-radius: 5px; font-size: 1rem; font-weight: bold; }
+        
+        /* Table */
         table { width: 100%; border-collapse: collapse; background: #fff; min-width: 800px; margin-top: 10px; }
-        th { background: #002147; color: #fff; padding: 15px; text-align: center; border: 1px solid #ddd; }
+        th { background: #002147; color: #fff; padding: 15px; border: 1px solid #ddd; }
         td { border: 1px solid #ddd; padding: 0; text-align: center; vertical-align: top; }
         .time-col { background: #eee; font-weight: bold; padding: 10px; width: 100px; vertical-align: middle; }
+        
+        /* Class Card */
         .class-card { background: #e3f2fd; border-left: 4px solid #002147; padding: 5px; margin: 2px; text-align: left; font-size: 0.9em; }
         .cc-name { font-weight: bold; color: #002147; }
         .cc-meta { font-size: 0.8em; color: #444; }
         .slot-free { color: #28a745; font-weight: bold; background: #d4edda; height: 50px; display: flex; align-items: center; justify-content: center; }
-        .action-btn { background: #002147; color: #fff; width: 100%; padding: 15px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; border-radius: 5px; }
-        .table-responsive { overflow-x: auto; }
         
-        /* Admin Header Inputs */
-        .admin-controls { display: flex; gap: 5px; }
-        .admin-input { width: 100px !important; margin: 0 !important; padding: 5px !important; font-size: 0.9rem !important; }
-        .admin-btn { padding: 5px 15px; font-size: 0.9rem; background: #F2A900; color: #002147; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
+        .hidden { display: none !important; }
+        .table-responsive { overflow-x: auto; }
+        .action-btn { background: #002147; color: #fff; width: 100%; padding: 15px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
 
     <header>
         <div class="logo">🎓 IUB Timetable</div>
-        <div class="admin-controls">
-            <input type="password" id="admin-pass" class="admin-input" placeholder="Password">
+        
+        <div>
+            <input type="file" id="hidden-file-input" accept=".pdf" style="display: none;" onchange="uploadFile()">
             
-            <input type="file" id="hidden-file-input" accept=".pdf" style="display: none;" onchange="handleUpload()">
-            
-            <button class="admin-btn" onclick="document.getElementById('hidden-file-input').click()">
-                ⚙️ Update
-            </button>
+            <button class="admin-btn" onclick="askPassword()">⚙️ Update Schedule</button>
         </div>
     </header>
 
@@ -64,7 +81,7 @@
                 <option value="">-- Loading Data --</option>
             </select>
             <div style="margin-top:10px;">
-                <label>
+                <label style="cursor:pointer;">
                     <input type="checkbox" id="specific-days-check" onchange="toggleDayCheckboxes()"> Show Specific Days
                 </label>
                 <div id="day-checkboxes" class="hidden" style="margin-top:5px; display:flex; gap:10px; flex-wrap:wrap;">
@@ -96,11 +113,10 @@
 
     <script>
         // ============================================
-        // ⚙️ SETTINGS (EDIT THESE 3 LINES)
+        // ⚙️ SETTINGS
         // ============================================
         const ADMIN_PASSWORD = "556655"; 
         
-        // Split your token: "ghp_ABC123" -> "ghp_ABC" + "123"
         const PART_A = "ghp_RhoImktqKxyXeMEVAj"; 
         const PART_B = "Yfwkquun4MM43Nst9V";
 
@@ -109,18 +125,26 @@
         const FILE_NAME  = "schedule.pdf";
         // ============================================
 
-        // --- UPLOAD FUNCTION ---
-        async function handleUpload() {
-            const pass = document.getElementById('admin-pass').value;
-            const fileInput = document.getElementById('hidden-file-input');
+        // --- 1. ASK PASSWORD ---
+        function askPassword() {
+            const userPass = prompt("🔐 Enter Admin Password:");
+            if (userPass === ADMIN_PASSWORD) {
+                // Password Correct -> Open File Picker
+                document.getElementById('hidden-file-input').click();
+            } else if (userPass !== null) {
+                alert("❌ Wrong Password!");
+            }
+        }
 
-            if(pass !== ADMIN_PASSWORD) { alert("❌ Wrong Password!"); return; }
+        // --- 2. UPLOAD FILE (Triggers when file selected) ---
+        async function uploadFile() {
+            const fileInput = document.getElementById('hidden-file-input');
             if(fileInput.files.length === 0) return;
 
             const file = fileInput.files[0];
             const token = PART_A + PART_B;
 
-            alert(`🚀 Starting upload for: ${file.name}`);
+            alert(`🚀 Starting upload for: ${file.name}\nPlease wait...`);
 
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -130,186 +154,12 @@
                 const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_NAME}`;
 
                 try {
-                    // 1. Get SHA (Check if file exists)
+                    // Get SHA (Overwrite Check)
                     let sha = null;
                     const getRes = await fetch(apiUrl, { 
                         method: 'GET', 
                         headers: { 'Authorization': `token ${token}` }
                     });
 
-                    if(getRes.status === 401) { alert("❌ GitHub Token Invalid!"); return; }
-                    if(getRes.ok) {
-                        const d = await getRes.json();
-                        sha = d.sha;
-                    }
-
-                    // 2. Upload File
-                    const body = { message: "Update PDF", content: content };
-                    if(sha) body.sha = sha;
-
-                    const putRes = await fetch(apiUrl, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body)
-                    });
-
-                    if(putRes.ok) {
-                        alert("✅ Upload Success! The site will update in ~2 minutes.");
-                        location.reload();
-                    } else {
-                        const err = await putRes.text();
-                        alert("❌ Upload Failed: " + err);
-                    }
-
-                } catch(e) { alert("Error: " + e.message); }
-            };
-        }
-
-        // --- STANDARD APP LOGIC ---
-        let rawData = [];
-        let currentTab = 'teacher';
-        const timeSlots = [];
-        
-        // Generate Times
-        let ts = 8*60; 
-        while(ts < 18*60) {
-            let h = Math.floor(ts/60); let m = ts%60;
-            let amp = h>=12?'PM':'AM'; let dh = h>12?h-12:h;
-            timeSlots.push(`${dh}:${m===0?'00':m} ${amp}`);
-            ts+=30;
-        }
-
-        window.onload = function() {
-            // Populate Time Dropdowns
-            const s = document.getElementById('free-start'); 
-            const e = document.getElementById('free-end');
-            timeSlots.forEach(t => { 
-                s.add(new Option(t,t)); 
-                e.add(new Option(t,t)); 
-            });
-
-            // Load Data
-            fetch('schedule_data.json')
-                .then(r => r.json())
-                .then(d => {
-                    rawData = d;
-                    populateDropdown();
-                });
-        };
-
-        function switchTab(t) {
-            currentTab = t;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            const std = document.getElementById('standard-controls');
-            const free = document.getElementById('free-controls');
-            
-            if(t === 'free') {
-                std.classList.add('hidden');
-                free.classList.remove('hidden');
-                document.getElementById('schedule-table').innerHTML = "";
-            } else {
-                std.classList.remove('hidden');
-                free.classList.add('hidden');
-                document.getElementById('dropdown-label').innerText = t==='teacher' ? "Select Teacher:" : "Select Room:";
-                populateDropdown();
-                renderSchedule();
-            }
-        }
-
-        function populateDropdown() {
-            const dd = document.getElementById('main-dropdown');
-            dd.innerHTML = '<option value="">-- Select --</option>';
-            const key = currentTab;
-            const items = [...new Set(rawData.map(x => x[key]))].sort();
-            items.forEach(i => { if(i) dd.add(new Option(i,i)); });
-        }
-
-        function toggleDayCheckboxes() {
-            const chk = document.getElementById('specific-days-check');
-            const box = document.getElementById('day-checkboxes');
-            if(chk.checked) box.classList.remove('hidden');
-            else box.classList.add('hidden');
-            renderSchedule();
-        }
-
-        function renderSchedule() {
-            const val = document.getElementById('main-dropdown').value;
-            if(!val) return;
-            
-            const table = document.getElementById('schedule-table');
-            table.innerHTML = "";
-            
-            let days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
-            if(document.getElementById('specific-days-check').checked) {
-                days = Array.from(document.querySelectorAll('#day-checkboxes input:checked')).map(x=>x.value);
-            }
-
-            // Header
-            let h = `<tr><th>Time</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr>`;
-            table.innerHTML += h;
-
-            const relevant = rawData.filter(x => x[currentTab] === val);
-
-            timeSlots.forEach(slot => {
-                let row = `<tr><td class="time-col">${slot}</td>`;
-                let sVal = parseTime(slot);
-                
-                days.forEach(day => {
-                    let matches = relevant.filter(c => c.day.toUpperCase() === day && sVal >= parseTime(c.start) && sVal < parseTime(c.end));
-                    if(matches.length > 0) {
-                        let content = matches.map(m => `
-                            <div class="class-card">
-                                <div class="cc-name">${m.course}</div>
-                                <div class="cc-meta">${currentTab==='teacher'?m.room:m.teacher}</div>
-                                <div class="cc-meta" style="color:blue">${m.section}</div>
-                            </div>
-                        `).join('');
-                        row += `<td>${content}</td>`;
-                    } else {
-                        row += `<td><div class="slot-free">FREE</div></td>`;
-                    }
-                });
-                table.innerHTML += row + "</tr>";
-            });
-        }
-
-        function findFreeRooms() {
-            const day = document.getElementById('free-day').value;
-            const sVal = parseTime(document.getElementById('free-start').value);
-            const eVal = parseTime(document.getElementById('free-end').value);
-            
-            if(sVal >= eVal) { alert("Start time must be before End time"); return; }
-            
-            const table = document.getElementById('schedule-table');
-            table.innerHTML = `<tr><th colspan="2">Free Rooms (${day})</th></tr>`;
-            
-            const rooms = [...new Set(rawData.map(d => d.room))].sort();
-            let html = "";
-            
-            rooms.forEach(r => {
-                const busy = rawData.filter(x => x.room === r && x.day.toUpperCase() === day);
-                let isFree = true;
-                busy.forEach(b => {
-                    let bS = parseTime(b.start); let bE = parseTime(b.end);
-                    if(Math.max(sVal, bS) < Math.min(eVal, bE)) isFree = false;
-                });
-                if(isFree) html += `<tr><td style="background:#d4edda; font-weight:bold; padding:10px;">${r}</td></tr>`;
-            });
-            
-            if(html === "") html = "<tr><td>No rooms found.</td></tr>";
-            table.innerHTML += html;
-        }
-
-        function parseTime(t) { 
-            if(!t) return 0; 
-            let [tm, ap] = t.split(' '); 
-            let [h, m] = tm.split(':').map(Number); 
-            if(h===12) h=0; 
-            if(ap==='PM') h+=12; 
-            return h*60+m; 
-        }
-    </script>
-</body>
-</html>
+                    if(getRes.status === 401) { alert("❌ Error: GitHub Token Invalid!"); return; }
+                    if(
