@@ -162,4 +162,163 @@
                     });
 
                     if(getRes.status === 401) { alert("❌ Error: GitHub Token Invalid!"); return; }
-                    if(
+                    if(getRes.ok) {
+                        const d = await getRes.json();
+                        sha = d.sha;
+                    }
+
+                    // Upload
+                    const body = { message: "Update PDF via App", content: content };
+                    if(sha) body.sha = sha;
+
+                    const putRes = await fetch(apiUrl, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+
+                    if(putRes.ok) {
+                        alert("✅ Upload Success! The site will update in ~2 minutes.");
+                        location.reload();
+                    } else {
+                        const err = await putRes.text();
+                        alert("❌ Upload Failed: " + err);
+                    }
+
+                } catch(e) { alert("Network Error: " + e.message); }
+            };
+        }
+
+        // --- 3. APP LOGIC (Standard) ---
+        let rawData = [];
+        let currentTab = 'teacher';
+        const timeSlots = [];
+        
+        let ts = 8*60; 
+        while(ts < 18*60) {
+            let h = Math.floor(ts/60); let m = ts%60;
+            let amp = h>=12?'PM':'AM'; let dh = h>12?h-12:h;
+            timeSlots.push(`${dh}:${m===0?'00':m} ${amp}`);
+            ts+=30;
+        }
+
+        window.onload = function() {
+            const s = document.getElementById('free-start'); 
+            const e = document.getElementById('free-end');
+            timeSlots.forEach(t => { s.add(new Option(t,t)); e.add(new Option(t,t)); });
+
+            fetch('schedule_data.json')
+                .then(r => r.json())
+                .then(d => { rawData = d; populateDropdown(); })
+                .catch(e => console.log("Data loading..."));
+        };
+
+        function switchTab(t) {
+            currentTab = t;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const std = document.getElementById('standard-controls');
+            const free = document.getElementById('free-controls');
+            
+            if(t === 'free') {
+                std.classList.add('hidden'); free.classList.remove('hidden');
+                document.getElementById('schedule-table').innerHTML = "";
+            } else {
+                std.classList.remove('hidden'); free.classList.add('hidden');
+                document.getElementById('dropdown-label').innerText = t==='teacher' ? "Select Teacher:" : "Select Room:";
+                populateDropdown(); renderSchedule();
+            }
+        }
+
+        function populateDropdown() {
+            const dd = document.getElementById('main-dropdown');
+            dd.innerHTML = '<option value="">-- Select --</option>';
+            const key = currentTab;
+            const items = [...new Set(rawData.map(x => x[key]))].sort();
+            items.forEach(i => { if(i) dd.add(new Option(i,i)); });
+        }
+
+        function toggleDayCheckboxes() {
+            const chk = document.getElementById('specific-days-check');
+            const box = document.getElementById('day-checkboxes');
+            if(chk.checked) box.classList.remove('hidden'); else box.classList.add('hidden');
+            renderSchedule();
+        }
+
+        function renderSchedule() {
+            const val = document.getElementById('main-dropdown').value;
+            if(!val) return;
+            
+            const table = document.getElementById('schedule-table');
+            table.innerHTML = "";
+            
+            let days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+            if(document.getElementById('specific-days-check').checked) {
+                days = Array.from(document.querySelectorAll('#day-checkboxes input:checked')).map(x=>x.value);
+            }
+
+            let h = `<tr><th>Time</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr>`;
+            table.innerHTML += h;
+
+            const relevant = rawData.filter(x => x[currentTab] === val);
+
+            timeSlots.forEach(slot => {
+                let row = `<tr><td class="time-col">${slot}</td>`;
+                let sVal = parseTime(slot);
+                
+                days.forEach(day => {
+                    let matches = relevant.filter(c => c.day.toUpperCase() === day && sVal >= parseTime(c.start) && sVal < parseTime(c.end));
+                    if(matches.length > 0) {
+                        let content = matches.map(m => `
+                            <div class="class-card">
+                                <div class="cc-name">${m.course}</div>
+                                <div class="cc-meta">${currentTab==='teacher'?m.room:m.teacher}</div>
+                                <div class="cc-meta" style="color:blue">${m.section}</div>
+                            </div>
+                        `).join('');
+                        row += `<td>${content}</td>`;
+                    } else { row += `<td><div class="slot-free">FREE</div></td>`; }
+                });
+                table.innerHTML += row + "</tr>";
+            });
+        }
+
+        function findFreeRooms() {
+            const day = document.getElementById('free-day').value;
+            const sVal = parseTime(document.getElementById('free-start').value);
+            const eVal = parseTime(document.getElementById('free-end').value);
+            
+            if(sVal >= eVal) { alert("Start time must be before End time"); return; }
+            
+            const table = document.getElementById('schedule-table');
+            table.innerHTML = `<tr><th colspan="2">Free Rooms (${day})</th></tr>`;
+            
+            const rooms = [...new Set(rawData.map(d => d.room))].sort();
+            let html = "";
+            
+            rooms.forEach(r => {
+                const busy = rawData.filter(x => x.room === r && x.day.toUpperCase() === day);
+                let isFree = true;
+                busy.forEach(b => {
+                    let bS = parseTime(b.start); let bE = parseTime(b.end);
+                    if(Math.max(sVal, bS) < Math.min(eVal, bE)) isFree = false;
+                });
+                if(isFree) html += `<tr><td style="background:#d4edda; font-weight:bold; padding:10px;">${r}</td></tr>`;
+            });
+            
+            if(html === "") html = "<tr><td>No rooms found.</td></tr>";
+            table.innerHTML += html;
+        }
+
+        function parseTime(t) { 
+            if(!t) return 0; 
+            let [tm, ap] = t.split(' '); 
+            let [h, m] = tm.split(':').map(Number); 
+            if(h===12) h=0; 
+            if(ap==='PM') h+=12; 
+            return h*60+m; 
+        }
+    </script>
+</body>
+</html>
