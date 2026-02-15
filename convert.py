@@ -3,74 +3,101 @@ import json
 import re
 import os
 
-# ALWAYS LOOK FOR THIS FILE (Matches what script.js uploads)
-PDF_FILE = "schedule.pdf"
+# --- CONFIGURATION ---
+PDF_FILE = "schedule.pdf" 
 OUTPUT_FILE = "schedule_data.json"
 
 def clean_text(text):
-    return str(text).replace('\n', ' ').strip() if text else ""
+    """Cleans up newline characters and extra spaces."""
+    return str(text).strip() if text else ""
+
+def split_multiline_cell(cell_text):
+    """Splits text by newlines and returns a list of cleaned strings."""
+    if not cell_text:
+        return [""]
+    return [line.strip() for line in cell_text.split('\n') if line.strip()]
 
 def convert_pdf():
-    # Check if the file exists
     if not os.path.exists(PDF_FILE):
-        print(f"❌ Waiting... {PDF_FILE} not found yet.")
+        print(f"❌ Error: {PDF_FILE} not found.")
         return
 
-    data = []
-    print(f"🔄 Processing {PDF_FILE}...")
+    all_data = []
     
-    try:
-        with pdfplumber.open(PDF_FILE) as pdf:
-            for page in pdf.pages:
-                text = page.extract_text()
-                tables = page.extract_tables()
-                
-                header_match = re.search(r"CLASS NAME:(.*?)Section:\s*([A-Za-z0-9-]+)", text)
-                section = "Unknown"
-                semester = "Unknown"
-                
-                if header_match:
-                    section = header_match.group(2).strip()
-                    full_header = header_match.group(1).upper()
-                    if "1ST" in full_header: semester = "1st"
-                    elif "2ND" in full_header: semester = "2nd"
-                    elif "3RD" in full_header: semester = "3rd"
-                    elif "4TH" in full_header: semester = "4th"
-                    elif "5TH" in full_header: semester = "5th"
-                    elif "6TH" in full_header: semester = "6th"
-                    elif "7TH" in full_header: semester = "7th"
-                    elif "8TH" in full_header: semester = "8th"
+    with pdfplumber.open(PDF_FILE) as pdf:
+        current_section = "Unknown"
+        current_semester = "Unknown"
 
-                if tables:
-                    schedule_table = max(tables, key=len)
-                    for row in schedule_table:
-                        if not row or row[0] == "COURSE CODE" or row[0] is None: continue
-                        try:
-                            clean_row = [clean_text(cell) for cell in row]
-                            if len(clean_row) < 8: clean_row += [''] * (8 - len(clean_row))
+        for page in pdf.pages:
+            text = page.extract_text()
+            tables = page.extract_tables()
+            
+            # 1. Improved Header Extraction
+            # Target: CLASS NAME: BS (AI) MORNING 1ST SEMESTER, Section: BSARIN-1ST-1M
+            header_pattern = r"CLASS NAME:.*?(\d(?:ST|ND|RD|TH)).*?Section:\s*([A-Za-z0-9-]+)"
+            headers = re.findall(header_pattern, text)
+            
+            # Since a page might contain multiple sections, we track them as we go
+            # This logic assumes tables follow their respective section headers
+            
+            if tables:
+                table_idx = 0
+                # Split page text by section headers to associate tables with the right section
+                parts = re.split(r"CLASS NAME:", text)
+                
+                for part in parts[1:]: # Skip text before the first section
+                    # Re-extract info for this specific part
+                    info = re.search(r".*?(\d(?:ST|ND|RD|TH)).*?Section:\s*([A-Za-z0-9-]+)", part)
+                    if info:
+                        current_semester = info.group(1).lower()
+                        current_section = info.group(2).strip()
+
+                    # Process the next table found in this section area
+                    if table_idx < len(tables):
+                        rows = tables[table_idx]
+                        table_idx += 1
+                        
+                        for row in rows:
+                            # Skip headers
+                            if not row or "COURSE CODE" in str(row[0]).upper():
+                                continue
                             
-                            if clean_row[3] and clean_row[4] and clean_row[7]:
-                                entry = {
-                                    "section": section,
-                                    "semester": semester,
-                                    "course": clean_row[1],
-                                    "teacher": clean_row[3],
-                                    "day": clean_row[4],
-                                    "start": clean_row[5],
-                                    "end": clean_row[6],
-                                    "room": clean_row[7]
-                                }
-                                data.append(entry)
-                        except:
-                            continue
+                            # Standardizing columns based on your extraction:
+                            # 0:Code, 1:Name, 2:Hours, 3:Teacher, 4:Day, 5:Start, 6:End, 7:Room
+                            
+                            # Handle multiline entries (multiple classes in one row)
+                            codes = split_multiline_cell(row[0])
+                            names = split_multiline_cell(row[1])
+                            teachers = split_multiline_cell(row[3])
+                            days = split_multiline_cell(row[4])
+                            starts = split_multiline_cell(row[5])
+                            ends = split_multiline_cell(row[6])
+                            rooms = split_multiline_cell(row[7])
 
-        with open(OUTPUT_FILE, "w") as f:
-            json.dump(data, f)
-        
-        print(f"✅ Success! Updated JSON with {len(data)} classes.")
-        
-    except Exception as e:
-        print(f"❌ Error: {e}")
+                            # Zip them together. We use 'codes' as the driver.
+                            # If a cell has 1 line but others have 3, we repeat the 1 line.
+                            max_len = max(len(codes), len(names), len(teachers), len(days), len(starts), len(ends), len(rooms))
+                            
+                            for i in range(max_len):
+                                try:
+                                    entry = {
+                                        "section": current_section,
+                                        "semester": current_semester,
+                                        "course": names[i] if i < len(names) else names[0],
+                                        "teacher": teachers[i] if i < len(teachers) else (teachers[0] if teachers else "TBA"),
+                                        "day": days[i] if i < len(days) else days[0],
+                                        "start": starts[i] if i < len(starts) else starts[0],
+                                        "end": ends[i] if i < len(ends) else ends[0],
+                                        "room": rooms[i] if i < len(rooms) else rooms[0]
+                                    }
+                                    all_data.append(entry)
+                                except Exception as e:
+                                    continue
+
+    with open(OUTPUT_FILE, "w") as f:
+        json.dump(all_data, f, indent=4)
+    
+    print(f"✅ Success! Processed {len(all_data)} class slots into {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     convert_pdf()
