@@ -1,39 +1,33 @@
-name: Update Schedule JSON
+name: Update Schedule Data
 
-# Trigger this action whenever a PDF file is pushed to the repo
 on:
   push:
     paths:
-      - '*.pdf'
-  workflow_dispatch: # Allows you to run this manually from Actions tab if needed
+      - 'schedule.pdf'  # This triggers the action ONLY when this file changes
+  workflow_dispatch:     # This allows you to run it manually for testing
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Important: Gives the bot permission to save the JSON file
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
+      - uses: actions/checkout@v3
+      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
+          
       - name: Install dependencies
         run: |
-          pip install pdfplumber
-
-      - name: Run Converter Script
+            pip install pdfplumber
+            
+      - name: Run Converter
+        run: python convert.py
+        
+      - name: Commit and Push Changes
         run: |
-          python convert.py
-
-      - name: Commit and Push JSON
-        run: |
-          git config --global user.name "GitHub Action Bot"
-          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
           git add schedule_data.json
-          # Only commit if the file actually changed
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update schedule_data.json" && git push)
+          git commit -m "Auto-update schedule data" || exit 0
+          git push
