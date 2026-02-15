@@ -1,7 +1,13 @@
+// --- PASTE YOUR SECRET KEY LINE HERE ---
+const SECRET_KEY = "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"; 
+
 // --- CONFIGURATION ---
 const REPO_OWNER = "webstume007"; 
-const REPO_NAME = "iub-timetable"; // CHANGE IF YOUR REPO NAME IS DIFFERENT
-const FILE_PATH = "Spring-2026.pdf"; // The file to be updated
+const REPO_NAME = "iapp"; 
+
+// We will save WHATEVER you upload as this name in the cloud.
+// This ensures the old file is always overwritten.
+const TARGET_FILENAME = "schedule.pdf"; 
 
 let rawData = [];
 let currentTab = 'teacher';
@@ -19,49 +25,68 @@ window.onload = function() {
         .catch(err => console.error("Error loading data:", err));
 };
 
-// --- UPLOAD LOGIC (API) ---
+// --- SECURITY LOGIC ---
+function unlockToken(password) {
+    let hex = SECRET_KEY;
+    let str = "";
+    for (let i = 0; i < hex.length; i += 2) {
+        str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    }
+    let decrypted = "";
+    for (let i = 0; i < str.length; i++) {
+        let key_char = password[i % password.length];
+        decrypted += String.fromCharCode(str.charCodeAt(i) ^ key_char.charCodeAt(0));
+    }
+    return decrypted;
+}
+
+// --- UPLOAD LOGIC ---
 async function uploadToGitHub() {
-    const token = document.getElementById('github-token').value;
+    const passwordInput = document.getElementById('admin-pass-input').value;
     const fileInput = document.getElementById('pdf-upload');
     const status = document.getElementById('upload-status');
 
-    if (!token) { alert("Please enter your GitHub Token"); return; }
+    if (!passwordInput) { alert("Please enter your password"); return; }
     if (fileInput.files.length === 0) { alert("Please select a PDF file"); return; }
 
-    const file = fileInput.files[0];
-    status.innerText = "⏳ Reading file...";
+    status.innerText = "🔐 Unlocking...";
     
-    // 1. Convert File to Base64
+    const token = unlockToken(passwordInput);
+    const file = fileInput.files[0]; // The file you selected (ANY NAME)
+    
     const reader = new FileReader();
     reader.readAsDataURL(file);
     
     reader.onload = async function() {
         const base64Content = reader.result.split(',')[1];
-        status.innerText = "🔍 Checking existing file...";
+        status.innerText = "☁️ Connecting to GitHub...";
 
-        const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+        // We upload to the FIXED target name to overwrite the old one
+        const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TARGET_FILENAME}`;
         
         try {
-            // 2. Get SHA of existing file (Required to update/overwrite)
+            // 1. Check if file exists (to get SHA for overwrite)
             let sha = null;
             const getRes = await fetch(apiUrl, {
                 method: 'GET',
                 headers: { 'Authorization': `token ${token}` }
             });
 
+            if (getRes.status === 401) throw new Error("Wrong Password!");
+            
             if (getRes.ok) {
                 const getData = await getRes.json();
                 sha = getData.sha;
             }
 
-            // 3. Upload (PUT request)
-            status.innerText = "🚀 Uploading to GitHub...";
+            // 2. Upload
+            status.innerText = `🚀 Uploading ${file.name}...`;
             
             const body = {
-                message: "Update schedule via website",
+                message: `Update schedule: ${file.name}`,
                 content: base64Content
             };
-            if (sha) body.sha = sha; // Include SHA if file exists
+            if (sha) body.sha = sha; 
 
             const putRes = await fetch(apiUrl, {
                 method: 'PUT',
@@ -73,29 +98,21 @@ async function uploadToGitHub() {
             });
 
             if (putRes.ok) {
-                status.innerText = "✅ Success! Site updating in ~60 seconds.";
-                alert("Upload Successful! The automation robot has triggered.\nPlease wait 1 minute, then refresh the page.");
+                status.innerText = "✅ Success! Robot is processing...";
+                alert(`Uploaded '${file.name}' successfully!\n\nThe automated robot has started.\nPlease wait 1 minute for the schedule to update.`);
                 toggleModal();
             } else {
-                const err = await putRes.json();
-                throw new Error(err.message);
+                throw new Error("Upload failed.");
             }
         } catch (error) {
             status.innerText = "❌ Error: " + error.message;
-            console.error(error);
+            if(error.message === "Wrong Password!") alert("Incorrect Password.");
         }
     };
 }
 
-// --- HELPER FUNCTIONS ---
-function toggleModal() {
-    document.getElementById('admin-modal').classList.toggle('hidden');
-}
-
-// ... (KEEP ALL THE PREVIOUS LOGIC BELOW THIS LINE: generateTimeSlots, renderSchedule, switchTab, etc.) ...
-// PASTE THE REST OF THE PREVIOUS script.js CODE HERE
-// (I will include the full merged file below to avoid confusion)
-
+// ... KEEP ALL THE HELPER FUNCTIONS BELOW AS THEY WERE ...
+function toggleModal() { document.getElementById('admin-modal').classList.toggle('hidden'); }
 function generateTimeSlots() {
     let slots = [];
     let start = 8 * 60; let end = 18 * 60;
