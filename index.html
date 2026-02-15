@@ -47,6 +47,10 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border-top: 4px solid var(--accent);
         }
         
+        h3.section-title {
+            margin: 0 0 15px 0; font-size: 1rem; color: #555; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+
         .search-bar, select {
             width: 100%; padding: 12px; margin-bottom: 10px; border: 2px solid #dee2e6; 
             border-radius: 8px; font-size: 1rem; outline: none; background: var(--white);
@@ -54,16 +58,16 @@
 
         .action-btn { background: var(--primary); color: white; width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         
-        /* WHATSAPP BUTTON STYLING */
+        /* WHATSAPP BUTTON STYLING (Minor Rounding) */
         .contact-btn {
             background-color: var(--whatsapp); color: white; border: none; 
-            padding: 10px 20px; border-radius: 50px; font-weight: bold; 
+            padding: 12px 20px; border-radius: 8px; font-weight: bold; 
             cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            gap: 10px; margin: 0 auto 15px auto; width: fit-content;
-            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3); text-decoration: none;
+            gap: 10px; margin: 10px 0 15px 0; width: 100%;
+            box-shadow: 0 4px 10px rgba(37, 211, 102, 0.2); text-decoration: none;
             transition: transform 0.2s;
         }
-        .contact-btn:hover { transform: scale(1.05); }
+        .contact-btn:hover { transform: scale(1.02); background-color: #20bd5a; }
 
         .table-responsive { overflow-x: auto; margin-top: 10px; background: var(--white); border-radius: 12px; }
         table { width: 100%; border-collapse: collapse; min-width: 900px; }
@@ -99,47 +103,56 @@
     </header>
 
     <div class="nav-tabs">
-        <button id="tab-class" class="tab-btn active" onclick="switchTab('class')">📚 Class</button>
+        <button id="tab-class" class="tab-btn active" onclick="switchTab('class')">📅 Schedule</button>
+        <button id="tab-free" class="tab-btn" onclick="switchTab('free')">🔍 Free Room</button>
         <button id="tab-teacher" class="tab-btn" onclick="switchTab('teacher')">👨‍🏫 Teacher</button>
         <button id="tab-room" class="tab-btn" onclick="switchTab('room')">🚪 Room</button>
-        <button id="tab-free" class="tab-btn" onclick="switchTab('free')">🔍 Free Room</button>
     </div>
 
     <div class="container">
-        <div id="contact-area" class="hidden">
-            <a id="whatsapp-link" href="#" target="_blank" class="contact-btn">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z"/></svg>
-                Chat on WhatsApp
-            </a>
-        </div>
-
+        
         <div id="class-controls" class="controls-card">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <h3 class="section-title">Find Your Class Schedule</h3>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
                 <select id="semester-select" onchange="updateSectionDropdown()">
-                    <option value="">-- Semester --</option>
-                    <option value="1ST">1st Sem</option><option value="2ND">2nd Sem</option>
-                    <option value="3RD">3rd Sem</option><option value="4TH">4th Sem</option>
-                    <option value="5TH">5th Sem</option><option value="6TH">6th Sem</option>
-                    <option value="7TH">7th Sem</option><option value="8TH">8th Sem</option>
+                    <option value="">-- Select Semester --</option>
+                    <option value="1ST">1st Semester</option><option value="2ND">2nd Semester</option>
+                    <option value="3RD">3rd Semester</option><option value="4TH">4th Semester</option>
+                    <option value="5TH">5th Semester</option><option value="6TH">6th Semester</option>
+                    <option value="7TH">7th Semester</option><option value="8TH">8th Semester</option>
                 </select>
-                <input type="text" id="section-search" class="search-bar" placeholder="🔍 Search e.g. 3M" oninput="updateSectionDropdown()">
             </div>
             <select id="section-dropdown"><option value="">-- Select Section --</option></select>
             <button class="action-btn" onclick="renderSchedule()">Show Class Schedule</button>
         </div>
 
-        <div id="standard-controls" class="controls-card hidden">
-            <input type="text" id="teacher-search" class="search-bar" placeholder="🔍 Type name to filter..." oninput="filterDropdown()">
-            <select id="main-dropdown" onchange="renderSchedule()"><option value="">-- Loading --</option></select>
-        </div>
-
         <div id="free-controls" class="controls-card hidden">
-            <h3 style="margin: 0 0 15px 0; color: var(--primary);">Find Available Rooms</h3>
+            <h3 class="section-title">Find Available Rooms</h3>
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
                 <select id="free-day"><option value="MON">Mon</option><option value="TUE">Tue</option><option value="WED">Wed</option><option value="THU">Thu</option><option value="FRI">Fri</option><option value="SAT">Sat</option></select>
                 <select id="free-start"></select><select id="free-end"></select>
             </div>
             <button class="action-btn" onclick="findFreeRooms()">Search Rooms</button>
+        </div>
+
+        <div id="teacher-controls" class="controls-card hidden">
+            <h3 class="section-title">Check Teacher Weekly Schedule</h3>
+            <input type="text" id="teacher-search" class="search-bar" placeholder="🔍 Search teacher name..." oninput="filterDropdown()">
+            
+            <div id="contact-area" class="hidden">
+                <a id="whatsapp-link" href="#" target="_blank" class="contact-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z"/></svg>
+                    <span id="contact-text">Contact Teacher</span>
+                </a>
+            </div>
+
+            <select id="teacher-dropdown" onchange="renderSchedule()"><option value="">-- Select Teacher --</option></select>
+        </div>
+
+        <div id="room-controls" class="controls-card hidden">
+            <h3 class="section-title">Check Rooms Allocation</h3>
+            <input type="text" id="room-search" class="search-bar" placeholder="🔍 Search room..." oninput="filterDropdown()">
+            <select id="room-dropdown" onchange="renderSchedule()"><option value="">-- Select Room --</option></select>
         </div>
 
         <div class="table-responsive">
@@ -184,36 +197,44 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + t).classList.add('active');
             
+            // Toggle Controls
             document.getElementById('class-controls').classList.toggle('hidden', t !== 'class');
-            document.getElementById('standard-controls').classList.toggle('hidden', t === 'class' || t === 'free');
             document.getElementById('free-controls').classList.toggle('hidden', t !== 'free');
-            document.getElementById('contact-area').classList.add('hidden'); // Hide contact on tab switch
+            document.getElementById('teacher-controls').classList.toggle('hidden', t !== 'teacher');
+            document.getElementById('room-controls').classList.toggle('hidden', t !== 'room');
             
-            if(t !== 'class' && t !== 'free') {
-                document.getElementById('teacher-search').placeholder = `🔍 Search ${t} name...`;
+            // Hide Contact Area Initially
+            document.getElementById('contact-area').classList.add('hidden'); 
+            
+            // CLEAR TABLE DATA ON SWITCH
+            document.getElementById('schedule-table').innerHTML = "";
+            document.getElementById('table-title').innerText = "Select an option above";
+            document.querySelector('.mobile-schedule')?.remove();
+
+            if(t === 'teacher' || t === 'room') {
                 updateDropdownData();
             }
         }
 
         function updateSectionDropdown() {
             const sem = document.getElementById('semester-select').value;
-            const q = document.getElementById('section-search').value.toUpperCase();
-            const sections = [...new Set(rawData.map(x => x.section))].filter(s => s.includes(sem) && s.includes(q)).sort();
+            // No text input for class anymore, just filter by semester
+            const sections = [...new Set(rawData.map(x => x.section))].filter(s => s.includes(sem)).sort();
             const dd = document.getElementById('section-dropdown');
             dd.innerHTML = '<option value="">-- Select Section --</option>';
             sections.forEach(s => dd.add(new Option(s, s)));
         }
 
         function updateDropdownData() {
-            const dd = document.getElementById('main-dropdown');
+            const dd = document.getElementById(currentTab + '-dropdown');
             const list = [...new Set(rawData.map(x => x[currentTab]))].filter(x => x).sort();
             dd.innerHTML = '<option value="">-- Select --</option>';
             list.forEach(i => dd.add(new Option(i, i)));
         }
 
         function filterDropdown() {
-            const query = document.getElementById('teacher-search').value.toLowerCase().trim();
-            const dd = document.getElementById('main-dropdown');
+            const query = document.getElementById(currentTab + '-search').value.toLowerCase().trim();
+            const dd = document.getElementById(currentTab + '-dropdown');
             const list = [...new Set(rawData.map(x => x[currentTab]))].filter(x => x).sort();
             dd.innerHTML = '<option value="">-- Select --</option>';
             const filtered = list.filter(item => item.toLowerCase().includes(query));
@@ -223,7 +244,7 @@
         function renderSchedule() {
             let val;
             if(currentTab === 'class') val = document.getElementById('section-dropdown').value;
-            else val = document.getElementById('main-dropdown').value;
+            else val = document.getElementById(currentTab + '-dropdown').value;
 
             if(!val) return;
             
@@ -232,10 +253,7 @@
             contactArea.classList.add('hidden');
             
             if(currentTab === 'teacher') {
-                // Try to find a partial match in contacts
                 const match = contactData.find(c => {
-                    // Check if schedule name contains contact name or vice versa
-                    // e.g. "Sir Faheem" matches "Sir Faheem Mushtaq"
                     const schedName = val.toLowerCase().replace(/sir|mam|mr|ms|dr/g, '').trim();
                     const contactName = c.name.toLowerCase().replace(/sir|mam|mr|ms|dr/g, '').trim();
                     return contactName.includes(schedName) || schedName.includes(contactName);
@@ -244,6 +262,7 @@
                 if(match && match.phone) {
                     const btn = document.getElementById('whatsapp-link');
                     btn.href = `http://wa.me/${match.phone}`;
+                    document.getElementById('contact-text').innerText = `Contact ${match.name}`;
                     contactArea.classList.remove('hidden');
                 }
             }
@@ -309,9 +328,14 @@
             const sVal = parseTime(document.getElementById('free-start').value);
             const eVal = parseTime(document.getElementById('free-end').value);
             if(sVal >= eVal) { alert("Invalid Range"); return; }
+            
+            // Clear previous table
             const table = document.getElementById('schedule-table');
+            document.querySelector('.mobile-schedule')?.remove();
+            
             table.style.display = 'table';
             table.innerHTML = `<tr><th colspan="2" style="background:var(--accent); color:var(--primary)">Available Rooms (${day})</th></tr>`;
+            
             const rooms = [...new Set(rawData.map(d => d.room))].filter(x => x).sort();
             let html = "";
             rooms.forEach(r => {
