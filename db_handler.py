@@ -75,3 +75,26 @@ def get_schedule_by_room(room_name):
     df = pd.read_sql_query(query, conn, params=(room_name,))
     conn.close()
     return df
+# db_handler.py modification:
+def get_schedule_by_teacher(teacher_name):
+    conn = sqlite3.connect(DB_FILE)
+    # We fetch section_name as 'semester' for display purposes if semester col doesn't exist
+    query = """
+        SELECT day, start_time, end_time, course_name, room, section_name, teacher, 
+        section_name as semester 
+        FROM classes WHERE teacher = ?
+    """
+    df = pd.read_sql_query(query, conn, params=(teacher_name,))
+    conn.close()
+    return df
+
+def get_schedule_by_room(room_name):
+    conn = sqlite3.connect(DB_FILE)
+    query = """
+        SELECT day, start_time, end_time, course_name, teacher, section_name, room,
+        section_name as semester
+        FROM classes WHERE room = ?
+    """
+    df = pd.read_sql_query(query, conn, params=(room_name,))
+    conn.close()
+    return df
