@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IUB Timetable</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <div class="logo">🎓 IUB Timetable</div>
+        <button id="admin-btn" onclick="toggleAdminModal()">⚙️ Update Schedule</button>
+    </header>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('teacher')">👨‍🏫 Teacher</button>
+        <button class="tab-btn" onclick="switchTab('room')">🚪 Room</button>
+        <button class="tab-btn" onclick="switchTab('free')">🔍 Check Free Room</button>
+    </div>
+
+    <div class="container">
+        
+        <div id="standard-controls" class="controls-card">
+            <label id="dropdown-label">Select Option:</label>
+            <select id="main-dropdown" onchange="renderSchedule()">
+                <option value="">-- Select --</option>
+            </select>
+
+            <div class="filter-group">
+                <label>Show Days:</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="day-mode" value="all" checked onchange="toggleDayCheckboxes()"> Whole Week</label>
+                    <label><input type="radio" name="day-mode" value="specific" onchange="toggleDayCheckboxes()"> Specific Days</label>
+                </div>
+            </div>
+
+            <div id="day-checkboxes" class="hidden">
+                <label><input type="checkbox" value="MON" checked onchange="renderSchedule()"> MON</label>
+                <label><input type="checkbox" value="TUE" checked onchange="renderSchedule()"> TUE</label>
+                <label><input type="checkbox" value="WED" checked onchange="renderSchedule()"> WED</label>
+                <label><input type="checkbox" value="THU" checked onchange="renderSchedule()"> THU</label>
+                <label><input type="checkbox" value="FRI" checked onchange="renderSchedule()"> FRI</label>
+                <label><input type="checkbox" value="SAT" checked onchange="renderSchedule()"> SAT</label>
+            </div>
+        </div>
+
+        <div id="free-controls" class="controls-card hidden">
+            <h3>Find Free Rooms</h3>
+            <div class="input-grid">
+                <div>
+                    <label>Day</label>
+                    <select id="free-day">
+                        <option value="MON">Monday</option>
+                        <option value="TUE">Tuesday</option>
+                        <option value="WED">Wednesday</option>
+                        <option value="THU">Thursday</option>
+                        <option value="FRI">Friday</option>
+                        <option value="SAT">Saturday</option>
+                    </select>
+                </div>
+                <div>
+                    <label>From</label>
+                    <select id="free-start"></select>
+                </div>
+                <div>
+                    <label>To</label>
+                    <select id="free-end"></select>
+                </div>
+            </div>
+            <button class="action-btn" onclick="findFreeRooms()">Find Available Rooms</button>
+        </div>
+
+        <div id="schedule-output">
+            <h2 id="table-title">Select an option to view schedule</h2>
+            <div class="table-responsive">
+                <table id="schedule-table">
+                    </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="toggleAdminModal()">&times;</span>
+            <h2>Admin Login</h2>
+            <input type="text" id="admin-user" placeholder="Username">
+            <input type="password" id="admin-pass" placeholder="Password">
+            <button class="action-btn" onclick="adminLogin()">Login</button>
+            
+            <div id="upload-section" class="hidden">
+                <hr>
+                <h3>Upload New Schedule (PDF)</h3>
+                <input type="file" id="pdf-upload" accept=".pdf">
+                <button class="action-btn" onclick="uploadPDF()">Upload & Update</button>
+                <p id="upload-status"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
