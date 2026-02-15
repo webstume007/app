@@ -86,7 +86,7 @@
             <p>Enter your GitHub Token to upload a new PDF.</p>
             
             <input type="password" id="admin-pass-input" placeholder="Enter Admin Password">
-            <input type="file" id="pdf-upload" accept=".pdf">
+            <input type="file" id="hidden-file-input" accept=".pdf" style="display: none;" onchange="handleUpload()">
             
             <button class="action-btn" onclick="uploadToGitHub()">🚀 Upload & Update Site</button>
             <p id="upload-status"></p>
