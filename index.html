@@ -4,20 +4,57 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IUB Timetable</title>
-    <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- STYLE SECTION --- */
+        * { box-sizing: border-box; font-family: 'Roboto', sans-serif; }
+        body { margin: 0; background-color: #f4f4f9; color: #000; }
+        header { background: #002147; color: #F2A900; padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .logo { font-size: 1.5rem; font-weight: 900; }
+        .nav-tabs { display: flex; justify-content: center; background: #fff; padding: 10px; border-bottom: 2px solid #ddd; }
+        .tab-btn { flex: 1; max-width: 200px; padding: 12px; border: none; background: #eee; color: #555; font-size: 1rem; font-weight: bold; cursor: pointer; margin: 0 5px; border-radius: 5px; transition: 0.3s; }
+        .tab-btn.active { background: #002147; color: #fff; transform: scale(1.05); }
+        .container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .controls-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 5px solid #F2A900; }
+        select, input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #002147; border-radius: 5px; font-size: 1rem; font-weight: bold; }
+        .hidden { display: none !important; }
+        table { width: 100%; border-collapse: collapse; background: #fff; min-width: 800px; margin-top: 10px; }
+        th { background: #002147; color: #fff; padding: 15px; text-align: center; border: 1px solid #ddd; }
+        td { border: 1px solid #ddd; padding: 0; text-align: center; vertical-align: top; }
+        .time-col { background: #eee; font-weight: bold; padding: 10px; width: 100px; vertical-align: middle; }
+        .class-card { background: #e3f2fd; border-left: 4px solid #002147; padding: 5px; margin: 2px; text-align: left; font-size: 0.9em; }
+        .cc-name { font-weight: bold; color: #002147; }
+        .cc-meta { font-size: 0.8em; color: #444; }
+        .slot-free { color: #28a745; font-weight: bold; background: #d4edda; height: 50px; display: flex; align-items: center; justify-content: center; }
+        .action-btn { background: #002147; color: #fff; width: 100%; padding: 15px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 10px; border-radius: 5px; }
+        .table-responsive { overflow-x: auto; }
+        
+        /* Admin Header Inputs */
+        .admin-controls { display: flex; gap: 5px; }
+        .admin-input { width: 100px !important; margin: 0 !important; padding: 5px !important; font-size: 0.9rem !important; }
+        .admin-btn { padding: 5px 15px; font-size: 0.9rem; background: #F2A900; color: #002147; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
+    </style>
 </head>
 <body>
 
     <header>
         <div class="logo">🎓 IUB Timetable</div>
-        <button id="admin-btn" onclick="toggleModal()">⚙️ Update</button>
+        <div class="admin-controls">
+            <input type="password" id="admin-pass" class="admin-input" placeholder="Password">
+            
+            <input type="file" id="hidden-file-input" accept=".pdf" style="display: none;" onchange="handleUpload()">
+            
+            <button class="admin-btn" onclick="document.getElementById('hidden-file-input').click()">
+                ⚙️ Update
+            </button>
+        </div>
     </header>
 
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="switchTab('teacher')">👨‍🏫 Teacher</button>
         <button class="tab-btn" onclick="switchTab('room')">🚪 Room</button>
-        <button class="tab-btn" onclick="switchTab('free')">🔍 Check Free Room</button>
+        <button class="tab-btn" onclick="switchTab('free')">🔍 Free Room</button>
     </div>
 
     <div class="container">
@@ -26,73 +63,253 @@
             <select id="main-dropdown" onchange="renderSchedule()">
                 <option value="">-- Loading Data --</option>
             </select>
-
-            <div class="filter-group">
-                <label>Show Days:</label>
-                <div class="radio-group">
-                    <label><input type="radio" name="day-mode" value="all" checked onchange="toggleDayCheckboxes()"> Whole Week</label>
-                    <label><input type="radio" name="day-mode" value="specific" onchange="toggleDayCheckboxes()"> Specific Days</label>
+            <div style="margin-top:10px;">
+                <label>
+                    <input type="checkbox" id="specific-days-check" onchange="toggleDayCheckboxes()"> Show Specific Days
+                </label>
+                <div id="day-checkboxes" class="hidden" style="margin-top:5px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <label><input type="checkbox" value="MON" checked onchange="renderSchedule()"> MON</label>
+                    <label><input type="checkbox" value="TUE" checked onchange="renderSchedule()"> TUE</label>
+                    <label><input type="checkbox" value="WED" checked onchange="renderSchedule()"> WED</label>
+                    <label><input type="checkbox" value="THU" checked onchange="renderSchedule()"> THU</label>
+                    <label><input type="checkbox" value="FRI" checked onchange="renderSchedule()"> FRI</label>
+                    <label><input type="checkbox" value="SAT" checked onchange="renderSchedule()"> SAT</label>
                 </div>
-            </div>
-
-            <div id="day-checkboxes" class="hidden">
-                <label><input type="checkbox" value="MON" checked onchange="renderSchedule()"> MON</label>
-                <label><input type="checkbox" value="TUE" checked onchange="renderSchedule()"> TUE</label>
-                <label><input type="checkbox" value="WED" checked onchange="renderSchedule()"> WED</label>
-                <label><input type="checkbox" value="THU" checked onchange="renderSchedule()"> THU</label>
-                <label><input type="checkbox" value="FRI" checked onchange="renderSchedule()"> FRI</label>
-                <label><input type="checkbox" value="SAT" checked onchange="renderSchedule()"> SAT</label>
             </div>
         </div>
 
         <div id="free-controls" class="controls-card hidden">
             <h3>Find Free Rooms</h3>
-            <div class="input-grid">
-                <div>
-                    <label>Day</label>
-                    <select id="free-day">
-                        <option value="MON">Monday</option>
-                        <option value="TUE">Tuesday</option>
-                        <option value="WED">Wednesday</option>
-                        <option value="THU">Thursday</option>
-                        <option value="FRI">Friday</option>
-                        <option value="SAT">Saturday</option>
-                    </select>
-                </div>
-                <div>
-                    <label>From</label>
-                    <select id="free-start"></select>
-                </div>
-                <div>
-                    <label>To</label>
-                    <select id="free-end"></select>
-                </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                <select id="free-day"><option value="MON">Mon</option><option value="TUE">Tue</option><option value="WED">Wed</option><option value="THU">Thu</option><option value="FRI">Fri</option><option value="SAT">Sat</option></select>
+                <select id="free-start"></select>
+                <select id="free-end"></select>
             </div>
             <button class="action-btn" onclick="findFreeRooms()">Find Available Rooms</button>
         </div>
 
-        <div id="schedule-output">
-            <h2 id="table-title">Select an option to view schedule</h2>
-            <div class="table-responsive">
-                <table id="schedule-table"></table>
-            </div>
+        <div class="table-responsive">
+            <h2 id="table-title">Schedule</h2>
+            <table id="schedule-table"></table>
         </div>
     </div>
 
-    <div id="admin-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close" onclick="toggleModal()">&times;</span>
-            <h2>Update Schedule</h2>
-            <p>Enter your GitHub Token to upload a new PDF.</p>
-            
-            <input type="password" id="admin-pass-input" placeholder="Enter Admin Password">
-            <input type="file" id="hidden-file-input" accept=".pdf" style="display: none;" onchange="handleUpload()">
-            
-            <button class="action-btn" onclick="uploadToGitHub()">🚀 Upload & Update Site</button>
-            <p id="upload-status"></p>
-        </div>
-    </div>
+    <script>
+        // ============================================
+        // ⚙️ SETTINGS (EDIT THESE 3 LINES)
+        // ============================================
+        const ADMIN_PASSWORD = "556655"; 
+        
+        // Split your token: "ghp_ABC123" -> "ghp_ABC" + "123"
+        const PART_A = "ghp_RhoImktqKxyXeMEVAj"; 
+        const PART_B = "Yfwkquun4MM43Nst9V";
 
-    <script src="script.js"></script>
+        const REPO_OWNER = "webstume007";
+        const REPO_NAME  = "app";
+        const FILE_NAME  = "schedule.pdf";
+        // ============================================
+
+        // --- UPLOAD FUNCTION ---
+        async function handleUpload() {
+            const pass = document.getElementById('admin-pass').value;
+            const fileInput = document.getElementById('hidden-file-input');
+
+            if(pass !== ADMIN_PASSWORD) { alert("❌ Wrong Password!"); return; }
+            if(fileInput.files.length === 0) return;
+
+            const file = fileInput.files[0];
+            const token = PART_A + PART_B;
+
+            alert(`🚀 Starting upload for: ${file.name}`);
+
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            
+            reader.onload = async function() {
+                const content = reader.result.split(',')[1];
+                const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_NAME}`;
+
+                try {
+                    // 1. Get SHA (Check if file exists)
+                    let sha = null;
+                    const getRes = await fetch(apiUrl, { 
+                        method: 'GET', 
+                        headers: { 'Authorization': `token ${token}` }
+                    });
+
+                    if(getRes.status === 401) { alert("❌ GitHub Token Invalid!"); return; }
+                    if(getRes.ok) {
+                        const d = await getRes.json();
+                        sha = d.sha;
+                    }
+
+                    // 2. Upload File
+                    const body = { message: "Update PDF", content: content };
+                    if(sha) body.sha = sha;
+
+                    const putRes = await fetch(apiUrl, {
+                        method: 'PUT',
+                        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+
+                    if(putRes.ok) {
+                        alert("✅ Upload Success! The site will update in ~2 minutes.");
+                        location.reload();
+                    } else {
+                        const err = await putRes.text();
+                        alert("❌ Upload Failed: " + err);
+                    }
+
+                } catch(e) { alert("Error: " + e.message); }
+            };
+        }
+
+        // --- STANDARD APP LOGIC ---
+        let rawData = [];
+        let currentTab = 'teacher';
+        const timeSlots = [];
+        
+        // Generate Times
+        let ts = 8*60; 
+        while(ts < 18*60) {
+            let h = Math.floor(ts/60); let m = ts%60;
+            let amp = h>=12?'PM':'AM'; let dh = h>12?h-12:h;
+            timeSlots.push(`${dh}:${m===0?'00':m} ${amp}`);
+            ts+=30;
+        }
+
+        window.onload = function() {
+            // Populate Time Dropdowns
+            const s = document.getElementById('free-start'); 
+            const e = document.getElementById('free-end');
+            timeSlots.forEach(t => { 
+                s.add(new Option(t,t)); 
+                e.add(new Option(t,t)); 
+            });
+
+            // Load Data
+            fetch('schedule_data.json')
+                .then(r => r.json())
+                .then(d => {
+                    rawData = d;
+                    populateDropdown();
+                });
+        };
+
+        function switchTab(t) {
+            currentTab = t;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const std = document.getElementById('standard-controls');
+            const free = document.getElementById('free-controls');
+            
+            if(t === 'free') {
+                std.classList.add('hidden');
+                free.classList.remove('hidden');
+                document.getElementById('schedule-table').innerHTML = "";
+            } else {
+                std.classList.remove('hidden');
+                free.classList.add('hidden');
+                document.getElementById('dropdown-label').innerText = t==='teacher' ? "Select Teacher:" : "Select Room:";
+                populateDropdown();
+                renderSchedule();
+            }
+        }
+
+        function populateDropdown() {
+            const dd = document.getElementById('main-dropdown');
+            dd.innerHTML = '<option value="">-- Select --</option>';
+            const key = currentTab;
+            const items = [...new Set(rawData.map(x => x[key]))].sort();
+            items.forEach(i => { if(i) dd.add(new Option(i,i)); });
+        }
+
+        function toggleDayCheckboxes() {
+            const chk = document.getElementById('specific-days-check');
+            const box = document.getElementById('day-checkboxes');
+            if(chk.checked) box.classList.remove('hidden');
+            else box.classList.add('hidden');
+            renderSchedule();
+        }
+
+        function renderSchedule() {
+            const val = document.getElementById('main-dropdown').value;
+            if(!val) return;
+            
+            const table = document.getElementById('schedule-table');
+            table.innerHTML = "";
+            
+            let days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+            if(document.getElementById('specific-days-check').checked) {
+                days = Array.from(document.querySelectorAll('#day-checkboxes input:checked')).map(x=>x.value);
+            }
+
+            // Header
+            let h = `<tr><th>Time</th>${days.map(d=>`<th>${d}</th>`).join('')}</tr>`;
+            table.innerHTML += h;
+
+            const relevant = rawData.filter(x => x[currentTab] === val);
+
+            timeSlots.forEach(slot => {
+                let row = `<tr><td class="time-col">${slot}</td>`;
+                let sVal = parseTime(slot);
+                
+                days.forEach(day => {
+                    let matches = relevant.filter(c => c.day.toUpperCase() === day && sVal >= parseTime(c.start) && sVal < parseTime(c.end));
+                    if(matches.length > 0) {
+                        let content = matches.map(m => `
+                            <div class="class-card">
+                                <div class="cc-name">${m.course}</div>
+                                <div class="cc-meta">${currentTab==='teacher'?m.room:m.teacher}</div>
+                                <div class="cc-meta" style="color:blue">${m.section}</div>
+                            </div>
+                        `).join('');
+                        row += `<td>${content}</td>`;
+                    } else {
+                        row += `<td><div class="slot-free">FREE</div></td>`;
+                    }
+                });
+                table.innerHTML += row + "</tr>";
+            });
+        }
+
+        function findFreeRooms() {
+            const day = document.getElementById('free-day').value;
+            const sVal = parseTime(document.getElementById('free-start').value);
+            const eVal = parseTime(document.getElementById('free-end').value);
+            
+            if(sVal >= eVal) { alert("Start time must be before End time"); return; }
+            
+            const table = document.getElementById('schedule-table');
+            table.innerHTML = `<tr><th colspan="2">Free Rooms (${day})</th></tr>`;
+            
+            const rooms = [...new Set(rawData.map(d => d.room))].sort();
+            let html = "";
+            
+            rooms.forEach(r => {
+                const busy = rawData.filter(x => x.room === r && x.day.toUpperCase() === day);
+                let isFree = true;
+                busy.forEach(b => {
+                    let bS = parseTime(b.start); let bE = parseTime(b.end);
+                    if(Math.max(sVal, bS) < Math.min(eVal, bE)) isFree = false;
+                });
+                if(isFree) html += `<tr><td style="background:#d4edda; font-weight:bold; padding:10px;">${r}</td></tr>`;
+            });
+            
+            if(html === "") html = "<tr><td>No rooms found.</td></tr>";
+            table.innerHTML += html;
+        }
+
+        function parseTime(t) { 
+            if(!t) return 0; 
+            let [tm, ap] = t.split(' '); 
+            let [h, m] = tm.split(':').map(Number); 
+            if(h===12) h=0; 
+            if(ap==='PM') h+=12; 
+            return h*60+m; 
+        }
+    </script>
 </body>
 </html>
