@@ -1,26 +1,14 @@
+// --- CONFIGURATION ---
+const REPO_OWNER = "webstume007"; 
+const REPO_NAME = "iub-timetable"; // CHANGE IF YOUR REPO NAME IS DIFFERENT
+const FILE_PATH = "Spring-2026.pdf"; // The file to be updated
+
 let rawData = [];
 let currentTab = 'teacher';
 const timeSlots = generateTimeSlots();
 
-// 1. Generate 30-min time slots (8:00 AM - 6:00 PM)
-function generateTimeSlots() {
-    let slots = [];
-    let start = 8 * 60; 
-    let end = 18 * 60;
-    while (start < end) {
-        let h = Math.floor(start / 60);
-        let m = start % 60;
-        let amp = h >= 12 ? 'PM' : 'AM';
-        let dh = h > 12 ? h - 12 : h;
-        slots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`);
-        start += 30;
-    }
-    return slots;
-}
-
-// 2. Load Data
+// --- INIT ---
 window.onload = function() {
-    // IMPORTANT: Reads the local JSON file
     fetch('schedule_data.json')
         .then(res => res.json())
         .then(data => {
@@ -31,180 +19,170 @@ window.onload = function() {
         .catch(err => console.error("Error loading data:", err));
 };
 
+// --- UPLOAD LOGIC (API) ---
+async function uploadToGitHub() {
+    const token = document.getElementById('github-token').value;
+    const fileInput = document.getElementById('pdf-upload');
+    const status = document.getElementById('upload-status');
+
+    if (!token) { alert("Please enter your GitHub Token"); return; }
+    if (fileInput.files.length === 0) { alert("Please select a PDF file"); return; }
+
+    const file = fileInput.files[0];
+    status.innerText = "⏳ Reading file...";
+    
+    // 1. Convert File to Base64
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    
+    reader.onload = async function() {
+        const base64Content = reader.result.split(',')[1];
+        status.innerText = "🔍 Checking existing file...";
+
+        const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+        
+        try {
+            // 2. Get SHA of existing file (Required to update/overwrite)
+            let sha = null;
+            const getRes = await fetch(apiUrl, {
+                method: 'GET',
+                headers: { 'Authorization': `token ${token}` }
+            });
+
+            if (getRes.ok) {
+                const getData = await getRes.json();
+                sha = getData.sha;
+            }
+
+            // 3. Upload (PUT request)
+            status.innerText = "🚀 Uploading to GitHub...";
+            
+            const body = {
+                message: "Update schedule via website",
+                content: base64Content
+            };
+            if (sha) body.sha = sha; // Include SHA if file exists
+
+            const putRes = await fetch(apiUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (putRes.ok) {
+                status.innerText = "✅ Success! Site updating in ~60 seconds.";
+                alert("Upload Successful! The automation robot has triggered.\nPlease wait 1 minute, then refresh the page.");
+                toggleModal();
+            } else {
+                const err = await putRes.json();
+                throw new Error(err.message);
+            }
+        } catch (error) {
+            status.innerText = "❌ Error: " + error.message;
+            console.error(error);
+        }
+    };
+}
+
+// --- HELPER FUNCTIONS ---
+function toggleModal() {
+    document.getElementById('admin-modal').classList.toggle('hidden');
+}
+
+// ... (KEEP ALL THE PREVIOUS LOGIC BELOW THIS LINE: generateTimeSlots, renderSchedule, switchTab, etc.) ...
+// PASTE THE REST OF THE PREVIOUS script.js CODE HERE
+// (I will include the full merged file below to avoid confusion)
+
+function generateTimeSlots() {
+    let slots = [];
+    let start = 8 * 60; let end = 18 * 60;
+    while (start < end) {
+        let h = Math.floor(start / 60); let m = start % 60;
+        let amp = h >= 12 ? 'PM' : 'AM'; let dh = h > 12 ? h - 12 : h;
+        slots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`); start += 30;
+    }
+    return slots;
+}
 function switchTab(tab) {
     currentTab = tab;
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     event.target.classList.add('active');
-    
-    const stdControls = document.getElementById('standard-controls');
-    const freeControls = document.getElementById('free-controls');
-    const label = document.getElementById('dropdown-label');
-    
-    if (tab === 'free') {
-        stdControls.classList.add('hidden');
-        freeControls.classList.remove('hidden');
-        document.getElementById('schedule-table').innerHTML = ""; 
-        document.getElementById('table-title').innerText = "Select Time Slot";
-    } else {
-        stdControls.classList.remove('hidden');
-        freeControls.classList.add('hidden');
-        label.innerText = tab === 'teacher' ? "Select Teacher:" : "Select Room:";
-        populateMainDropdown();
-        renderSchedule();
-    }
+    const std = document.getElementById('standard-controls');
+    const free = document.getElementById('free-controls');
+    if (tab === 'free') { std.classList.add('hidden'); free.classList.remove('hidden'); document.getElementById('schedule-table').innerHTML = ""; } 
+    else { std.classList.remove('hidden'); free.classList.add('hidden'); populateMainDropdown(); renderSchedule(); }
 }
-
 function populateMainDropdown() {
     const dropdown = document.getElementById('main-dropdown');
     dropdown.innerHTML = '<option value="">-- Select --</option>';
-    
     let items = [];
     if (currentTab === 'teacher') items = [...new Set(rawData.map(d => d.teacher))];
     if (currentTab === 'room') items = [...new Set(rawData.map(d => d.room))];
-    
-    items.sort().forEach(item => {
-        if(item) {
-            let opt = document.createElement('option');
-            opt.value = item;
-            opt.innerText = item;
-            dropdown.appendChild(opt);
-        }
-    });
+    items.sort().forEach(i => { if(i) { let o = document.createElement('option'); o.value = i; o.innerText = i; dropdown.appendChild(o); }});
 }
-
 function toggleDayCheckboxes() {
     const mode = document.querySelector('input[name="day-mode"]:checked').value;
     const box = document.getElementById('day-checkboxes');
-    if (mode === 'specific') box.classList.remove('hidden');
-    else box.classList.add('hidden');
+    if (mode === 'specific') box.classList.remove('hidden'); else box.classList.add('hidden');
     renderSchedule();
 }
-
-// 3. RENDER GRID LOGIC
 function renderSchedule() {
     const selected = document.getElementById('main-dropdown').value;
     if (!selected) return;
-
     const table = document.getElementById('schedule-table');
     table.innerHTML = "";
     document.getElementById('table-title').innerText = `${currentTab.toUpperCase()}: ${selected}`;
-
     let activeDays = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
-    const mode = document.querySelector('input[name="day-mode"]:checked').value;
-    if (mode === 'specific') {
+    if (document.querySelector('input[name="day-mode"]:checked').value === 'specific') {
         activeDays = Array.from(document.querySelectorAll('#day-checkboxes input:checked')).map(cb => cb.value);
     }
-
-    // Header
-    let headerRow = `<tr><th style="width:100px">Time</th>`;
-    activeDays.forEach(day => headerRow += `<th>${day}</th>`);
-    headerRow += `</tr>`;
-    table.innerHTML += headerRow;
-
-    const relevantData = rawData.filter(d => d[currentTab] === selected);
-
-    // Rows
+    let header = `<tr><th>Time</th>` + activeDays.map(d => `<th>${d}</th>`).join('') + `</tr>`;
+    table.innerHTML += header;
+    const relevant = rawData.filter(d => d[currentTab] === selected);
     timeSlots.forEach(slot => {
-        let rowHtml = `<tr><td class="time-col">${slot}</td>`;
-        let slotVal = parseTime(slot);
-
+        let row = `<tr><td class="time-col">${slot}</td>`;
+        let sVal = parseTime(slot);
         activeDays.forEach(day => {
-            let cellContent = "";
-            let matches = relevantData.filter(c => {
-                if (c.day.toUpperCase() !== day) return false;
-                let start = parseTime(c.start);
-                let end = parseTime(c.end);
-                return slotVal >= start && slotVal < end;
-            });
-
+            let matches = relevant.filter(c => c.day.toUpperCase() === day && sVal >= parseTime(c.start) && sVal < parseTime(c.end));
             if (matches.length > 0) {
-                matches.forEach(match => {
-                    let info = currentTab === 'teacher' 
-                        ? `<div class="cc-name">${match.course}</div><div class="cc-meta">Room: ${match.room}</div><div class="cc-meta" style="color:blue">${match.section}</div>`
-                        : `<div class="cc-name">${match.course}</div><div class="cc-meta">👨‍🏫 ${match.teacher}</div><div class="cc-meta" style="color:blue">${match.section}</div>`;
-                    cellContent += `<div class="class-card">${info}</div>`;
-                });
-                rowHtml += `<td>${cellContent}</td>`;
-            } else {
-                rowHtml += `<td><div class="slot-free">FREE</div></td>`;
-            }
+                let cell = matches.map(m => `<div class="class-card"><div class="cc-name">${m.course}</div><div class="cc-meta">${currentTab==='teacher'?m.room:m.teacher}</div><div class="cc-meta" style="color:blue">${m.section}</div></div>`).join('');
+                row += `<td>${cell}</td>`;
+            } else row += `<td><div class="slot-free">FREE</div></td>`;
         });
-        rowHtml += `</tr>`;
-        table.innerHTML += rowHtml;
+        table.innerHTML += row + `</tr>`;
     });
 }
-
-// 4. FREE ROOM LOGIC
 function populateTimeDropdowns() {
-    const startDrop = document.getElementById('free-start');
-    const endDrop = document.getElementById('free-end');
-    timeSlots.forEach(t => {
-        let opt1 = document.createElement('option'); opt1.value = t; opt1.innerText = t;
-        let opt2 = document.createElement('option'); opt2.value = t; opt2.innerText = t;
-        startDrop.appendChild(opt1);
-        endDrop.appendChild(opt2);
-    });
+    const s = document.getElementById('free-start'); const e = document.getElementById('free-end');
+    timeSlots.forEach(t => { s.appendChild(new Option(t, t)); e.appendChild(new Option(t, t)); });
 }
-
 function findFreeRooms() {
     const day = document.getElementById('free-day').value;
-    const startStr = document.getElementById('free-start').value;
-    const endStr = document.getElementById('free-end').value;
-    const userStart = parseTime(startStr);
-    const userEnd = parseTime(endStr);
-
-    if (userStart >= userEnd) { alert("Start time must be before End time"); return; }
-
+    const sStr = document.getElementById('free-start').value;
+    const eStr = document.getElementById('free-end').value;
+    const uStart = parseTime(sStr); const uEnd = parseTime(eStr);
+    if (uStart >= uEnd) { alert("Invalid Time Range"); return; }
     const table = document.getElementById('schedule-table');
-    table.innerHTML = "";
-    document.getElementById('table-title').innerText = `Available Rooms (${startStr} - ${endStr})`;
-
-    const allRooms = [...new Set(rawData.map(d => d.room))];
-    let exactMatches = [];
-    let partialMatches = [];
-
-    allRooms.forEach(room => {
-        const classes = rawData.filter(d => d.room === room && d.day.toUpperCase() === day);
-        let isFullyFree = true;
-        let busyMinutes = 0;
-        let duration = userEnd - userStart;
-
-        classes.forEach(c => {
-            let cStart = parseTime(c.start);
-            let cEnd = parseTime(c.end);
-            let overlapStart = Math.max(userStart, cStart);
-            let overlapEnd = Math.min(userEnd, cEnd);
-            
-            if (overlapStart < overlapEnd) {
-                isFullyFree = false;
-                busyMinutes += (overlapEnd - overlapStart);
-            }
+    table.innerHTML = `<tr><th colspan="2" style="background:#002147;color:gold">Available Rooms (${sStr}-${eStr})</th></tr>`;
+    const rooms = [...new Set(rawData.map(d => d.room))];
+    let exact = [], partial = [];
+    rooms.forEach(r => {
+        const busy = rawData.filter(d => d.room === r && d.day.toUpperCase() === day);
+        let free = true, busyMins = 0;
+        busy.forEach(b => {
+            let oS = Math.max(uStart, parseTime(b.start));
+            let oE = Math.min(uEnd, parseTime(b.end));
+            if (oS < oE) { free = false; busyMins += (oE - oS); }
         });
-
-        if (isFullyFree) {
-            exactMatches.push(room);
-        } else if ((duration - busyMinutes) >= 30) {
-            partialMatches.push({room: room, freeMins: duration - busyMinutes});
-        }
+        if (free) exact.push(r); else if ((uEnd-uStart)-busyMins >= 30) partial.push({r, m: (uEnd-uStart)-busyMins});
     });
-
-    // Render Results
-    let html = `<tr><th colspan="2" style="background:green">✅ Fully Available Rooms</th></tr>`;
-    if(exactMatches.length === 0) html += `<tr><td colspan="2">No rooms free for the full duration.</td></tr>`;
-    else exactMatches.forEach(r => html += `<tr><td class="res-exact">${r}</td></tr>`);
-
-    html += `<tr><th colspan="2" style="background:orange; color:black">⚠️ Partially Available (>30 mins)</th></tr>`;
-    if(partialMatches.length === 0) html += `<tr><td colspan="2">No partial matches found.</td></tr>`;
-    else partialMatches.forEach(m => html += `<tr><td class="res-partial"><b>${m.room}</b> (Free for ${m.freeMins} mins)</td></tr>`);
-
-    table.innerHTML = html;
+    let h = `<tr><td colspan="2" style="background:#d4edda;font-weight:bold">✅ Exact Matches</td></tr>`;
+    exact.forEach(r => h += `<tr><td class="res-exact">${r}</td></tr>`);
+    h += `<tr><td colspan="2" style="background:#fff3cd;font-weight:bold">⚠️ Partial Matches</td></tr>`;
+    partial.forEach(p => h += `<tr><td class="res-partial"><b>${p.r}</b> (${p.m} mins)</td></tr>`);
+    table.innerHTML = h;
 }
-
-function parseTime(tStr) {
-    if(!tStr) return 0;
-    let [time, mod] = tStr.split(' ');
-    let [h, m] = time.split(':').map(Number);
-    if (h === 12) h = 0;
-    if (mod === 'PM') h += 12;
-    return h * 60 + m;
-}
+function parseTime(t) { if(!t)return 0; let [tm, ap] = t.split(' '); let [h, m] = tm.split(':').map(Number); if(h===12)h=0; if(ap==='PM')h+=12; return h*60+m; }
