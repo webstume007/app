@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IUB BSAI Timetable</title>
+    <title>IUB Timetable</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
 
     <header>
-        <div class="logo">🎓 IUB AI Depart Timetable</div>
-        <div class="status">Spring 2026</div>
+        <div class="logo">🎓 IUB Timetable</div>
+        <button id="admin-btn" onclick="toggleModal()">⚙️ Update</button>
     </header>
 
     <div class="nav-tabs">
@@ -21,7 +21,6 @@
     </div>
 
     <div class="container">
-        
         <div id="standard-controls" class="controls-card">
             <label id="dropdown-label">Select Teacher:</label>
             <select id="main-dropdown" onchange="renderSchedule()">
@@ -75,9 +74,22 @@
         <div id="schedule-output">
             <h2 id="table-title">Select an option to view schedule</h2>
             <div class="table-responsive">
-                <table id="schedule-table">
-                    </table>
+                <table id="schedule-table"></table>
             </div>
+        </div>
+    </div>
+
+    <div id="admin-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close" onclick="toggleModal()">&times;</span>
+            <h2>Update Schedule</h2>
+            <p>Enter your GitHub Token to upload a new PDF.</p>
+            
+            <input type="password" id="github-token" placeholder="Paste GitHub Token Here">
+            <input type="file" id="pdf-upload" accept=".pdf">
+            
+            <button class="action-btn" onclick="uploadToGitHub()">🚀 Upload & Update Site</button>
+            <p id="upload-status"></p>
         </div>
     </div>
 
