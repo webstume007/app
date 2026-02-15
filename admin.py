@@ -3,122 +3,132 @@ import processing
 import db_handler
 import sqlite3
 import os
+from git import Repo, Actor
 
 # --- CONFIGURATION ---
-# strict: changing this password is highly recommended
-ADMIN_PASSWORD = "admin123" 
+ADMIN_PASSWORD = "admin123"  # Change this!
+DB_FILE = "schedule.db"
 
+# --- GITHUB SYNC FUNCTION ---
+def push_to_github():
+    """Commits and pushes the database to GitHub."""
+    try:
+        # 1. Load Secrets
+        GITHUB_TOKEN = st.secrets["github"]["token"]
+        USERNAME = st.secrets["github"]["username"]
+        REPO_NAME = st.secrets["github"]["repo_name"]
+        EMAIL = st.secrets["github"]["email"]
+
+        # 2. Setup Repo Path
+        # Streamlit Cloud clones the repo to current directory
+        repo_dir = os.getcwd() 
+        repo = Repo(repo_dir)
+
+        # 3. Configure Git User (Required for commit)
+        author = Actor(USERNAME, EMAIL)
+        repo.config_writer().set_value("user", "name", USERNAME).release()
+        repo.config_writer().set_value("user", "email", EMAIL).release()
+
+        # 4. Add Database File
+        file_path = os.path.join(repo_dir, DB_FILE)
+        repo.index.add([file_path])
+
+        # 5. Commit
+        commit_message = "Auto-update: Schedule database updated via Admin Panel"
+        repo.index.commit(commit_message, author=author, committer=author)
+
+        # 6. Push with Token Authentication
+        # We construct the remote URL with the token embedded
+        remote_url = f"https://{USERNAME}:{GITHUB_TOKEN}@github.com/{USERNAME}/{REPO_NAME}.git"
+        origin = repo.remote(name='origin')
+        origin.set_url(remote_url)
+        
+        origin.push()
+        return True, "Synced to GitHub successfully!"
+
+    except Exception as e:
+        return False, f"GitHub Sync Failed: {str(e)}"
+
+# --- AUTHENTICATION ---
 def check_password():
     """Returns `True` if the user has the correct password."""
-
     def password_entered():
-        """Checks whether a password entered by the user is correct."""
         if st.session_state["password"] == ADMIN_PASSWORD:
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # Don't store the password
+            del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # First run, show input for password.
-        st.text_input(
-            "Enter Admin Password", type="password", on_change=password_entered, key="password"
-        )
+        st.text_input("Enter Admin Password", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
-        # Password not correct, show input + error.
-        st.text_input(
-            "Enter Admin Password", type="password", on_change=password_entered, key="password"
-        )
+        st.text_input("Enter Admin Password", type="password", on_change=password_entered, key="password")
         st.error("😕 Password incorrect")
         return False
     else:
-        # Password correct.
         return True
 
+# --- MAIN PAGE ---
 def show_admin_page():
     st.title("🔒 Admin Dashboard")
 
-    # 1. SECURITY CHECK
     if not check_password():
-        st.stop()  # Stop execution if not logged in
+        st.stop()
 
-    # 2. LOGGED IN INTERFACE
     st.success("✅ Logged in as Administrator")
-    
     st.markdown("### Upload Time Table")
-    
-    # Warning for Cloud Deployment
-    st.info(
-        "ℹ️ **NOTE:** If you are running this on Streamlit Cloud, uploading here will update the "
-        "schedule for the *current session only*. If the app restarts, data may reset. "
-        "For permanent updates, run locally and push the `.db` file to GitHub."
-    )
 
-    # File Uploader
     uploaded_file = st.file_uploader("Choose a PDF file (e.g., Spring-2026.pdf)", type="pdf")
     
     if uploaded_file is not None:
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            process_btn = st.button("🚀 Process PDF & Update DB", type="primary")
-        
-        if process_btn:
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+        if st.button("🚀 Process PDF & Update DB", type="primary"):
+            progress = st.progress(0)
+            status = st.empty()
             
-            status_text.text("Initializing database...")
-            progress_bar.progress(10)
-            
+            # 1. Process PDF
+            status.text("Parsing PDF...")
+            progress.progress(20)
             try:
-                # Run the processing logic
-                status_text.text("Parsing PDF... please wait...")
                 count = processing.process_pdf(uploaded_file)
-                progress_bar.progress(100)
-                
-                st.balloons()
-                st.success(f"🎉 Success! The database has been updated with {count} classes.")
-                
-                # Optional: Show a preview of data
-                with st.expander("See Preview of Added Data"):
-                    conn = sqlite3.connect(db_handler.DB_FILE)
-                    import pandas as pd
-                    df = pd.read_sql_query("SELECT * FROM classes LIMIT 5", conn)
-                    st.dataframe(df)
-                    conn.close()
-
+                progress.progress(50)
+                st.success(f"✅ Database updated locally with {count} classes.")
             except Exception as e:
-                progress_bar.empty()
-                st.error(f"❌ An error occurred during processing: {e}")
+                st.error(f"❌ Processing Error: {e}")
+                st.stop()
+
+            # 2. Sync to GitHub
+            status.text("Syncing to GitHub (Saving permanently)...")
+            progress.progress(70)
+            
+            # Only run sync if we are on the cloud (or have secrets set locally)
+            if "github" in st.secrets:
+                success, message = push_to_github()
+                if success:
+                    progress.progress(100)
+                    st.success(f"☁️ {message}")
+                    st.balloons()
+                else:
+                    st.error(message)
+            else:
+                st.warning("⚠️ GitHub secrets not found. Data saved locally but will be lost on reboot.")
 
     st.markdown("---")
     
     # Database Management Tools
-    st.subheader("Database Management")
     col_a, col_b = st.columns(2)
-    
     with col_a:
         if st.button("📊 Check Class Count"):
+            conn = sqlite3.connect(db_handler.DB_FILE)
+            c = conn.cursor()
             try:
-                conn = sqlite3.connect(db_handler.DB_FILE)
-                c = conn.cursor()
                 c.execute("SELECT COUNT(*) FROM classes")
-                count = c.fetchone()[0]
-                conn.close()
-                st.info(f"Current Total Classes: **{count}**")
-            except Exception as e:
-                st.warning("Database not found or empty.")
+                st.info(f"Total Classes: **{c.fetchone()[0]}**")
+            except:
+                st.warning("Empty DB")
+            conn.close()
 
     with col_b:
-        if st.button("🗑️ Clear Database (Reset)"):
-            try:
-                db_handler.clear_db()
-                st.warning("Database has been cleared!")
-            except Exception as e:
-                st.error(f"Error clearing DB: {e}")
-
-    # Logout Button
-    st.markdown("---")
-    if st.button("Log Out"):
-        st.session_state["password_correct"] = False
-        st.rerun()
+        if st.button("Logout"):
+            st.session_state["password_correct"] = False
+            st.rerun()
