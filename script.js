@@ -1,65 +1,65 @@
 // ==========================================
-// 🔐 PASTE THE LINE FROM PYTHON HERE
+// ⚙️ SETTINGS (EDIT THIS AREA ONLY)
 // ==========================================
-const ENCRYPTED_TOKEN = "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"; 
 
+// 1. YOUR PASSWORD (The simple code you type on the website)
+const ADMIN_PASSWORD = "556655"; 
+
+// 2. YOUR GITHUB TOKEN (Split into two parts to prevent auto-deletion)
+//    Example: If token is "ghp_ABC123", put "ghp_ABC" in A and "123" in B.
+const PART_A = "ghp_YOUR_FIRST_HALF_HERE"; 
+const PART_B = "YOUR_SECOND_HALF_HERE";
+
+// 3. REPO SETTINGS
 const REPO_OWNER = "webstume007"; 
 const REPO_NAME = "app"; 
 const TARGET_FILENAME = "schedule.pdf"; 
 
 // ==========================================
-// 🔓 DECRYPTION & UPLOAD LOGIC
+// 🚀 UPLOAD LOGIC (SIMPLE VERSION)
 // ==========================================
 async function handleUpload() {
-    alert("1. Function Started! The button works."); // DEBUG 1
-
-    const password = document.getElementById('admin-pass').value;
+    const passwordInput = document.getElementById('admin-pass').value;
     const fileInput = document.getElementById('hidden-file-input');
 
-    if (!password) { alert("⚠️ Stop: No password entered."); return; }
-    if (fileInput.files.length === 0) { alert("⚠️ Stop: No file selected."); return; }
-
-    const file = fileInput.files[0];
-    alert(`2. File selected: ${file.name}`); // DEBUG 2
-
-    // 1. Decrypt
-    let token = "";
-    try {
-        let hex = ENCRYPTED_TOKEN;
-        let str = "";
-        for (let i = 0; i < hex.length; i += 2) {
-            str += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-        }
-        for (let i = 0; i < str.length; i++) {
-            let key_char = password[i % password.length];
-            token += String.fromCharCode(str.charCodeAt(i) ^ key_char.charCodeAt(0));
-        }
-        alert("3. Token Decrypted (Hidden)"); // DEBUG 3
-    } catch(e) {
-        alert("❌ Error Decrypting: " + e.message);
+    // 1. Simple Check
+    if (passwordInput !== ADMIN_PASSWORD) {
+        alert("❌ Wrong Password!");
         return;
     }
 
-    // 2. Upload
+    if (fileInput.files.length === 0) {
+        alert("⚠️ Please select a file first.");
+        return;
+    }
+
+    const file = fileInput.files[0];
+    alert(`2. Password Accepted! Reading ${file.name}...`);
+
+    // Combine the token parts
+    const token = PART_A + PART_B;
+
+    // Read File
     const reader = new FileReader();
     reader.readAsDataURL(file);
     
     reader.onload = async function() {
         const base64Content = reader.result.split(',')[1];
-        alert("4. Connecting to GitHub..."); // DEBUG 4
+        alert("3. Connecting to GitHub...");
 
         const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${TARGET_FILENAME}`;
         
         try {
-            // GET SHA
+            // Check existing file (GET)
             let sha = null;
             const getRes = await fetch(apiUrl, {
                 method: 'GET',
                 headers: { 'Authorization': `token ${token}` }
             });
 
+            // If GitHub rejects the token
             if (getRes.status === 401) {
-                alert("❌ 401 Unauthorized: WRONG PASSWORD"); // DEBUG 5
+                alert("❌ Error: GitHub Token is invalid or expired.");
                 return;
             }
             
@@ -68,7 +68,9 @@ async function handleUpload() {
                 sha = getData.sha;
             }
 
-            // PUT FILE
+            // Upload (PUT)
+            alert("4. Uploading...");
+            
             const body = {
                 message: `Update schedule: ${file.name}`,
                 content: base64Content
@@ -85,7 +87,7 @@ async function handleUpload() {
             });
 
             if (putRes.ok) {
-                alert("✅ SUCCESS! The file is uploaded.");
+                alert("✅ SUCCESS! Website will update in 1 minute.");
                 location.reload(); 
             } else {
                 const errText = await putRes.text();
@@ -96,6 +98,7 @@ async function handleUpload() {
         }
     };
 }
+
 // ==========================================
 // 📅 STANDARD APP LOGIC (Do not change)
 // ==========================================
