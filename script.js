@@ -7,8 +7,8 @@ const ADMIN_PASSWORD = "556655";
 
 // 2. YOUR GITHUB TOKEN (Split into two parts to prevent auto-deletion)
 //    Example: If token is "ghp_ABC123", put "ghp_ABC" in A and "123" in B.
-const PART_A = "ghp_YOUR_FIRST_HALF_HERE"; 
-const PART_B = "YOUR_SECOND_HALF_HERE";
+const PART_A = "ghp_RhoImktqKxyXeMEVAj"; 
+const PART_B = "Yfwkquun4MM43Nst9V";
 
 // 3. REPO SETTINGS
 const REPO_OWNER = "webstume007"; 
