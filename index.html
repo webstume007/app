@@ -141,10 +141,6 @@
 
     <header>
         <div class="logo">🎓 IUB AI Depart Schedule</div>
-        <div>
-            <input type="file" id="hidden-file-input" accept=".pdf" style="display: none;" onchange="uploadFile()">
-            <button class="admin-btn" onclick="askPassword()">⚙️ Update</button>
-        </div>
     </header>
 
     <div class="nav-tabs">
@@ -196,10 +192,7 @@
     </div>
 
     <script>
-        const ADMIN_PASSWORD = "556655"; 
-        const REPO_OWNER = "webstume007";
-        const GITHUB_TOKEN = "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"; // Hide the whole thing!
-        const REPO = { owner: REPO_OWNER, name: "app", file: "schedule.pdf" };
+
 
         let rawData = [];
         let currentTab = 'teacher';
@@ -374,38 +367,6 @@
             let [h, m] = tm.split(':').map(Number); 
             if(h===12) h=0; if(ap==='PM') h+=12; 
             return h*60+(m || 0); 
-        }
-
-        function askPassword() {
-            if (prompt("🔐 Admin Password:") === ADMIN_PASSWORD) document.getElementById('hidden-file-input').click();
-            else alert("❌ Access Denied");
-        }
-
-        async function uploadFile() {
-            const fileInput = document.getElementById('hidden-file-input');
-            if(!fileInput.files.length) return;
-            const file = fileInput.files[0];
-            const token = PART_A + PART_B;
-            alert("🚀 Uploading... Page will reload when finished.");
-
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async function() {
-                const content = reader.result.split(',')[1];
-                const url = `https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/${REPO.file}`;
-                try {
-                    let sha = null;
-                    const get = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
-                    if(get.ok) sha = (await get.json()).sha;
-
-                    const put = await fetch(url, {
-                        method: 'PUT',
-                        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: "Update PDF Schedule", content, sha })
-                    });
-                    if(put.ok) location.reload(); else alert("GitHub upload failed.");
-                } catch(e) { alert("Error connecting to GitHub: " + e.message); }
-            };
         }
     </script>
 </body>
