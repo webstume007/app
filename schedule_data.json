@@ -1,6 +1,6 @@
 [
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "COURSE_NAME",
         "teacher": "TEACHER",
         "day": "DAY",
@@ -9,7 +9,7 @@
         "room": "ROOM"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Programming Fundamentals",
         "teacher": "Mr. Raja Muhammad Ali",
         "day": "TUE",
@@ -18,7 +18,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Application of ICT",
         "teacher": "Mr. Muhammad khizar Farooq",
         "day": "MON",
@@ -27,7 +27,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Calculus & Analytical Geometry",
         "teacher": "Dr. Shafqat Ali",
         "day": "MON",
@@ -36,7 +36,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Applied Physics",
         "teacher": "Dr. Mamoona Aslam",
         "day": "MON",
@@ -45,7 +45,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Functional English",
         "teacher": "Ms. Nosheen Khaliq",
         "day": "SAT",
@@ -54,7 +54,7 @@
         "room": "2.30."
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Islamic Studies/Religious Education/Ethics",
         "teacher": "Mr. Muhammad Sajid",
         "day": "SAT",
@@ -63,7 +63,7 @@
         "room": "2.30."
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Programming Fundamentals",
         "teacher": "Mr. Raja Muhammad Ali",
         "day": "WED",
@@ -72,7 +72,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Application of ICT",
         "teacher": "Mr. Muhammad khizar Farooq",
         "day": "WED",
@@ -81,7 +81,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Calculus & Analytical Geometry",
         "teacher": "Dr. Shafqat Ali",
         "day": "TUE",
@@ -90,7 +90,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Applied Physics",
         "teacher": "Dr. Mamoona Aslam",
         "day": "WED",
@@ -99,7 +99,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Functional English",
         "teacher": "Ms. Nosheen Khaliq",
         "day": "WED",
@@ -108,7 +108,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Programming Fundamentals",
         "teacher": "Mr. Raja Muhammad Ali",
         "day": "TUE",
@@ -117,7 +117,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Application of ICT",
         "teacher": "Mr. Muhammad khizar Farooq",
         "day": "MON",
@@ -126,7 +126,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Calculus & Analytical Geometry",
         "teacher": "Mr. Zubair Ahmad",
         "day": "MON",
@@ -135,7 +135,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Applied Physics",
         "teacher": "Dr. Mamoona Aslam",
         "day": "MON",
@@ -144,7 +144,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Functional English",
         "teacher": "Ms. Nosheen Khaliq",
         "day": "SAT",
@@ -153,7 +153,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Islamic Studies/Religious Education/Ethics",
         "teacher": "Mr. Muhammad Sajid",
         "day": "SAT",
@@ -162,7 +162,7 @@
         "room": "2.30."
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Programming Fundamentals",
         "teacher": "Mr. Raja Muhammad Ali",
         "day": "WED",
@@ -171,7 +171,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Application of ICT",
         "teacher": "Mr. Muhammad khizar Farooq",
         "day": "WED",
@@ -180,7 +180,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Calculus & Analytical Geometry",
         "teacher": "Mr. Zubair Ahmad",
         "day": "TUE",
@@ -189,7 +189,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Applied Physics",
         "teacher": "Dr. Mamoona Aslam",
         "day": "TUE",
@@ -198,7 +198,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Functional English",
         "teacher": "Ms. Nosheen Khaliq",
         "day": "WED",
@@ -207,7 +207,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Programming Fundamentals",
         "teacher": "Ms. Hafsa Abdullah",
         "day": "MON",
@@ -216,7 +216,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Application of ICT",
         "teacher": "Mr. Muhammad Yasir",
         "day": "MON",
@@ -225,7 +225,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Calculus & Analytical Geometry",
         "teacher": "Mr. Zubair Ahmad",
         "day": "MON",
@@ -234,7 +234,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Applied Physics",
         "teacher": "Mr. Muhammad Asif",
         "day": "MON",
@@ -243,7 +243,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Functional English",
         "teacher": "Ms. Sadaf Majeed",
         "day": "TUE",
@@ -252,7 +252,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Islamic Studies/Religious Education/Ethics",
         "teacher": "Mr. Muhammad Sajid",
         "day": "SAT",
@@ -261,7 +261,7 @@
         "room": "2.30."
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Programming Fundamentals",
         "teacher": "Ms. Hafsa Abdullah",
         "day": "SAT",
@@ -270,7 +270,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Application of ICT",
         "teacher": "Mr. Muhammad Yasir",
         "day": "WED",
@@ -279,7 +279,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Calculus & Analytical Geometry",
         "teacher": "Mr. Zubair Ahmad",
         "day": "THU",
@@ -288,7 +288,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Applied Physics",
         "teacher": "Mr. Muhammad Asif",
         "day": "THU",
@@ -297,7 +297,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-1M",
+        "section": "Unknown",
         "course": "Functional English",
         "teacher": "Ms. Sadaf Majeed",
         "day": "THU",
@@ -306,16 +306,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-4M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Programming Fundamentals",
         "teacher": "Ms. Hafsa Abdullah",
         "day": "SAT",
@@ -324,7 +315,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Application of ICT",
         "teacher": "Mr. Muhammad Yasir",
         "day": "MON",
@@ -333,7 +324,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Calculus & Analytical Geometry",
         "teacher": "Mr. Zubair Ahmad",
         "day": "MON",
@@ -342,7 +333,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Applied Physics",
         "teacher": "Dr. Sana Salahuddin",
         "day": "WED",
@@ -351,7 +342,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Functional English",
         "teacher": "Ms. Sadaf Majeed",
         "day": "WED",
@@ -360,16 +351,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-1ST-4M",
-        "course": "Islamic Studies/Religious Education/Ethics",
-        "teacher": "Mr. Muhammad Sajid",
-        "day": "SAT",
-        "start": "11:00 AM",
-        "end": "11:45 AM",
-        "room": "2.30."
-    },
-    {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Programming Fundamentals",
         "teacher": "Ms. Hafsa Abdullah",
         "day": "MON",
@@ -378,7 +360,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Application of ICT",
         "teacher": "Mr. Muhammad Yasir",
         "day": "THU",
@@ -387,7 +369,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Calculus & Analytical Geometry",
         "teacher": "Mr. Zubair Ahmad",
         "day": "THU",
@@ -396,7 +378,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Applied Physics",
         "teacher": "Dr. Sana Salahuddin",
         "day": "THU",
@@ -405,7 +387,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Functional English",
         "teacher": "Ms. Sadaf Majeed",
         "day": "THU",
@@ -414,7 +396,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "MON",
@@ -423,7 +405,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "MON",
@@ -432,7 +414,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Noman Raja",
         "day": "MON",
@@ -441,7 +423,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms Hina Saher",
         "day": "WED",
@@ -450,7 +432,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Shafqat Ali",
         "day": "WED",
@@ -459,7 +441,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Ideology and Constitution of Pakistan",
         "teacher": "Ms. Marrium Ishtiaq",
         "day": "THU",
@@ -468,7 +450,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "WED",
@@ -477,7 +459,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "TUE",
@@ -486,7 +468,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Noman Raja",
         "day": "TUE",
@@ -495,7 +477,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms Hina Saher",
         "day": "THU",
@@ -504,7 +486,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Shafqat Ali",
         "day": "THU",
@@ -513,7 +495,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "MON",
@@ -522,7 +504,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "MON",
@@ -531,7 +513,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Ms. Aqsa Ashfaq",
         "day": "WED",
@@ -540,7 +522,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "MON",
@@ -549,7 +531,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Shafqat Ali",
         "day": "WED",
@@ -558,7 +540,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "THU",
@@ -567,7 +549,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "TUE",
@@ -576,7 +558,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Ms. Aqsa Ashfaq",
         "day": "TUE",
@@ -585,7 +567,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "TUE",
@@ -594,7 +576,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-1ST-4M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Shafqat Ali",
         "day": "THU",
@@ -603,16 +585,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-3M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Rakib Mustafa",
         "day": "MON",
@@ -621,7 +594,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Fizza Aslam",
         "day": "FRI",
@@ -630,7 +603,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Ms. Aqsa Ashfaq",
         "day": "MON",
@@ -639,7 +612,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "MON",
@@ -648,7 +621,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Shafqat Ali",
         "day": "MON",
@@ -657,7 +630,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Ideology and Constitution of Pakistan",
         "teacher": "Mr. Faqir Hussain",
         "day": "FRI",
@@ -666,7 +639,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Rakib Mustafa",
         "day": "SAT",
@@ -675,7 +648,7 @@
         "room": "2.31"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Fizza Aslam",
         "day": "SAT",
@@ -684,7 +657,7 @@
         "room": "2.31"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Ms. Aqsa Ashfaq",
         "day": "FRI",
@@ -693,7 +666,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "SAT",
@@ -702,7 +675,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Shafqat Ali",
         "day": "FRI",
@@ -711,7 +684,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Rakib Mustafa",
         "day": "MON",
@@ -720,7 +693,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Fizza Aslam",
         "day": "TUE",
@@ -729,7 +702,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Ms. Aqsa Ashfaq",
         "day": "MON",
@@ -738,7 +711,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "MON",
@@ -747,7 +720,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Sana Goher",
         "day": "MON",
@@ -756,7 +729,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Ideology and Constitution of Pakistan",
         "teacher": "Mr. Faqir Hussain",
         "day": "FRI",
@@ -765,7 +738,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Rakib Mustafa",
         "day": "SAT",
@@ -774,7 +747,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Fizza Aslam",
         "day": "SAT",
@@ -783,7 +756,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Ms. Aqsa Ashfaq",
         "day": "TUE",
@@ -792,7 +765,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "SAT",
@@ -801,7 +774,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Sana Goher",
         "day": "TUE",
@@ -810,7 +783,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "MON",
@@ -819,7 +792,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Fizza Aslam",
         "day": "TUE",
@@ -828,7 +801,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Ms. Aqsa Ashfaq",
         "day": "FRI",
@@ -837,7 +810,7 @@
         "room": "MATHS-1.55"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Dr. Shafqat Ali",
         "day": "MON",
@@ -846,7 +819,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Sana Goher",
         "day": "MON",
@@ -855,7 +828,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "FRI",
@@ -864,7 +837,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Fizza Aslam",
         "day": "SAT",
@@ -873,16 +846,7 @@
         "room": "2.31"
     },
     {
-        "section": "BSARIN-2ND-3M",
-        "course": "Artificial Intelligence",
-        "teacher": "Ms. Aqsa Ashfaq",
-        "day": "TUE",
-        "start": "8:00 AM",
-        "end": "8:45 AM",
-        "room": "MATHS-1.62"
-    },
-    {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Dr. Shafqat Ali",
         "day": "FRI",
@@ -891,7 +855,7 @@
         "room": "MATHS-1.55"
     },
     {
-        "section": "BSARIN-2ND-3M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Sana Goher",
         "day": "TUE",
@@ -900,16 +864,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-6M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "WED",
@@ -918,7 +873,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Tanzeela Kiran",
         "day": "FRI",
@@ -927,7 +882,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Haseeb Ali",
         "day": "WED",
@@ -936,7 +891,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "FRI",
@@ -945,7 +900,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Ayesha Mahmood",
         "day": "FRI",
@@ -954,16 +909,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-2ND-6M",
-        "course": "Ideology and Constitution of Pakistan",
-        "teacher": "Mr. Faqir Hussain",
-        "day": "FRI",
-        "start": "8:00 AM",
-        "end": "9:30 AM",
-        "room": "Auditorium Faculty of Agriculture"
-    },
-    {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "THU",
@@ -972,7 +918,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Tanzeela Kiran",
         "day": "SAT",
@@ -981,7 +927,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Haseeb Ali",
         "day": "THU",
@@ -990,7 +936,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "SAT",
@@ -999,7 +945,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Ayesha Mahmood",
         "day": "SAT",
@@ -1008,7 +954,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "WED",
@@ -1017,7 +963,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Tanzeela Kiran",
         "day": "TUE",
@@ -1026,7 +972,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "WED",
@@ -1035,7 +981,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "WED",
@@ -1044,7 +990,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Muhammad Shahzad Shabbir",
         "day": "FRI",
@@ -1053,16 +999,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-6M",
-        "course": "Ideology and Constitution of Pakistan",
-        "teacher": "Mr. Faqir Hussain",
-        "day": "FRI",
-        "start": "10:00 AM",
-        "end": "11:30 AM",
-        "room": "Auditorium Faculty of Agriculture"
-    },
-    {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "FRI",
@@ -1071,7 +1008,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Tanzeela Kiran",
         "day": "SAT",
@@ -1080,7 +1017,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "TUE",
@@ -1089,7 +1026,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "SAT",
@@ -1098,7 +1035,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Muhammad Shahzad Shabbir",
         "day": "SAT",
@@ -1107,7 +1044,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "THU",
@@ -1116,7 +1053,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Sonia Jamil",
         "day": "FRI",
@@ -1125,7 +1062,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "WED",
@@ -1134,7 +1071,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "THU",
@@ -1143,7 +1080,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Muhammad Shahzad Shabbir",
         "day": "FRI",
@@ -1152,16 +1089,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
-        "course": "Ideology and Constitution of Pakistan",
-        "teacher": "Ms. Marrium Ishtiaq",
-        "day": "THU",
-        "start": "1:00 PM",
-        "end": "2:30 PM",
-        "room": "Auditorium Faculty of Agriculture"
-    },
-    {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "FRI",
@@ -1170,7 +1098,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Sonia Jamil",
         "day": "SAT",
@@ -1179,7 +1107,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "THU",
@@ -1188,7 +1116,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "SAT",
@@ -1197,7 +1125,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-2ND-6M",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Dr. Muhammad Shahzad Shabbir",
         "day": "WED",
@@ -1206,16 +1134,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-2ND-1E",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Asved Gillani",
         "day": "MON",
@@ -1224,7 +1143,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Sonia Jamil",
         "day": "SAT",
@@ -1233,7 +1152,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "MON",
@@ -1242,7 +1161,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "SAT",
@@ -1251,7 +1170,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Mr. Zubair Ahmad",
         "day": "SAT",
@@ -1260,7 +1179,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Ideology and Constitution of Pakistan",
         "teacher": "Ms. Marrium Ishtiaq",
         "day": "THU",
@@ -1269,7 +1188,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Asved Gillani",
         "day": "TUE",
@@ -1278,7 +1197,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Sonia Jamil",
         "day": "FRI",
@@ -1287,7 +1206,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "FRI",
@@ -1296,7 +1215,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Rimsha Asad",
         "day": "FRI",
@@ -1305,7 +1224,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Mr. Zubair Ahmad",
         "day": "FRI",
@@ -1314,7 +1233,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Sonia Jamil",
         "day": "SAT",
@@ -1323,7 +1242,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Haseeb Ali",
         "day": "MON",
@@ -1332,7 +1251,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "MON",
@@ -1341,7 +1260,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Mr. Muhammad Inzamam Shabir",
         "day": "SAT",
@@ -1350,7 +1269,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Sonia Jamil",
         "day": "FRI",
@@ -1359,7 +1278,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Haseeb Ali",
         "day": "TUE",
@@ -1368,7 +1287,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Ms. Farhat Jalil",
         "day": "FRI",
@@ -1377,7 +1296,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Mr. Muhammad Inzamam Shabir",
         "day": "FRI",
@@ -1386,7 +1305,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Noman Raja",
         "day": "WED",
@@ -1395,7 +1314,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Noman Raja",
         "day": "WED",
@@ -1404,7 +1323,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Dr. Muhammad Yousaf Rafiq",
         "day": "FRI",
@@ -1413,7 +1332,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Mr. Muhammad Inzamam Shabir",
         "day": "SAT",
@@ -1422,7 +1341,7 @@
         "room": "2.31"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Object Oriented Programming",
         "teacher": "Mr. Noman Raja",
         "day": "THU",
@@ -1431,7 +1350,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Database Systems",
         "teacher": "Ms. Sonia Jamil",
         "day": "SAT",
@@ -1440,7 +1359,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Artificial Intelligence",
         "teacher": "Mr. Noman Raja",
         "day": "MON",
@@ -1449,7 +1368,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "QR 2 (Discrete Structures)",
         "teacher": "Dr. Muhammad Yousaf Rafiq",
         "day": "MON",
@@ -1458,7 +1377,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-2ND-1E",
+        "section": "Unknown",
         "course": "Multivariable Calculus",
         "teacher": "Mr. Muhammad Inzamam Shabir",
         "day": "MON",
@@ -1467,16 +1386,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-3RD-1M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "MON",
@@ -1485,7 +1395,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "MON",
@@ -1494,7 +1404,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Mr. Muhammad khizar Farooq",
         "day": "WED",
@@ -1503,7 +1413,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Dr. Muhammad Nadeem",
         "day": "WED",
@@ -1512,7 +1422,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Dr. Amna Ashraf",
         "day": "MON",
@@ -1521,7 +1431,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Pak Studies",
         "teacher": "Dr. Muhammad Rashid",
         "day": "WED",
@@ -1530,7 +1440,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Arabic for Understanding Quran",
         "teacher": "Mr. Ali Raza",
         "day": "TUE",
@@ -1539,7 +1449,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "TUE",
@@ -1548,7 +1458,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "TUE",
@@ -1557,7 +1467,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Mr. Muhammad khizar Farooq",
         "day": "THU",
@@ -1566,7 +1476,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Dr. Muhammad Nadeem",
         "day": "THU",
@@ -1575,7 +1485,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Dr. Amna Ashraf",
         "day": "TUE",
@@ -1584,7 +1494,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "MON",
@@ -1593,7 +1503,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "MON",
@@ -1602,7 +1512,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Mr. Muhammad khizar Farooq",
         "day": "WED",
@@ -1611,7 +1521,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Dr. Muhammad Nadeem",
         "day": "WED",
@@ -1620,7 +1530,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Dr. Amna Ashraf",
         "day": "WED",
@@ -1629,7 +1539,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "TUE",
@@ -1638,7 +1548,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "TUE",
@@ -1647,7 +1557,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Mr. Muhammad khizar Farooq",
         "day": "TUE",
@@ -1656,7 +1566,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Dr. Muhammad Nadeem",
         "day": "THU",
@@ -1665,7 +1575,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Dr. Amna Ashraf",
         "day": "THU",
@@ -1674,7 +1584,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "TUE",
@@ -1683,7 +1593,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "WED",
@@ -1692,7 +1602,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "TUE",
@@ -1701,7 +1611,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Mr. Zubair Ahmad",
         "day": "TUE",
@@ -1710,7 +1620,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Dr. Amna Ashraf",
         "day": "TUE",
@@ -1719,7 +1629,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Arabic for Understanding Quran",
         "teacher": "Mr. Ali Raza",
         "day": "MON",
@@ -1728,7 +1638,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Data Structures",
         "teacher": "Ms. Zunera Abdullah",
         "day": "MON",
@@ -1737,7 +1647,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Dr. Mobeen Shahroz",
         "day": "FRI",
@@ -1746,7 +1656,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "FRI",
@@ -1755,7 +1665,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Mr. Zubair Ahmad",
         "day": "FRI",
@@ -1764,7 +1674,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-3RD-1M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Dr. Amna Ashraf",
         "day": "FRI",
@@ -1773,16 +1683,7 @@
         "room": "MATHS-1.55"
     },
     {
-        "section": "BSARIN-3RD-4M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Data Structures",
         "teacher": "Mr. Asved Gillani",
         "day": "MON",
@@ -1791,7 +1692,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Mr. Naeem Iqbal",
         "day": "TUE",
@@ -1800,7 +1701,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "MON",
@@ -1809,7 +1710,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Dr. Sufyan Asif",
         "day": "WED",
@@ -1818,7 +1719,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Mr. Muhammad Amir Khan",
         "day": "WED",
@@ -1827,7 +1728,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Pak Studies",
         "teacher": "Dr. Muhammad Rashid",
         "day": "WED",
@@ -1836,16 +1737,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-3RD-4M",
-        "course": "Arabic for Understanding Quran",
-        "teacher": "Mr. Ali Raza",
-        "day": "MON",
-        "start": "1:00 PM",
-        "end": "2:30 PM",
-        "room": "Auditorium Faculty of Agriculture"
-    },
-    {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Data Structures",
         "teacher": "Mr. Asved Gillani",
         "day": "TUE",
@@ -1854,7 +1746,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Mr. Naeem Iqbal",
         "day": "WED",
@@ -1863,7 +1755,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "TUE",
@@ -1872,7 +1764,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Dr. Sufyan Asif",
         "day": "THU",
@@ -1881,7 +1773,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Mr. Muhammad Amir Khan",
         "day": "THU",
@@ -1890,7 +1782,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Mr. Naeem Iqbal",
         "day": "MON",
@@ -1899,7 +1791,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Mr. Rao Zulqurnain Ali",
         "day": "MON",
@@ -1908,7 +1800,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Dr. Sufyan Asif",
         "day": "WED",
@@ -1917,7 +1809,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Mr. Muhammad Amir Khan",
         "day": "WED",
@@ -1926,16 +1818,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-4M",
-        "course": "Arabic for Understanding Quran",
-        "teacher": "Mr. Ali Raza",
-        "day": "TUE",
-        "start": "1:30 PM",
-        "end": "3:30 PM",
-        "room": "Auditorium Faculty of Agriculture"
-    },
-    {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Programming for Artificial Intelligence",
         "teacher": "Mr. Naeem Iqbal",
         "day": "WED",
@@ -1944,7 +1827,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Mr. Rao Zulqurnain Ali",
         "day": "TUE",
@@ -1953,7 +1836,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Linear Algebra",
         "teacher": "Dr. Sufyan Asif",
         "day": "THU",
@@ -1962,7 +1845,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Digital Logic Design",
         "teacher": "Mr. Muhammad Amir Khan",
         "day": "THU",
@@ -1971,7 +1854,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Dr. Amna Ashraf",
         "day": "MON",
@@ -1980,7 +1863,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "WED",
@@ -1989,7 +1872,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
         "day": "MON",
@@ -1998,7 +1881,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
         "day": "MON",
@@ -2007,7 +1890,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. Rashid Ahmed",
         "day": "FRI",
@@ -2016,7 +1899,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Mr. Shahzad Rahim",
         "day": "MON",
@@ -2025,7 +1908,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Dr. Amna Ashraf",
         "day": "WED",
@@ -2034,7 +1917,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "FRI",
@@ -2043,7 +1926,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
         "day": "WED",
@@ -2052,7 +1935,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
         "day": "WED",
@@ -2061,7 +1944,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-3RD-4M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. Rashid Ahmed",
         "day": "THU",
@@ -2070,16 +1953,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-2M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Dr. Amna Ashraf",
         "day": "TUE",
@@ -2088,7 +1962,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "MON",
@@ -2097,7 +1971,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
         "day": "TUE",
@@ -2106,7 +1980,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
         "day": "MON",
@@ -2115,7 +1989,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. Rashid Ahmed",
         "day": "TUE",
@@ -2124,7 +1998,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Mr. Shahzad Rahim",
         "day": "TUE",
@@ -2133,7 +2007,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Dr. Amna Ashraf",
         "day": "THU",
@@ -2142,7 +2016,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "THU",
@@ -2151,7 +2025,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
         "day": "MON",
@@ -2160,7 +2034,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
         "day": "MON",
@@ -2169,7 +2043,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. Rashid Ahmed",
         "day": "THU",
@@ -2178,7 +2052,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Saeed Ahmad",
         "day": "TUE",
@@ -2187,7 +2061,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "MON",
@@ -2196,7 +2070,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
         "day": "MON",
@@ -2205,7 +2079,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
         "day": "MON",
@@ -2214,7 +2088,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr Azhar Hussain Shah",
         "day": "MON",
@@ -2223,7 +2097,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Mr. Shahzad Rahim",
         "day": "TUE",
@@ -2232,7 +2106,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Saeed Ahmad",
         "day": "WED",
@@ -2241,7 +2115,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "WED",
@@ -2250,7 +2124,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
         "day": "WED",
@@ -2259,7 +2133,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
         "day": "WED",
@@ -2268,7 +2142,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr Azhar Hussain Shah",
         "day": "TUE",
@@ -2277,7 +2151,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Saeed Ahmad",
         "day": "MON",
@@ -2286,7 +2160,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Muhammad Iqbal",
         "day": "MON",
@@ -2295,7 +2169,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
         "day": "MON",
@@ -2304,16 +2178,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-2M",
-        "course": "Mobile Application Development",
-        "teacher": "Mr. Muhammad Mehmood Khalil",
-        "day": "MON",
-        "start": "12:30 PM",
-        "end": "1:15 PM",
-        "room": "MATHS-1.61"
-    },
-    {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
         "day": "MON",
@@ -2322,7 +2187,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Mr. Shahzad Rahim",
         "day": "MON",
@@ -2331,7 +2196,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Saeed Ahmad",
         "day": "TUE",
@@ -2340,7 +2205,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Muhammad Iqbal",
         "day": "TUE",
@@ -2349,7 +2214,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Nauman",
         "day": "WED",
@@ -2358,7 +2223,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Mehmood Khalil",
         "day": "WED",
@@ -2367,7 +2232,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-2M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
         "day": "TUE",
@@ -2376,16 +2241,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-5M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
         "day": "THU",
@@ -2394,7 +2250,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Ms. Aqsa khursheed",
         "day": "WED",
@@ -2403,7 +2259,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Shafiq",
         "day": "WED",
@@ -2412,7 +2268,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "WED",
@@ -2421,7 +2277,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
         "day": "FRI",
@@ -2430,7 +2286,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Social Sciences (Introduction to Marketing)",
         "teacher": "Dr. Hafsa Sana",
         "day": "THU",
@@ -2439,7 +2295,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
         "day": "MON",
@@ -2448,7 +2304,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Ms. Aqsa khursheed",
         "day": "FRI",
@@ -2457,7 +2313,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Shafiq",
         "day": "FRI",
@@ -2466,7 +2322,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muzamil ur Rehman",
         "day": "MON",
@@ -2475,7 +2331,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
         "day": "MON",
@@ -2484,7 +2340,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
         "day": "THU",
@@ -2493,7 +2349,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Ms. Komal Azim",
         "day": "TUE",
@@ -2502,7 +2358,7 @@
         "room": "MATHS-1.54"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Shafiq",
         "day": "TUE",
@@ -2511,7 +2367,7 @@
         "room": "MATHS-1.54"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Raza Naseer",
         "day": "FRI",
@@ -2520,7 +2376,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Mr. Mudassir Malik",
         "day": "FRI",
@@ -2529,7 +2385,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Social Sciences (Introduction to Marketing)",
         "teacher": "Dr. Hafsa Sana",
         "day": "THU",
@@ -2538,7 +2394,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
         "day": "MON",
@@ -2547,7 +2403,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Ms. Komal Azim",
         "day": "TUE",
@@ -2556,7 +2412,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Shafiq",
         "day": "SAT",
@@ -2565,7 +2421,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Raza Naseer",
         "day": "SAT",
@@ -2574,7 +2430,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Mr. Mudassir Malik",
         "day": "MON",
@@ -2583,7 +2439,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
         "day": "WED",
@@ -2592,7 +2448,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Abdul Aziz Tahir",
         "day": "SAT",
@@ -2601,7 +2457,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Sufyan Majeed",
         "day": "WED",
@@ -2610,7 +2466,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Raza Naseer",
         "day": "TUE",
@@ -2619,7 +2475,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
         "day": "SAT",
@@ -2628,7 +2484,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Social Sciences (Introduction to Marketing)",
         "teacher": "Mr. Hannan Tareen",
         "day": "SAT",
@@ -2637,7 +2493,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
         "day": "TUE",
@@ -2646,7 +2502,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Sufyan Majeed",
         "day": "TUE",
@@ -2655,7 +2511,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Raza Naseer",
         "day": "SAT",
@@ -2664,7 +2520,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-5M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
         "day": "TUE",
@@ -2673,16 +2529,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-8M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
         "day": "TUE",
@@ -2691,7 +2538,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Muhammad Iqbal",
         "day": "FRI",
@@ -2700,7 +2547,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Sufyan Majeed",
         "day": "TUE",
@@ -2709,7 +2556,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Raza Naseer",
         "day": "FRI",
@@ -2718,7 +2565,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
         "day": "SAT",
@@ -2727,7 +2574,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Social Sciences (Constitution and Legal System of Pakistan)",
         "teacher": "Mr. Usman Shabbir",
         "day": "SAT",
@@ -2736,7 +2583,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Umar Naeem",
         "day": "WED",
@@ -2745,7 +2592,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Muhammad Iqbal",
         "day": "WED",
@@ -2754,7 +2601,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Sufyan Majeed",
         "day": "WED",
@@ -2763,7 +2610,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Raza Naseer",
         "day": "SAT",
@@ -2772,7 +2619,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. H.M Kashif Rasheed",
         "day": "WED",
@@ -2781,7 +2628,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Amir Khan",
         "day": "WED",
@@ -2790,7 +2637,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "WED",
@@ -2799,7 +2646,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Sufyan Majeed",
         "day": "THU",
@@ -2808,7 +2655,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Shahzad",
         "day": "WED",
@@ -2817,7 +2664,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr Azhar Hussain Shah",
         "day": "THU",
@@ -2826,7 +2673,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Social Sciences (Constitution and Legal System of Pakistan)",
         "teacher": "Mr. Usman Shabbir",
         "day": "TUE",
@@ -2835,7 +2682,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Muhammad Amir Khan",
         "day": "WED",
@@ -2844,7 +2691,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "THU",
@@ -2853,7 +2700,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Sufyan Majeed",
         "day": "THU",
@@ -2862,7 +2709,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Shahzad",
         "day": "TUE",
@@ -2871,7 +2718,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr Azhar Hussain Shah",
         "day": "WED",
@@ -2880,7 +2727,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Saeed Ahmad",
         "day": "TUE",
@@ -2889,7 +2736,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "TUE",
@@ -2898,7 +2745,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Sufyan Majeed",
         "day": "TUE",
@@ -2907,7 +2754,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Shahzad",
         "day": "SAT",
@@ -2916,7 +2763,7 @@
         "room": "2.30."
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. Qaisar Rafique",
         "day": "TUE",
@@ -2925,7 +2772,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Dr. Qaiser Shakeel",
         "day": "THU",
@@ -2934,7 +2781,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Saeed Ahmad",
         "day": "SAT",
@@ -2943,7 +2790,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Syed Adnan Shah Bukhari",
         "day": "THU",
@@ -2952,7 +2799,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Sufyan Majeed",
         "day": "WED",
@@ -2961,7 +2808,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Shahzad",
         "day": "SAT",
@@ -2970,7 +2817,7 @@
         "room": "2.30."
     },
     {
-        "section": "BSARIN-4TH-8M",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. Qaisar Rafique",
         "day": "WED",
@@ -2979,16 +2826,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-3E",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Saeed Ahmad",
         "day": "WED",
@@ -2997,7 +2835,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Tahir",
         "day": "THU",
@@ -3006,7 +2844,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Shahzad",
         "day": "SAT",
@@ -3015,7 +2853,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. Qaisar Rafique",
         "day": "WED",
@@ -3024,7 +2862,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Muhammad Ashraf Khosa",
         "day": "SAT",
@@ -3033,7 +2871,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Computer Organization & Assembly Language",
         "teacher": "Mr. Saeed Ahmad",
         "day": "FRI",
@@ -3042,7 +2880,7 @@
         "room": "MATHS-1.55"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Machine Learning",
         "teacher": "Mr. Abdul Aziz Tahir",
         "day": "SAT",
@@ -3051,7 +2889,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Computer Networks",
         "teacher": "Mr. Muhammad Tahir",
         "day": "FRI",
@@ -3060,7 +2898,7 @@
         "room": "MATHS-1.55"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Mobile Application Development",
         "teacher": "Mr. Muhammad Shahzad",
         "day": "WED",
@@ -3069,7 +2907,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Probability & Statistics",
         "teacher": "Dr. Qaisar Rafique",
         "day": "FRI",
@@ -3078,7 +2916,7 @@
         "room": "MATHS-1.55"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
         "day": "FRI",
@@ -3087,7 +2925,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Aqsa khursheed",
         "day": "WED",
@@ -3096,7 +2934,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Artificial Neural Networks",
         "teacher": "Ms. Marrium Aslam",
         "day": "THU",
@@ -3105,7 +2943,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Domain Elective 2 (Robotics)",
         "teacher": "Dr. Ghulam Gillani",
         "day": "THU",
@@ -3114,7 +2952,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Ms. Shehzadi Younis",
         "day": "THU",
@@ -3123,7 +2961,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Social Science (Organizational Behaviour)",
         "teacher": "Dr. Waqas Mahmood",
         "day": "THU",
@@ -3132,7 +2970,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
         "day": "FRI",
@@ -3141,7 +2979,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
         "day": "THU",
@@ -3150,7 +2988,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Aqsa khursheed",
         "day": "THU",
@@ -3159,7 +2997,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Artificial Neural Networks",
         "teacher": "Ms. Marrium Aslam",
         "day": "FRI",
@@ -3168,7 +3006,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Domain Elective 2 (Robotics)",
         "teacher": "Dr. Ghulam Gillani",
         "day": "FRI",
@@ -3177,7 +3015,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
         "day": "WED",
@@ -3186,7 +3024,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
         "day": "WED",
@@ -3195,7 +3033,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Komal Azim",
         "day": "THU",
@@ -3204,7 +3042,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Artificial Neural Networks",
         "teacher": "Mr. Hafiz Raja Muhammad Ali",
         "day": "WED",
@@ -3213,7 +3051,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Domain Elective 2 (Robotics)",
         "teacher": "Dr. Ghulam Gillani",
         "day": "THU",
@@ -3222,7 +3060,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
         "day": "THU",
@@ -3231,7 +3069,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
         "day": "FRI",
@@ -3240,7 +3078,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Komal Azim",
         "day": "WED",
@@ -3249,7 +3087,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Artificial Neural Networks",
         "teacher": "Mr. Hafiz Raja Muhammad Ali",
         "day": "MON",
@@ -3258,7 +3096,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Domain Elective 2 (Robotics)",
         "teacher": "Dr. Ghulam Gillani",
         "day": "FRI",
@@ -3267,7 +3105,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-4TH-3E",
+        "section": "Unknown",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
         "day": "MON",
@@ -3276,16 +3114,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-5TH-3M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
         "day": "FRI",
@@ -3294,7 +3123,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Komal Azim",
         "day": "THU",
@@ -3303,7 +3132,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Artificial Neural Networks",
         "teacher": "Mr. Hafiz Raja Muhammad Ali",
         "day": "TUE",
@@ -3312,7 +3141,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 2 (Robotics)",
         "teacher": "Dr. Ghulam Gillani",
         "day": "THU",
@@ -3321,7 +3150,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Social Sciences (Economy of Pakistan)",
         "teacher": "Ms. Shehzadi Younis",
         "day": "TUE",
@@ -3330,7 +3159,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Social Science (Organizational Behaviour)",
         "teacher": "Dr. Waqas Mahmood",
         "day": "TUE",
@@ -3339,7 +3168,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
         "day": "TUE",
@@ -3348,7 +3177,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
         "day": "WED",
@@ -3357,7 +3186,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Komal Azim",
         "day": "WED",
@@ -3366,7 +3195,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Artificial Neural Networks",
         "teacher": "Mr. Hafiz Raja Muhammad Ali",
         "day": "FRI",
@@ -3375,7 +3204,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 2 (Robotics)",
         "teacher": "Dr. Ghulam Gillani",
         "day": "WED",
@@ -3384,7 +3213,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
         "day": "THU",
@@ -3393,7 +3222,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
         "day": "WED",
@@ -3402,7 +3231,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Aqsa khursheed",
         "day": "THU",
@@ -3411,7 +3240,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Artificial Neural Networks",
         "teacher": "Mr. Naeem Iqbal",
         "day": "THU",
@@ -3420,7 +3249,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 2 (Robotics)",
         "teacher": "Dr. Ghulam Gillani",
         "day": "SAT",
@@ -3429,7 +3258,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
         "day": "TUE",
@@ -3438,7 +3267,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Operating Systems",
         "teacher": "Ms. Rabia Ejaz",
         "day": "WED",
@@ -3447,7 +3276,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Knowledge Representation & Reasoning",
         "teacher": "Ms. Aqsa khursheed",
         "day": "SAT",
@@ -3456,7 +3285,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Artificial Neural Networks",
         "teacher": "Mr. Naeem Iqbal",
         "day": "TUE",
@@ -3465,7 +3294,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 2 (Robotics)",
         "teacher": "Dr. Ghulam Gillani",
         "day": "WED",
@@ -3474,7 +3303,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 3 (Web Programming)",
         "teacher": "Mr. Sanaullah Sajjid",
         "day": "TUE",
@@ -3483,7 +3312,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "SAT",
@@ -3492,7 +3321,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Dr. Amna Shifa",
         "day": "TUE",
@@ -3501,7 +3330,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Dr. Wareesa Sharif",
         "day": "MON",
@@ -3510,7 +3339,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Ms. Marrium Aslam",
         "day": "FRI",
@@ -3519,7 +3348,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Entrepreneurship",
         "teacher": "Mr. Daood Ahmed",
         "day": "SAT",
@@ -3528,7 +3357,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Expository Writing",
         "teacher": "Ms. Rameen Fatima",
         "day": "TUE",
@@ -3537,7 +3366,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Pakistan Studies",
         "teacher": "Muhammad Naeem Khan",
         "day": "THU",
@@ -3546,7 +3375,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "MON",
@@ -3555,7 +3384,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Dr. Amna Shifa",
         "day": "FRI",
@@ -3564,7 +3393,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Dr. Wareesa Sharif",
         "day": "TUE",
@@ -3573,7 +3402,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-5TH-3M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Ms. Marrium Aslam",
         "day": "SAT",
@@ -3582,16 +3411,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-6TH-2M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "SAT",
@@ -3600,7 +3420,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Dr. Amna Shifa",
         "day": "MON",
@@ -3609,7 +3429,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Dr. Wareesa Sharif",
         "day": "MON",
@@ -3618,7 +3438,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "MON",
@@ -3627,7 +3447,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Entrepreneurship",
         "teacher": "Mr. Daood Ahmed",
         "day": "SAT",
@@ -3636,7 +3456,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Expository Writing",
         "teacher": "Ms. Sidra Farooq",
         "day": "SAT",
@@ -3645,16 +3465,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-2M",
-        "course": "Pakistan Studies",
-        "teacher": "Muhammad Naeem Khan",
-        "day": "THU",
-        "start": "11:30 AM",
-        "end": "1:00 PM",
-        "room": "Auditorium Faculty of Agriculture"
-    },
-    {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "THU",
@@ -3663,7 +3474,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Dr. Amna Shifa",
         "day": "TUE",
@@ -3672,7 +3483,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Dr. Wareesa Sharif",
         "day": "TUE",
@@ -3681,7 +3492,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "TUE",
@@ -3690,7 +3501,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Abid Farooq",
         "day": "SAT",
@@ -3699,7 +3510,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Dr. Amna Shifa",
         "day": "MON",
@@ -3708,7 +3519,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "THU",
@@ -3717,7 +3528,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Ms. Marrium Aslam",
         "day": "SAT",
@@ -3726,7 +3537,7 @@
         "room": "2.31"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Entrepreneurship",
         "teacher": "Mr. Aqil Nawaz",
         "day": "MON",
@@ -3735,7 +3546,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Expository Writing",
         "teacher": "Ms. Sidra Farooq",
         "day": "MON",
@@ -3744,7 +3555,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Pakistan Studies",
         "teacher": "Dr. Muhammad Rashid",
         "day": "WED",
@@ -3753,7 +3564,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Abid Farooq",
         "day": "FRI",
@@ -3762,7 +3573,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Dr. Amna Shifa",
         "day": "THU",
@@ -3771,7 +3582,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "FRI",
@@ -3780,7 +3591,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Ms. Marrium Aslam",
         "day": "THU",
@@ -3789,7 +3600,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Dr. Wareesa Sharif",
         "day": "TUE",
@@ -3798,7 +3609,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "SAT",
@@ -3807,7 +3618,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "TUE",
@@ -3816,7 +3627,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "SAT",
@@ -3825,7 +3636,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Entrepreneurship",
         "teacher": "Mr. Rizwan Arshad",
         "day": "SAT",
@@ -3834,7 +3645,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Expository Writing",
         "teacher": "Dr. Hannan Khan Tareen",
         "day": "WED",
@@ -3843,7 +3654,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Dr. Wareesa Sharif",
         "day": "THU",
@@ -3852,7 +3663,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "TUE",
@@ -3861,7 +3672,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "THU",
@@ -3870,7 +3681,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-2M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "SAT",
@@ -3879,16 +3690,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-6TH-1E",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Dr. Wareesa Sharif",
         "day": "WED",
@@ -3897,7 +3699,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "MON",
@@ -3906,7 +3708,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Mohsin Abbas",
         "day": "MON",
@@ -3915,7 +3717,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Haseeb Ali",
         "day": "TUE",
@@ -3924,7 +3726,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Entrepreneurship",
         "teacher": "Mr. Daood Ahmed",
         "day": "TUE",
@@ -3933,7 +3735,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Expository Writing",
         "teacher": "Ms. Javeria Ashraf",
         "day": "MON",
@@ -3942,16 +3744,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-1E",
-        "course": "Pakistan Studies",
-        "teacher": "Muhammad Naeem Khan",
-        "day": "THU",
-        "start": "11:30 AM",
-        "end": "1:00 PM",
-        "room": "Auditorium Faculty of Agriculture"
-    },
-    {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Dr. Wareesa Sharif",
         "day": "TUE",
@@ -3960,7 +3753,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "TUE",
@@ -3969,7 +3762,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Mohsin Abbas",
         "day": "WED",
@@ -3978,7 +3771,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Haseeb Ali",
         "day": "MON",
@@ -3987,7 +3780,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "TUE",
@@ -3996,7 +3789,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "SAT",
@@ -4005,7 +3798,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Mohsin Abbas",
         "day": "WED",
@@ -4014,7 +3807,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Haseeb Ali",
         "day": "WED",
@@ -4023,7 +3816,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Entrepreneurship",
         "teacher": "Mr. Daood Ahmed",
         "day": "TUE",
@@ -4032,7 +3825,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Expository Writing",
         "teacher": "Mr. Muahmmad Raza majid",
         "day": "SAT",
@@ -4041,7 +3834,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "SAT",
@@ -4050,7 +3843,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "SAT",
@@ -4059,7 +3852,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Mohsin Abbas",
         "day": "THU",
@@ -4068,7 +3861,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Haseeb Ali",
         "day": "TUE",
@@ -4077,7 +3870,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "TUE",
@@ -4086,7 +3879,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "SAT",
@@ -4095,16 +3888,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-1E",
-        "course": "Domain Elective 4 (Natural Language Processing)",
-        "teacher": "Mr. Muhammad Tahir Dilbar",
-        "day": "TUE",
-        "start": "9:30 AM",
-        "end": "10:15 AM",
-        "room": "2.25"
-    },
-    {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Ms. Marrium Aslam",
         "day": "FRI",
@@ -4113,7 +3897,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Entrepreneurship",
         "teacher": "Mr. Musharaf Ejaz",
         "day": "TUE",
@@ -4122,7 +3906,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Expository Writing",
         "teacher": "Mr. Muahmmad Raza majid",
         "day": "SAT",
@@ -4131,7 +3915,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Pakistan Studies",
         "teacher": "Dr. Muhammad Rashid",
         "day": "WED",
@@ -4140,7 +3924,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Umer Farooq",
         "day": "SAT",
@@ -4149,7 +3933,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Ms. Akkasha Latif",
         "day": "TUE",
@@ -4158,7 +3942,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "THU",
@@ -4167,7 +3951,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-1E",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Ms. Marrium Aslam",
         "day": "SAT",
@@ -4176,16 +3960,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Abid Farooq",
         "day": "THU",
@@ -4194,7 +3969,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "SAT",
@@ -4203,7 +3978,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "THU",
@@ -4212,7 +3987,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "TUE",
@@ -4221,7 +3996,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Entrepreneurship",
         "teacher": "Mr. Musharaf Ejaz",
         "day": "MON",
@@ -4230,7 +4005,7 @@
         "room": "MATHS-1.54"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Expository Writing",
         "teacher": "Ms. Sidra Farooq",
         "day": "SAT",
@@ -4239,16 +4014,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
-        "course": "Pakistan Studies",
-        "teacher": "Dr. Muhammad Rashid",
-        "day": "WED",
-        "start": "1:30 PM",
-        "end": "3:30 PM",
-        "room": "Auditorium Faculty of Agriculture"
-    },
-    {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Abid Farooq",
         "day": "SAT",
@@ -4257,7 +4023,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Computer Vision",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "MON",
@@ -4266,7 +4032,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "TUE",
@@ -4275,7 +4041,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "MON",
@@ -4284,7 +4050,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "WED",
@@ -4293,7 +4059,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "THU",
@@ -4302,7 +4068,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Technical & Business Writing",
         "teacher": "Mr. Rizwan Arshad",
         "day": "WED",
@@ -4311,7 +4077,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "THU",
@@ -4320,7 +4086,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "FRI",
@@ -4329,7 +4095,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "FRI",
@@ -4338,7 +4104,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Technical & Business Writing",
         "teacher": "Mr. Rizwan Arshad",
         "day": "SAT",
@@ -4347,7 +4113,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "SAT",
@@ -4356,7 +4122,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "FYP-I",
         "teacher": "Assigned Supervisor",
         "day": "",
@@ -4365,7 +4131,7 @@
         "room": ""
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "WED",
@@ -4374,7 +4140,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Data Mining",
         "teacher": "Mr. Haseeb Ali",
         "day": "THU",
@@ -4383,7 +4149,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Technical & Business Writing",
         "teacher": "Mr. Rizwan Arshad",
         "day": "WED",
@@ -4392,7 +4158,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "SAT",
@@ -4401,7 +4167,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "FRI",
@@ -4410,7 +4176,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Data Mining",
         "teacher": "Mr. Haseeb Ali",
         "day": "FRI",
@@ -4419,7 +4185,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-4E+ADP 5M",
+        "section": "Unknown",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "WED",
@@ -4428,16 +4194,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
-        "course": "COURSE_NAME",
-        "teacher": "TEACHER",
-        "day": "DAY",
-        "start": "START TIME",
-        "end": "END TIME",
-        "room": "ROOM"
-    },
-    {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "THU",
@@ -4446,7 +4203,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "THU",
@@ -4455,7 +4212,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "MON",
@@ -4464,7 +4221,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "MON",
@@ -4473,7 +4230,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "SAT",
@@ -4482,7 +4239,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Technical & Business Writing",
         "teacher": "Mr. Rizwan Arshad",
         "day": "SAT",
@@ -4491,7 +4248,7 @@
         "room": "2.30."
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "SAT",
@@ -4500,16 +4257,7 @@
         "room": "2.30."
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
-        "course": "FYP-I",
-        "teacher": "Assigned Supervisor",
-        "day": "",
-        "start": "",
-        "end": "",
-        "room": ""
-    },
-    {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "THU",
@@ -4518,7 +4266,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "THU",
@@ -4527,7 +4275,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Constitution and Legal System of Pakistan",
         "teacher": "Mr. Aqil Nawaz",
         "day": "THU",
@@ -4536,7 +4284,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "FRI",
@@ -4545,7 +4293,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "FRI",
@@ -4554,7 +4302,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "FYP-II",
         "teacher": "Assigned Supervisor",
         "day": "",
@@ -4563,7 +4311,7 @@
         "room": ""
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "THU",
@@ -4572,7 +4320,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "THU",
@@ -4581,7 +4329,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Constitution and Legal System of Pakistan",
         "teacher": "Mr. Aqil Nawaz",
         "day": "THU",
@@ -4590,7 +4338,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "FRI",
@@ -4599,7 +4347,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "FRI",
@@ -4608,7 +4356,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "THU",
@@ -4617,7 +4365,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "THU",
@@ -4626,7 +4374,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Constitution and Legal System of Pakistan",
         "teacher": "Mr. Aqil Nawaz",
         "day": "THU",
@@ -4635,7 +4383,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "SAT",
@@ -4644,7 +4392,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "section": "Unknown",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "SAT",
