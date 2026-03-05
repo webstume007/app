@@ -16,19 +16,12 @@ OUTPUT_FILE = "schedule_data.json"
 TEACHERS_JSON = "teachers_data.json"
 
 def clean_cell(text):
-    """
-    Splits grouped entries (separated by multiple newlines) and 
-    joins text that merely wrapped onto two lines.
-    """
     if not text: 
         return []
-    # Split by 2 or more newlines (handles grouped courses in a single cell)
     parts = re.split(r'\n\s*\n', str(text).strip())
-    # For each part, replace single newlines with a space to fix wrapped text
     return [re.sub(r'\s+', ' ', p).strip() for p in parts if p.strip()]
 
 def pad_list(lst, target_count):
-    """Ensures arrays are the same length to prevent index errors."""
     if not lst: 
         return [""] * target_count
     if len(lst) >= target_count: 
@@ -36,20 +29,16 @@ def pad_list(lst, target_count):
     return lst + [""] * (target_count - len(lst))
 
 def clean_phone_number(phone):
-    # Remove all non-digit characters (spaces, +, -, etc.)
     clean = re.sub(r'\D', '', str(phone))
-    
-    # Format to 923...
     if clean.startswith('92'):
         return clean
     elif clean.startswith('03'):
         return '92' + clean[1:]
     elif clean.startswith('3') and len(clean) == 10:
         return '92' + clean
-    return clean # Fallback
+    return clean
 
 def convert_teachers_csv():
-    """Reads the CSV and creates a contact JSON file."""
     if not os.path.exists(TEACHERS_CSV):
         print(f"⚠️ {TEACHERS_CSV} not found. Skipping contact update.")
         return
@@ -60,7 +49,6 @@ def convert_teachers_csv():
             reader = csv.DictReader(f)
             for row in reader:
                 if 'Name' in row and 'Phone Number' in row:
-                    # Remove "AI IUB" suffix for better matching
                     raw_name = row['Name']
                     clean_name = re.sub(r'\s*AI IUB\s*', '', raw_name, flags=re.IGNORECASE).strip()
                     clean_phone = clean_phone_number(row['Phone Number'])
@@ -72,19 +60,14 @@ def convert_teachers_csv():
         
         with open(TEACHERS_JSON, "w") as f:
             json.dump(contacts, f, indent=4)
-        print(f"✅ SUCCESS: Processed {len(contacts)} teacher contacts.")
-        
     except Exception as e:
         print(f"❌ Error processing CSV: {e}")
 
-def process_table(table, section, all_entries):
-    """Processes a single table's rows and appends to all_entries."""
-    for row in table:
-        # Skip empty rows or header rows
+def process_table(table_data, section, all_entries):
+    for row in table_data:
         if not row or not row[0] or "COURSE CODE" in str(row[0]).upper():
             continue
         
-        # Columns based on your PDF: 1: Name, 3: Teacher, 4: Day, 5: Start, 6: End, 7: Room
         r_names = clean_cell(row[1]) if len(row) > 1 else []
         r_teachers = clean_cell(row[3]) if len(row) > 3 else []
         r_days = clean_cell(row[4]) if len(row) > 4 else []
@@ -92,7 +75,6 @@ def process_table(table, section, all_entries):
         r_ends = clean_cell(row[6]) if len(row) > 6 else []
         r_rooms = clean_cell(row[7]) if len(row) > 7 else []
 
-        # Find how many entries this specific row holds
         record_count = max(len(r_names), len(r_teachers), len(r_days), len(r_starts), len(r_ends))
         if record_count == 0: 
             continue
@@ -105,7 +87,7 @@ def process_table(table, section, all_entries):
         rooms = pad_list(r_rooms, record_count)
         
         for j in range(record_count):
-            if not names[j] and not days[j]: # Skip empty ghosts
+            if not names[j] and not days[j]:
                 continue
                 
             entry = {
@@ -121,44 +103,44 @@ def process_table(table, section, all_entries):
                 all_entries.append(entry)
 
 def convert_pdf():
-    # 1. First process the Contact CSV if it exists
     convert_teachers_csv()
 
-    # 2. Then process the Schedule PDF
     if not os.path.exists(PDF_FILE):
         print(f"❌ Error: {PDF_FILE} not found.")
         return
     
     all_entries = []
-    current_section = "Unknown" # Carry section over if table wraps onto the next page
+    current_section = "Unknown" 
 
     with pdfplumber.open(PDF_FILE) as pdf:
         print(f"📂 Processing {len(pdf.pages)} pages from {PDF_FILE}...")
         for page in pdf.pages:
-            page_text = page.extract_text() or ""
-            tables = page.extract_tables()
+            tables = page.find_tables()
+            last_bottom = 0
             
-            # Find all sections on the page. Updated regex to capture + and spaces.
-            section_matches = list(re.finditer(r"Section:\s*([A-Za-z0-9\-+\s]+?)(?=\n|$)", page_text))
-            sections_on_page = [m.group(1).strip() for m in section_matches]
-            
-            table_idx = 0
-            
-            # If there are more tables than headers, the first table belongs to the previous page's section
-            if len(tables) > len(sections_on_page) and len(sections_on_page) > 0:
-                process_table(tables[table_idx], current_section, all_entries)
-                table_idx += 1
-            
-            for sec in sections_on_page:
-                current_section = sec
-                if table_idx < len(tables):
-                    process_table(tables[table_idx], current_section, all_entries)
-                    table_idx += 1
-                    
-            # Process any remaining tables with the last known section
-            while table_idx < len(tables):
-                process_table(tables[table_idx], current_section, all_entries)
-                table_idx += 1
+            for table in tables:
+                table_top = table.bbox[1]
+                table_bottom = table.bbox[3]
+                
+                # Visually crop the space between the previous table and this one
+                if table_top > last_bottom + 1:
+                    try:
+                        crop_box = (0, last_bottom, page.width, table_top)
+                        cropped_page = page.crop(crop_box)
+                        text = cropped_page.extract_text() or ""
+                        
+                        # Search only in this tiny visual slice for the header
+                        match = re.search(r"Section:\s*([A-Za-z0-9\-+\s]+?)(?=\n|$)", text)
+                        if match:
+                            current_section = match.group(1).strip()
+                    except Exception:
+                        pass # If cropping fails, keep the previous current_section
+                
+                last_bottom = table_bottom
+                
+                # Extract and process the table rows
+                table_data = table.extract()
+                process_table(table_data, current_section, all_entries)
 
     with open(OUTPUT_FILE, "w") as f:
         json.dump(all_entries, f, indent=4)
