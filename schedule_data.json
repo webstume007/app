@@ -51,7 +51,7 @@
         "day": "SAT",
         "start": "8:45 AM",
         "end": "9:30 AM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
         "section": "BSARIN-1ST-1M",
@@ -60,7 +60,7 @@
         "day": "SAT",
         "start": "8:00 AM",
         "end": "8:45 AM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
         "section": "BSARIN-1ST-1M",
@@ -159,7 +159,7 @@
         "day": "SAT",
         "start": "9:30 AM",
         "end": "10:15 AM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
         "section": "BSARIN-1ST-1M",
@@ -258,7 +258,7 @@
         "day": "SAT",
         "start": "11:00 AM",
         "end": "11:45 AM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
         "section": "BSARIN-1ST-1M",
@@ -366,7 +366,7 @@
         "day": "SAT",
         "start": "11:00 AM",
         "end": "11:45 AM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
         "section": "BSARIN-1ST-4M",
@@ -2913,7 +2913,7 @@
         "day": "SAT",
         "start": "12:30 PM",
         "end": "1:15 PM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
         "section": "BSARIN-4TH-8M",
@@ -2967,7 +2967,7 @@
         "day": "SAT",
         "start": "1:15 PM",
         "end": "2:00 PM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
         "section": "BSARIN-4TH-8M",
@@ -4176,7 +4176,7 @@
         "room": "2.32"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "COURSE_NAME",
         "teacher": "TEACHER",
         "day": "DAY",
@@ -4185,7 +4185,7 @@
         "room": "ROOM"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Abid Farooq",
         "day": "THU",
@@ -4194,7 +4194,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Computer Vision",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "SAT",
@@ -4203,7 +4203,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "THU",
@@ -4212,7 +4212,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "TUE",
@@ -4221,7 +4221,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Entrepreneurship",
         "teacher": "Mr. Musharaf Ejaz",
         "day": "MON",
@@ -4230,7 +4230,7 @@
         "room": "MATHS-1.54"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Expository Writing",
         "teacher": "Ms. Sidra Farooq",
         "day": "SAT",
@@ -4239,7 +4239,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Pakistan Studies",
         "teacher": "Dr. Muhammad Rashid",
         "day": "WED",
@@ -4248,7 +4248,7 @@
         "room": "Auditorium Faculty of Agriculture"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Analysis of Algorithms",
         "teacher": "Mr. Abid Farooq",
         "day": "SAT",
@@ -4257,7 +4257,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Computer Vision",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "MON",
@@ -4266,7 +4266,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Domain Elective 4 (Natural Language Processing)",
         "teacher": "Mr. Muhammad Tahir Dilbar",
         "day": "TUE",
@@ -4275,7 +4275,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Domain Elective 5 (Data Mining)",
         "teacher": "Mr. Jahanzaib Munir",
         "day": "MON",
@@ -4284,7 +4284,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "WED",
@@ -4293,7 +4293,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "THU",
@@ -4302,7 +4302,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Technical & Business Writing",
         "teacher": "Mr. Rizwan Arshad",
         "day": "WED",
@@ -4311,7 +4311,7 @@
         "room": "MATHS-1.61"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "THU",
@@ -4320,7 +4320,7 @@
         "room": "MATHS-1.56"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "FRI",
@@ -4329,7 +4329,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "FRI",
@@ -4338,7 +4338,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Technical & Business Writing",
         "teacher": "Mr. Rizwan Arshad",
         "day": "SAT",
@@ -4347,7 +4347,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "SAT",
@@ -4356,7 +4356,16 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
+        "course": "FYP-I",
+        "teacher": "Assigned Supervisor",
+        "day": "",
+        "start": "",
+        "end": "",
+        "room": ""
+    },
+    {
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "WED",
@@ -4365,7 +4374,7 @@
         "room": "2.06"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Data Mining",
         "teacher": "Mr. Haseeb Ali",
         "day": "THU",
@@ -4374,7 +4383,7 @@
         "room": "MATHS-1.62"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Technical & Business Writing",
         "teacher": "Mr. Rizwan Arshad",
         "day": "WED",
@@ -4383,7 +4392,7 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "SAT",
@@ -4392,7 +4401,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "FRI",
@@ -4401,7 +4410,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Data Mining",
         "teacher": "Mr. Haseeb Ali",
         "day": "FRI",
@@ -4410,7 +4419,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-6TH-4E",
+        "section": "BSARIN-6TH-4E+ADP 5M",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "WED",
@@ -4419,7 +4428,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "COURSE_NAME",
         "teacher": "TEACHER",
         "day": "DAY",
@@ -4428,7 +4437,7 @@
         "room": "ROOM"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "THU",
@@ -4437,7 +4446,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "THU",
@@ -4446,7 +4455,7 @@
         "room": "MATHS-1.57"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "MON",
@@ -4455,7 +4464,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Information Security",
         "teacher": "Dr. Amna Shifa",
         "day": "MON",
@@ -4464,7 +4473,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Data Mining",
         "teacher": "Ms. Marrium Aslam",
         "day": "SAT",
@@ -4473,25 +4482,34 @@
         "room": "2.25"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Technical & Business Writing",
         "teacher": "Mr. Rizwan Arshad",
         "day": "SAT",
         "start": "10:15 AM",
         "end": "11:00 AM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Parallel & Distributed Computing",
         "teacher": "Mr. Mudassir Rasool",
         "day": "SAT",
         "start": "11:45 AM",
         "end": "12:30 PM",
-        "room": "2.30"
+        "room": "2.30."
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "course": "FYP-I",
+        "teacher": "Assigned Supervisor",
+        "day": "",
+        "start": "",
+        "end": "",
+        "room": ""
+    },
+    {
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "THU",
@@ -4500,7 +4518,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "THU",
@@ -4509,7 +4527,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Constitution and Legal System of Pakistan",
         "teacher": "Mr. Aqil Nawaz",
         "day": "THU",
@@ -4518,7 +4536,7 @@
         "room": "2.22"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "FRI",
@@ -4527,7 +4545,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "FRI",
@@ -4536,7 +4554,16 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
+        "course": "FYP-II",
+        "teacher": "Assigned Supervisor",
+        "day": "",
+        "start": "",
+        "end": "",
+        "room": ""
+    },
+    {
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "THU",
@@ -4545,7 +4572,7 @@
         "room": "2.27"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "THU",
@@ -4554,7 +4581,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Constitution and Legal System of Pakistan",
         "teacher": "Mr. Aqil Nawaz",
         "day": "THU",
@@ -4563,7 +4590,7 @@
         "room": "2.23"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "FRI",
@@ -4572,7 +4599,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "FRI",
@@ -4581,7 +4608,7 @@
         "room": "2.26"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "THU",
@@ -4590,7 +4617,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "THU",
@@ -4599,7 +4626,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Constitution and Legal System of Pakistan",
         "teacher": "Mr. Aqil Nawaz",
         "day": "THU",
@@ -4608,7 +4635,7 @@
         "room": "2.24"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Professional Practices",
         "teacher": "Ms. Rameen Fatima",
         "day": "SAT",
@@ -4617,7 +4644,7 @@
         "room": "2.11"
     },
     {
-        "section": "BSARIN-7TH-1E",
+        "section": "BSARIN-7TH-1E+ ADP-7TH-3M",
         "course": "Software Engineering",
         "teacher": "Ms. Saba Tahir",
         "day": "SAT",
