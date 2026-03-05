@@ -17,9 +17,9 @@ TEACHERS_JSON = "teachers_data.json"
 
 def clean_and_split(text):
     if not text: return []
-    # Split by multiple newlines (separates distinct courses/teachers in one cell)
+    # Split by multiple newlines (separates completely different courses in the same cell)
     parts = re.split(r'\n{2,}', str(text).strip())
-    # Replace single newlines with a space to fix wrapped text (e.g., long names)
+    # Replace single newlines with a space to fix text that just wrapped to two lines
     return [re.sub(r'\n', ' ', p).strip().rstrip('.') for p in parts if p.strip()]
 
 def smart_join(lines, target_count):
@@ -36,88 +36,72 @@ def smart_join(lines, target_count):
     return result
 
 def clean_phone_number(phone):
-    # Remove all non-digit characters (spaces, +, -, etc.)
     clean = re.sub(r'\D', '', str(phone))
-    
-    # Format to 923...
-    if clean.startswith('92'):
-        return clean
-    elif clean.startswith('03'):
-        return '92' + clean[1:]
-    elif clean.startswith('3') and len(clean) == 10:
-        return '92' + clean
-    return clean # Fallback
+    if clean.startswith('92'): return clean
+    elif clean.startswith('03'): return '92' + clean[1:]
+    elif clean.startswith('3') and len(clean) == 10: return '92' + clean
+    return clean
 
 def convert_teachers_csv():
-    """Reads the CSV and creates a contact JSON file."""
-    if not os.path.exists(TEACHERS_CSV):
-        print(f"⚠️ {TEACHERS_CSV} not found. Skipping contact update.")
-        return
-
+    if not os.path.exists(TEACHERS_CSV): return
     contacts = []
     try:
         with open(TEACHERS_CSV, mode='r', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 if 'Name' in row and 'Phone Number' in row:
-                    # Remove "AI IUB" suffix for better matching
                     raw_name = row['Name']
                     clean_name = re.sub(r'\s*AI IUB\s*', '', raw_name, flags=re.IGNORECASE).strip()
-                    clean_phone = clean_phone_number(row['Phone Number'])
-                    
                     contacts.append({
                         "name": clean_name,
-                        "phone": clean_phone
+                        "phone": clean_phone_number(row['Phone Number'])
                     })
-        
         with open(TEACHERS_JSON, "w") as f:
             json.dump(contacts, f, indent=4)
-        print(f"✅ SUCCESS: Processed {len(contacts)} teacher contacts.")
-        
-    except Exception as e:
-        print(f"❌ Error processing CSV: {e}")
+    except Exception:
+        pass
 
 def convert_pdf():
-    # 1. First process the Contact CSV if it exists
     convert_teachers_csv()
 
-    # 2. Then process the Schedule PDF
     if not os.path.exists(PDF_FILE):
         print(f"❌ Error: {PDF_FILE} not found.")
         return
     
     all_entries = []
-    current_section = "Unknown" # Moved outside the loop to carry over across pages
+    current_section = "Unknown" 
 
     with pdfplumber.open(PDF_FILE) as pdf:
         print(f"📂 Processing {len(pdf.pages)} pages from {PDF_FILE}...")
+        
         for page in pdf.pages:
-            page_text = page.extract_text()
+            page_text = page.extract_text() or ""
+            
+            # Find all sections listed on this specific page
+            sections_on_page = [m.group(1).strip() for m in re.finditer(r"Section:\s*([^\n]+)", page_text)]
+            section_idx = 0
+            
             tables = page.extract_tables()
-            
-            # Updated Regex to capture the full section name, including + and spaces
-            section_finder = list(re.finditer(r"Section:\s*([^\n]+)", page_text)) if page_text else []
-            
-            for i, table in enumerate(tables):
-                # Fix for merging: If there's a spillover table from the previous page, keep the old section
-                if len(tables) > len(section_finder) and i == 0:
-                    pass # Keep current_section as is
-                else:
-                    # Map the remaining tables to the headers found on this page
-                    idx = i - 1 if len(tables) > len(section_finder) else i
-                    if 0 <= idx < len(section_finder):
-                        current_section = section_finder[idx].group(1).strip()
-
+            for table in tables:
                 for row in table:
-                    if not row or not row[0] or "COURSE CODE" in str(row[0]).upper():
+                    # Skip completely empty rows
+                    if not row or not row[0]:
                         continue
-                    
-                    r_names = clean_and_split(row[1])
-                    r_teachers = clean_and_split(row[3])
-                    r_days = clean_and_split(row[4])
-                    r_starts = clean_and_split(row[5])
-                    r_ends = clean_and_split(row[6])
-                    r_rooms = clean_and_split(row[7])
+                        
+                    # THE FIX: Use the "COURSE CODE" header row as the trigger to switch to the next section
+                    if "COURSE" in str(row[0]).upper() and "CODE" in str(row[0]).upper():
+                        if section_idx < len(sections_on_page):
+                            current_section = sections_on_page[section_idx]
+                            section_idx += 1
+                        continue # Skip processing the header row itself
+                        
+                    # Process normal rows
+                    r_names = clean_and_split(row[1]) if len(row) > 1 else []
+                    r_teachers = clean_and_split(row[3]) if len(row) > 3 else []
+                    r_days = clean_and_split(row[4]) if len(row) > 4 else []
+                    r_starts = clean_and_split(row[5]) if len(row) > 5 else []
+                    r_ends = clean_and_split(row[6]) if len(row) > 6 else []
+                    r_rooms = clean_and_split(row[7]) if len(row) > 7 else []
 
                     record_count = max(len(r_days), len(r_starts), len(r_ends))
                     if record_count == 0: continue
