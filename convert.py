@@ -77,8 +77,13 @@ def convert_pdf():
         for page in pdf.pages:
             page_text = page.extract_text() or ""
             
-            # Find all sections listed on this specific page
-            sections_on_page = [m.group(1).strip() for m in re.finditer(r"Section:\s*([^\n]+)", page_text)]
+            # --- FIX 1: Improved Section Regex ---
+            # Ignores case, optionally bypasses the "BSARIN-" prefix, and captures the rest of the line
+            sections_on_page = []
+            for m in re.finditer(r"(?i)Section:\s*(?:BSARIN-)?([^\n\r]+)", page_text):
+                sec = m.group(1).strip()
+                sections_on_page.append(sec)
+            
             section_idx = 0
             
             tables = page.extract_tables()
@@ -88,8 +93,11 @@ def convert_pdf():
                     if not row or not row[0]:
                         continue
                         
-                    # THE FIX: Use the "COURSE CODE" header row as the trigger to switch to the next section
-                    if "COURSE" in str(row[0]).upper() and "CODE" in str(row[0]).upper():
+                    # --- FIX 2: Robust Header Detection ---
+                    # Strip out spaces and newlines so "COURSE COD\n E" becomes "COURSECODE"
+                    col0_cleaned = str(row[0]).upper().replace("\n", "").replace(" ", "")
+                    
+                    if "COURSECOD" in col0_cleaned or "COURSE" in col0_cleaned:
                         if section_idx < len(sections_on_page):
                             current_section = sections_on_page[section_idx]
                             section_idx += 1
