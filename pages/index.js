@@ -63,13 +63,14 @@ export default function Home() {
         fetchLiveSchedule();
     }, []); // <-- Empty array stops the infinite loop!
 
-    // 2. SUPABASE REALTIME LISTENER (Runs only when userSection actually changes)
+    // 2. SUPABASE REALTIME LISTENER (Updated to listen for schedule changes)
     useEffect(() => {
         // If there's no section selected yet, don't open a connection
         if (!userSection) return;
 
         const channel = supabase
             .channel('realtime-updates')
+            // Listen for new manual notification alerts
             .on('postgres_changes',
                 { event: 'INSERT', schema: 'public', table: 'notifications' },
                 (payload) => {
@@ -88,6 +89,13 @@ export default function Home() {
                     }
                 }
             )
+            // Listen for database updates in exceptions (Cancellations/Reschedules)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'schedule_exceptions' },
+                () => {
+                    fetchLiveSchedule(); // Instantly update view when CR makes a change
+                }
+            )
             .subscribe();
 
         return () => {
@@ -96,9 +104,18 @@ export default function Home() {
     }, [userSection]); // <-- Now it safely watches the userSection
 
     const fetchLiveSchedule = async () => {
+        const today = new Date().toLocaleDateString('en-CA'); // Gets YYYY-MM-DD format
+        
         const { data: baseData } = await supabase.from('base_schedule').select('*');
-        const { data: excData } = await supabase.from('schedule_exceptions').select('*');
-        const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+        
+        // Only fetch exceptions for TODAY so students see accurate current status
+        const { data: excData } = await supabase.from('schedule_exceptions')
+            .select('*')
+            .eq('exception_date', today);
+            
+        const { data: notifData } = await supabase.from('notifications')
+            .select('*')
+            .order('created_at', { ascending: false });
 
         setRawData(baseData || []);
         setExceptions(excData || []);
