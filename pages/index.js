@@ -43,23 +43,26 @@ export default function Home() {
         ts += 30;
     }
 
+    // 1. INITIAL LOAD (Runs ONLY ONCE when the app opens)
     useEffect(() => {
-        // 1. Load saved section from browser storage
         const saved = localStorage.getItem('iub_user_selection');
         if (saved) {
             setUserSection(JSON.parse(saved));
             setIsFirstVisit(false);
         }
 
-        // 2. Request Notification Permission from Chrome
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
         }
 
-        // 3. Fetch the actual schedule data
         fetchLiveSchedule();
+    }, []); // <-- Empty array stops the infinite loop!
 
-        // 4. SUPABASE REALTIME LISTENER FOR PUSH NOTIFICATIONS
+    // 2. SUPABASE REALTIME LISTENER (Runs only when userSection actually changes)
+    useEffect(() => {
+        // If there's no section selected yet, don't open a connection
+        if (!userSection) return; 
+
         const channel = supabase
             .channel('realtime-updates')
             .on('postgres_changes', 
@@ -67,20 +70,14 @@ export default function Home() {
                 (payload) => {
                     const newMsg = payload.new.message;
                     
-                    // We check localStorage directly here to guarantee we have the latest section
-                    const currentSelection = localStorage.getItem('iub_user_selection');
-                    const section = currentSelection ? JSON.parse(currentSelection).section : null;
-
-                    // If message contains their section, trigger Chrome Push Pop-up
-                    if (section && newMsg.includes(section)) {
-                        // Also update the local state so the red dot appears immediately
+                    if (newMsg.includes(userSection.section)) {
                         setNotifications(prev => [payload.new, ...prev]);
                         setAlertsRead(false);
 
                         if (Notification.permission === "granted") {
                             new Notification("IUB Update Alert", {
                                 body: newMsg,
-                                icon: "/icon.png" // Make sure you put a small icon.png in your public folder!
+                                icon: "/icon.png"
                             });
                         }
                     }
@@ -88,12 +85,10 @@ export default function Home() {
             )
             .subscribe();
 
-        // 5. Cleanup connection when the page closes
         return () => {
             supabase.removeChannel(channel);
         };
-
-    }, [userSection]);
+    }, [userSection]); // <-- Now it safely watches the userSection
 
     const fetchLiveSchedule = async () => {
         const { data: baseData } = await supabase.from('base_schedule').select('*');
