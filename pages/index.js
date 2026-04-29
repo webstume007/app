@@ -7,7 +7,7 @@ export default function Home() {
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
-    
+
     // Persistence States
     const [userSection, setUserSection] = useState(null);
     const [isFirstVisit, setIsFirstVisit] = useState(true);
@@ -19,7 +19,7 @@ export default function Home() {
     const [showAlerts, setShowAlerts] = useState(false);
     const [alertsRead, setAlertsRead] = useState(false);
     const [showNotifBanner, setShowNotifBanner] = useState(false); // New Notification Banner State
-    
+
     // Free Room Filters
     const [freeDay, setFreeDay] = useState('MON');
     const [freeStart, setFreeStart] = useState('8:00 AM');
@@ -36,11 +36,14 @@ export default function Home() {
     const filterDays = ["ALL", ...days];
 
     const timeSlots = [];
-    let ts = 8 * 60; 
+    let ts = 8 * 60;
     while (ts < 18 * 60) {
-        let h = Math.floor(ts / 60), m = ts % 60, amp = h >= 12 ? 'PM' : 'AM', dh = h > 12 ? h - 12 : h;
-        if (dh === 0) dh = 12; 
-        timeSlots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`); 
+        let h = Math.floor(ts / 60),
+            m = ts % 60,
+            amp = h >= 12 ? 'PM' : 'AM',
+            dh = h > 12 ? h - 12 : h;
+        if (dh === 0) dh = 12;
+        timeSlots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`);
         ts += 30;
     }
 
@@ -52,11 +55,9 @@ export default function Home() {
             setIsFirstVisit(false);
         }
 
-        // AGGRESSIVE MOBILE OVERRIDE: Force the banner to show if not explicitly granted
-        if (typeof window !== 'undefined') {
-            if (!("Notification" in window) || Notification.permission === "default" || Notification.permission !== "granted" && Notification.permission !== "denied") {
-                setShowNotifBanner(true);
-            }
+        // Show the manual prompt banner if permissions haven't been granted/denied yet
+        if ("Notification" in window && Notification.permission === "default") {
+            setShowNotifBanner(true);
         }
 
         fetchLiveSchedule();
@@ -65,20 +66,20 @@ export default function Home() {
     // 2. SUPABASE REALTIME LISTENER (Runs only when userSection actually changes)
     useEffect(() => {
         // If there's no section selected yet, don't open a connection
-        if (!userSection) return; 
+        if (!userSection) return;
 
         const channel = supabase
             .channel('realtime-updates')
-            .on('postgres_changes', 
-                { event: 'INSERT', schema: 'public', table: 'notifications' }, 
+            .on('postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'notifications' },
                 (payload) => {
                     const newMsg = payload.new.message;
-                    
+
                     if (newMsg.includes(userSection.section)) {
                         setNotifications(prev => [payload.new, ...prev]);
                         setAlertsRead(false);
 
-                        if ("Notification" in window && Notification.permission === "granted") {
+                        if (Notification.permission === "granted") {
                             new Notification("IUB Update Alert", {
                                 body: newMsg,
                                 icon: "/icon.png"
@@ -112,14 +113,14 @@ export default function Home() {
         setIsFirstVisit(false);
     };
 
-    const parseTime = (t) => { 
-        if (!t) return 0; 
-        let clean = t.replace(/\./g, '').trim().toUpperCase(); 
-        let [tm, ap] = clean.split(' '); 
-        let [h, m] = tm.split(':').map(Number); 
-        if (h === 12) h = 0; 
-        if (ap === 'PM') h += 12; 
-        return h * 60 + (m || 0); 
+    const parseTime = (t) => {
+        if (!t) return 0;
+        let clean = t.replace(/\./g, '').trim().toUpperCase();
+        let [tm, ap] = clean.split(' ');
+        let [h, m] = tm.split(':').map(Number);
+        if (h === 12) h = 0;
+        if (ap === 'PM') h += 12;
+        return h * 60 + (m || 0);
     };
 
     const convertTo12Hour = (time24) => {
@@ -169,7 +170,7 @@ export default function Home() {
             alert("End time must be after start time");
             return;
         }
-        
+
         const strictlyCancelledClasses = rawData.filter(cls => {
             if (cls.day !== freeDay) return false;
             const clsS = parseTime(cls.start_time);
@@ -185,24 +186,12 @@ export default function Home() {
         setSearchedFreeRooms(available);
     };
 
-    // This forces the Chrome permission popup based on a user click (with Mobile Fallbacks)
+    // This forces the Chrome permission popup based on a user click
     const forceNotificationPermission = async () => {
-        if (!("Notification" in window)) {
-            alert("Push notifications are currently blocked by your phone. Try opening this site in Chrome/Safari using HTTPS, or Add to Home Screen (iOS).");
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
             setShowNotifBanner(false);
-            return;
-        }
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-                setShowNotifBanner(false);
-                new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
-            } else {
-                alert("Permission not granted. Please check your browser's site settings.");
-                setShowNotifBanner(false);
-            }
-        } catch (error) {
-            alert("Error enabling notifications: " + error.message);
+            new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
         }
     };
 
@@ -215,14 +204,14 @@ export default function Home() {
         return (
             <div style={welcomeBg}>
                 <div style={welcomeCard}>
-                    <h2 style={{color: '#002147', margin: '0 0 10px 0'}}>Welcome Students! 👋</h2>
-                    <p style={{color: '#666', fontSize: '0.9rem', marginBottom: '20px'}}>Select your section once to get your personalized schedule.</p>
-                    
+                    <h2 style={{ color: '#002147', margin: '0 0 10px 0' }}>Welcome Students! 👋</h2>
+                    <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '20px' }}>Select your section once to get your personalized schedule.</p>
+
                     <select id="initSem" style={selectStyle} onChange={(e) => {
                         const secDropdown = document.getElementById('initSec');
                         const secs = getSectionsForSem(e.target.value);
-                        secDropdown.innerHTML = '<option value="">-- Select Section --</option>' + 
-                                                secs.map(s => `<option value="${s}">${s}</option>`).join('');
+                        secDropdown.innerHTML = '<option value="">-- Select Section --</option>' +
+                            secs.map(s => `<option value="${s}">${s}</option>`).join('');
                     }}>
                         <option value="">-- Select Semester --</option>
                         {availableSemesters.map(s => <option key={s} value={s}>{s} Semester</option>)}
@@ -235,7 +224,7 @@ export default function Home() {
                     <button onClick={() => {
                         const sem = document.getElementById('initSem').value;
                         const sec = document.getElementById('initSec').value;
-                        if(sem && sec) handleInitialSelection(sem, sec);
+                        if (sem && sec) handleInitialSelection(sem, sec);
                     }} style={bigBtn}>Show My Schedule</button>
                 </div>
             </div>
@@ -260,27 +249,27 @@ export default function Home() {
         if (scheduleList.length === 0) return <div style={emptyState}>No classes scheduled for {selectedDay === 'ALL' ? 'the week' : selectedDay}.</div>;
 
         const daysToRender = selectedDay === 'ALL' ? days : [selectedDay];
-        
+
         return daysToRender.map(day => {
             const dayClasses = scheduleList.filter(c => c.day === day);
             if (dayClasses.length === 0) return null;
 
             return (
-                <div key={day} style={{marginBottom: '20px'}}>
+                <div key={day} style={{ marginBottom: '20px' }}>
                     <div style={dayHeaderStrip}>{day}</div>
                     {dayClasses.map((cls, idx) => {
                         const status = getStatusStyles(cls);
                         return (
-                            <div key={idx} style={{...cardBase, background: status.bg, borderLeft: `5px solid ${status.border}`}}>
+                            <div key={idx} style={{ ...cardBase, background: status.bg, borderLeft: `5px solid ${status.border}` }}>
                                 {/* CONVERTED TIME VARIABLES APPLIED HERE */}
-                                <div style={{fontWeight: 900, color: '#002147', fontSize: '0.85rem'}}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
-                                <div style={{fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0'}}>{cls.course}</div>
-                                <div style={{color: '#555', fontSize: '0.8rem'}}>
+                                <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
+                                <div style={{ color: '#555', fontSize: '0.8rem' }}>
                                     {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
                                     {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
                                     <span>👥 {cls.section}</span>
                                 </div>
-                                <div style={{marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase'}}>● {status.label}</div>
+                                <div style={{ marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>● {status.label}</div>
                             </div>
                         );
                     })}
@@ -294,13 +283,13 @@ export default function Home() {
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
                 <title>My Schedule | IUB AI</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
             </Head>
 
             <header style={headerStyle}>
-                <div style={{fontSize: '1.1rem', fontWeight: 900}}>🎓 {userSection.section}</div>
-                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-                    <div style={{position: 'relative', cursor: 'pointer', fontSize: '1.3rem'}} onClick={() => setShowAlerts(!showAlerts)}>
+                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>🎓 {userSection.section}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
                         🔔
                         {!alertsRead && relevantNotifs.length > 0 && <span style={redDot}></span>}
                     </div>
@@ -317,13 +306,13 @@ export default function Home() {
             </div>
 
             <div style={{ padding: '10px 15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
-                
+
                 {/* NOTIFICATION BANNER */}
                 {showNotifBanner && (
                     <div style={notifBannerStyle}>
-                        <div style={{flex: 1, paddingRight: '10px'}}>
-                            <b style={{display: 'block', marginBottom: '3px'}}>Stay Updated! 🔔</b>
-                            <span style={{fontSize: '0.75rem', opacity: 0.9}}>Allow notifications to get instant alerts for cancelled classes.</span>
+                        <div style={{ flex: 1, paddingRight: '10px' }}>
+                            <b style={{ display: 'block', marginBottom: '3px' }}>Stay Updated! 🔔</b>
+                            <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>Allow notifications to get instant alerts for cancelled classes.</span>
                         </div>
                         <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
                     </div>
@@ -332,17 +321,17 @@ export default function Home() {
                 {/* ALERTS MODAL/VIEW */}
                 {showAlerts ? (
                     <div style={whiteCard}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                            <h4 style={{margin: 0, fontSize: '1rem', color: '#002147'}}>Alerts & Notifications</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h4 style={{ margin: 0, fontSize: '1rem', color: '#002147' }}>Alerts & Notifications</h4>
                             <button onClick={() => setAlertsRead(true)} style={markReadBtn}>Mark as Read</button>
                         </div>
                         {alertsRead || relevantNotifs.length === 0 ? (
-                             <div style={emptyState}>No new notifications.</div>
+                            <div style={emptyState}>No new notifications.</div>
                         ) : (
                             relevantNotifs.map((n, i) => (
                                 <div key={i} style={notifCard}>
-                                    <p style={{margin: '0 0 5px 0', fontSize: '0.9rem'}}>{n.message}</p>
-                                    <span style={{fontSize: '0.7rem', color: '#999'}}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                    <p style={{ margin: '0 0 5px 0', fontSize: '0.9rem' }}>{n.message}</p>
+                                    <span style={{ fontSize: '0.7rem', color: '#999' }}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             ))
                         )}
@@ -364,7 +353,7 @@ export default function Home() {
                         {/* 2. ROOM TAB */}
                         {currentTab === 'room' && (
                             <>
-                                <div style={{display: 'flex', gap: '8px', marginBottom: '15px'}}>
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
                                     <button onClick={() => setRoomSubTab('schedule')} style={subTabBtn(roomSubTab === 'schedule')}>ROOM SCHEDULE</button>
                                     <button onClick={() => setRoomSubTab('free')} style={subTabBtn(roomSubTab === 'free')}>FREE ROOM</button>
                                 </div>
@@ -382,24 +371,24 @@ export default function Home() {
 
                                 {roomSubTab === 'free' && (
                                     <div style={whiteCard}>
-                                        <h4 style={{marginTop: 0, fontSize: '0.9rem', color: '#555'}}>Strictly finds rooms freed by cancellation</h4>
+                                        <h4 style={{ marginTop: 0, fontSize: '0.9rem', color: '#555' }}>Strictly finds rooms freed by cancellation</h4>
                                         <select value={freeDay} onChange={e => setFreeDay(e.target.value)} style={selectStyle}>
                                             {days.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
-                                        <div style={{display: 'flex', gap: '10px'}}>
-                                            <select value={freeStart} onChange={e => setFreeStart(e.target.value)} style={{...selectStyle, flex: 1}}>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <select value={freeStart} onChange={e => setFreeStart(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
                                                 <option value="" disabled>Start Time</option>
                                                 {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
-                                            <select value={freeEnd} onChange={e => setFreeEnd(e.target.value)} style={{...selectStyle, flex: 1}}>
+                                            <select value={freeEnd} onChange={e => setFreeEnd(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
                                                 <option value="" disabled>End Time</option>
                                                 {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
                                             </select>
                                         </div>
                                         <button onClick={searchFreeRooms} style={searchBtn}>SEARCH FREE ROOMS</button>
-                                        
+
                                         {searchedFreeRooms !== null && (
-                                            <div style={{marginTop: '15px'}}>
+                                            <div style={{ marginTop: '15px' }}>
                                                 {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
                                                     <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
                                                 )) : <div style={emptyState}>No rooms were cancelled during this time slot.</div>}
@@ -422,7 +411,7 @@ export default function Home() {
                                 {selectedTeacher && (
                                     <>
                                         <a href={`https://wa.me/?text=Hello%20${selectedTeacher}`} target="_blank" rel="noreferrer" style={whatsappBtn}>
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z"/></svg>
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>
                                             Contact {selectedTeacher}
                                         </a>
                                         {renderClassCards(teacherSchedule, 'teacher')}
@@ -436,16 +425,16 @@ export default function Home() {
             </div>
 
             <footer style={footerStyle}>
-                Made with ❤️ by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{color: '#002147', fontWeight: '900', textDecoration: 'none'}}>Mohsin</a>
+                Made with ❤️ by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin</a>
             </footer>
         </div>
     );
 }
 
 // STYLES
-const welcomeBg = { position: 'fixed', top:0, left:0, width:'100%', height:'100%', background:'#002147', display:'flex', justifyContent:'center', alignItems:'center', zIndex: 3000 };
-const welcomeCard = { background:'#fff', padding:'30px', borderRadius:'15px', width:'90%', maxWidth:'400px', textAlign:'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
-const bigBtn = { width:'100%', padding:'15px', background:'#F2A900', border:'none', borderRadius:'8px', fontWeight:900, color:'#002147', cursor:'pointer' };
+const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
+const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const bigBtn = { width: '100%', padding: '15px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer' };
 const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
 const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
 const redDot = { position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
