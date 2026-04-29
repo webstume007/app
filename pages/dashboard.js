@@ -36,14 +36,14 @@ export default function Dashboard() {
                 .eq('semester', profileData.semester)
                 .eq('section', profileData.section);
             
-            // 3. Fetch Cancellations (Exceptions) to see if any classes are already cancelled
+            // 3. Fetch Cancellations (Exceptions)
             const { data: exceptionsData } = await supabase
                 .from('schedule_exceptions')
                 .select('*');
 
-            // Merge the data so we know which classes are cancelled
-            const mergedSchedule = scheduleData.map(cls => {
-                const isCancelled = exceptionsData.some(ex => ex.base_schedule_id === cls.id && ex.status === 'cancelled');
+            // Merge data to check for cancellations
+            const mergedSchedule = (scheduleData || []).map(cls => {
+                const isCancelled = (exceptionsData || []).some(ex => ex.base_schedule_id === cls.id && ex.status === 'cancelled');
                 return { ...cls, isCancelled };
             });
 
@@ -57,21 +57,17 @@ export default function Dashboard() {
         window.location.href = '/login';
     };
 
-    // The Magic: Cancelling a Class
     const handleCancelClass = async (classId, courseName) => {
-        const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}? This will free up the room and notify others.`);
-        
+        const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}? This frees up the room and notifies others.`);
         if (!confirmCancel) return;
 
-        // Get today's date formatted as YYYY-MM-DD
         const today = new Date().toISOString().split('T')[0];
 
-        // 1. Write the cancellation to the database
         const { error: exceptionError } = await supabase
             .from('schedule_exceptions')
             .insert([{
                 base_schedule_id: classId,
-                exception_date: today, // In a future update, we can let them pick the date
+                exception_date: today,
                 status: 'cancelled',
                 cancelled_by: session.user.id
             }]);
@@ -81,14 +77,11 @@ export default function Dashboard() {
             return;
         }
 
-        // 2. Create a notification for other CRs
         await supabase.from('notifications').insert([{
             message: `Alert: ${courseName} for ${profile.section} has been cancelled. Room is now free.`
         }]);
 
         alert(`${courseName} cancelled successfully!`);
-        
-        // 3. Refresh the schedule on the screen
         fetchProfileAndSchedule(session.user.id);
     };
 
@@ -96,10 +89,13 @@ export default function Dashboard() {
     if (!session) return null;
 
     return (
-        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
             <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Portal</div>
-                <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
+                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>🔔 Notifications</a>
+                    <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
+                </div>
             </header>
 
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
@@ -111,9 +107,9 @@ export default function Dashboard() {
                 <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '1rem' }}>Your Weekly Timetable</h3>
                 
                 {schedule.length === 0 ? (
-                    <p>No classes found for your section. Ensure data is imported to Supabase.</p>
+                    <p>No classes found. Ensure data is imported to Supabase.</p>
                 ) : (
-                    schedule.map((cls) => (
+                    schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
                         <div key={cls.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', opacity: cls.isCancelled ? 0.6 : 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
                                 <div>
@@ -128,12 +124,9 @@ export default function Dashboard() {
                                 </div>
                             </div>
                             
-                            {/* Action Buttons */}
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 {cls.isCancelled ? (
-                                    <div style={{ width: '100%', textAlign: 'center', padding: '10px', background: '#ffeeba', color: '#856404', borderRadius: '5px', fontWeight: 'bold' }}>
-                                        Class Cancelled for Today
-                                    </div>
+                                    <div style={{ width: '100%', textAlign: 'center', padding: '10px', background: '#ffeeba', color: '#856404', borderRadius: '5px', fontWeight: 'bold' }}>Class Cancelled for Today</div>
                                 ) : (
                                     <>
                                         <button style={{ flex: 1, padding: '10px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>✅ Will Held</button>
