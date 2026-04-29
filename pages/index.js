@@ -172,7 +172,7 @@ export default function Home() {
             const overlaps = (sVal < clsE && eVal > clsS);
             if (!overlaps) return false;
 
-            const exc = exceptions.find(e => e.base_schedule_id === cls.id);
+            const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
             return exc?.status === 'cancelled';
         });
 
