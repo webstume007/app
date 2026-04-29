@@ -52,9 +52,11 @@ export default function Home() {
             setIsFirstVisit(false);
         }
 
-        // Show the manual prompt banner if permissions haven't been granted/denied yet
-        if ("Notification" in window && Notification.permission === "default") {
-            setShowNotifBanner(true);
+        // AGGRESSIVE MOBILE OVERRIDE: Force the banner to show if not explicitly granted
+        if (typeof window !== 'undefined') {
+            if (!("Notification" in window) || Notification.permission === "default" || Notification.permission !== "granted" && Notification.permission !== "denied") {
+                setShowNotifBanner(true);
+            }
         }
 
         fetchLiveSchedule();
@@ -76,7 +78,7 @@ export default function Home() {
                         setNotifications(prev => [payload.new, ...prev]);
                         setAlertsRead(false);
 
-                        if (Notification.permission === "granted") {
+                        if ("Notification" in window && Notification.permission === "granted") {
                             new Notification("IUB Update Alert", {
                                 body: newMsg,
                                 icon: "/icon.png"
@@ -183,12 +185,24 @@ export default function Home() {
         setSearchedFreeRooms(available);
     };
 
-    // This forces the Chrome permission popup based on a user click
+    // This forces the Chrome permission popup based on a user click (with Mobile Fallbacks)
     const forceNotificationPermission = async () => {
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
+        if (!("Notification" in window)) {
+            alert("Push notifications are currently blocked by your phone. Try opening this site in Chrome/Safari using HTTPS, or Add to Home Screen (iOS).");
             setShowNotifBanner(false);
-            new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
+            return;
+        }
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === "granted") {
+                setShowNotifBanner(false);
+                new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
+            } else {
+                alert("Permission not granted. Please check your browser's site settings.");
+                setShowNotifBanner(false);
+            }
+        } catch (error) {
+            alert("Error enabling notifications: " + error.message);
         }
     };
 
