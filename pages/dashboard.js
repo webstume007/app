@@ -1,31 +1,28 @@
 import { useEffect, useState } from 'react';
+import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
-export default function Dashboard() {
-    const [session, setSession] = useState(null);
-    const [profile, setProfile] = useState(null);
-    const [schedule, setSchedule] = useState([]);
+export default function Home() {
+    const [rawData, setRawData] = useState([]);
+    const [exceptions, setExceptions] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [availableRooms, setAvailableRooms] = useState([]);
     
-    // Tab Management
-    const [activeTab, setActiveTab] = useState('temporary'); // 'temporary' or 'base'
-
-    // --- MODAL STATES ---
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
-    const [editingClass, setEditingClass] = useState(null);
+    // Filters
+    const [currentTab, setCurrentTab] = useState('class');
+    const [semester, setSemester] = useState('');
+    const [section, setSection] = useState('');
+    const [teacher, setTeacher] = useState('');
+    const [room, setRoom] = useState('');
     
-    // Form States
-    const [newDate, setNewDate] = useState('');
-    const [newStartTime, setNewStartTime] = useState('8:00 AM');
-    const [newEndTime, setNewEndTime] = useState('9:30 AM');
-    const [newRoom, setNewRoom] = useState('');
-    const [newCourse, setNewCourse] = useState('');
-    const [newTeacher, setNewTeacher] = useState('');
-    const [newDay, setNewDay] = useState('MON');
+    // Free Room Settings
+    const [freeDay, setFreeDay] = useState('MON');
+    const [freeStart, setFreeStart] = useState('8:00 AM');
+    const [showFreeResults, setShowFreeResults] = useState(false);
 
+    // Day Filter
+    const [selectedDay, setSelectedDay] = useState('MON');
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
     const timeSlots = [];
     let ts = 8 * 60; 
     while (ts < 18 * 60) {
@@ -36,234 +33,227 @@ export default function Dashboard() {
     }
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            if (session) fetchProfileAndSchedule(session.user.id);
-            else window.location.href = '/login';
-        });
+        fetchLiveSchedule();
     }, []);
 
-    const fetchProfileAndSchedule = async (userId) => {
-        const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
-        setProfile(profileData);
+    const fetchLiveSchedule = async () => {
+        const { data: baseData } = await supabase.from('base_schedule').select('*');
+        const { data: excData } = await supabase.from('schedule_exceptions').select('*');
 
-        if (profileData) {
-            const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
-            const { data: allRooms } = await supabase.from('base_schedule').select('room');
-            if (allRooms) setAvailableRooms([...new Set(allRooms.map(x => x.room))].filter(Boolean).sort());
-
-            const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*');
-
-            const merged = (scheduleData || []).map(cls => {
-                const exc = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
-                return { 
-                    ...cls, 
-                    isCancelled: exc?.status === 'cancelled',
-                    isRescheduled: exc?.status === 'rescheduled',
-                    isConfirmed: exc?.status === 'confirmed',
-                    exceptionDetails: exc
-                };
-            });
-            setSchedule(merged);
-        }
+        setRawData(baseData || []);
+        setExceptions(excData || []);
         setLoading(false);
     };
 
-    // --- TEMPORARY ACTIONS (DAILY) ---
-    const handleConfirmClass = async (classId, courseName) => {
-        const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId, exception_date: new Date().toISOString().split('T')[0], status: 'confirmed', cancelled_by: session.user.id
-        }]);
-        if (error) return alert(error.message);
-        await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} (${profile.section}) is on today.` }]);
-        fetchProfileAndSchedule(session.user.id);
+    const parseTime = (t) => { 
+        if (!t) return 0; 
+        let clean = t.replace(/\./g, '').trim().toUpperCase(); 
+        let [tm, ap] = clean.split(' '); 
+        let [h, m] = tm.split(':').map(Number); 
+        if (h === 12) h = 0; 
+        if (ap === 'PM') h += 12; 
+        return h * 60 + (m || 0); 
     };
 
-    const handleCancelClass = async (classId, courseName) => {
-        if (!confirm(`Cancel ${courseName}?`)) return;
-        const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId, exception_date: new Date().toISOString().split('T')[0], status: 'cancelled', cancelled_by: session.user.id
-        }]);
-        if (error) return alert(error.message);
-        await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} (${profile.section}) is cancelled today.` }]);
-        fetchProfileAndSchedule(session.user.id);
+    // Dynamic extraction from raw data
+    const availableSemesters = [...new Set(rawData.map(x => x.semester))].filter(Boolean).sort();
+    const availableSections = [...new Set(rawData.filter(x => x.semester === semester).map(x => x.section))].sort();
+    const availableTeachers = [...new Set(rawData.map(x => x.teacher))].sort();
+    const availableRooms = [...new Set(rawData.map(x => x.room))].sort();
+
+    // Helper to determine background color and status label
+    const getStatusStyles = (classId) => {
+        const exc = exceptions.find(e => e.base_schedule_id === classId);
+        if (exc?.status === 'cancelled') {
+            return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#f5c6cb' };
+        }
+        if (exc?.status === 'confirmed') {
+            return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#c3e6cb' };
+        }
+        if (exc?.status === 'rescheduled') {
+            return { label: `Rescheduled: Room ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#b8daff' };
+        }
+        return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
     };
 
-    const submitReschedule = async (e) => {
-        e.preventDefault();
-        const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: editingClass.id, exception_date: newDate, status: 'rescheduled', new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
-        }]);
-        if (error) return alert(error.message);
-        await supabase.from('notifications').insert([{ message: `🔄 Rescheduled: ${editingClass.course} (${profile.section}) moved to Room ${newRoom} at ${newStartTime}.` }]);
-        setIsEditModalOpen(false);
-        fetchProfileAndSchedule(session.user.id);
+    const getFilteredClasses = () => {
+        return rawData.filter(c => {
+            const isMatch = (currentTab === 'class' && c.section === section) || 
+                            (currentTab === 'teacher' && c.teacher === teacher) || 
+                            (currentTab === 'room' && c.room === room);
+            return isMatch && c.day === selectedDay;
+        }).sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
     };
 
-    // --- PERMANENT ACTIONS (BASE SCHEDULE) ---
-    const openBaseEditModal = (cls) => {
-        setEditingClass(cls);
-        setNewCourse(cls.course);
-        setNewTeacher(cls.teacher);
-        setNewRoom(cls.room);
-        setNewDay(cls.day);
-        setNewStartTime(cls.start_time);
-        setNewEndTime(cls.end_time);
-        setIsBaseModalOpen(true);
-    };
+    const matchedClasses = getFilteredClasses();
 
-    const submitPermanentUpdate = async (e) => {
-        e.preventDefault();
-        const { error } = await supabase.from('base_schedule').update({
-            course: newCourse, teacher: newTeacher, room: newRoom, day: newDay, start_time: newStartTime, end_time: newEndTime
-        }).eq('id', editingClass.id);
-
-        if (error) return alert("Error updating base schedule: " + error.message);
-        
-        alert("Base Schedule updated permanently!");
-        setIsBaseModalOpen(false);
-        fetchProfileAndSchedule(session.user.id);
-    };
-
-    if (loading) return <div style={centerStyle}>Loading CR Portal...</div>;
+    if (loading) return <div style={{textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif'}}>Loading Schedule...</div>;
 
     return (
-        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
-            <header style={headerStyle}>
-                <div style={{ fontWeight: 900 }}>🎓 CR PORTAL: {profile?.section}</div>
-                <div style={{ display: 'flex', gap: '15px' }}>
-                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontSize: '0.8rem' }}>🔔 Alerts</a>
-                    <button onClick={() => supabase.auth.signOut().then(() => window.location.href='/login')} style={logoutBtn}>Logout</button>
-                </div>
+        <div style={{ backgroundColor: '#f0f2f5', color: '#1a1a1b', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
+            <Head>
+                <title>IUB AI Depart Schedule</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            </Head>
+
+            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>🎓 IUB AI Depart Schedule</div>
             </header>
 
-            {/* TAB TOGGLE */}
-            <div style={tabContainer}>
-                <button onClick={() => setActiveTab('temporary')} style={tabStyle(activeTab === 'temporary')}>Temporary Changes</button>
-                <button onClick={() => setActiveTab('base')} style={tabStyle(activeTab === 'base')}>Weekly Schedule (Base)</button>
+            {/* Mobile Tab View */}
+            <div style={{ display: 'flex', background: '#fff', padding: '8px', gap: '5px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: '51px', zIndex: 999, overflowX: 'auto' }}>
+                {['class', 'free', 'teacher', 'room'].map(tab => (
+                    <button 
+                        key={tab} 
+                        onClick={() => { setCurrentTab(tab); setShowFreeResults(false); }}
+                        style={{ flex: 1, padding: '12px', border: 'none', background: currentTab === tab ? '#002147' : '#e9ecef', color: currentTab === tab ? '#fff' : '#495057', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', borderRadius: '8px', whiteSpace: 'nowrap' }}
+                    >
+                        {tab === 'class' ? '📅 SCHEDULE' : tab === 'free' ? '🔍 FREE ROOM' : tab === 'teacher' ? '👨‍🏫 TEACHER' : '🚪 ROOM'}
+                    </button>
+                ))}
             </div>
 
-            <div style={{ maxWidth: '600px', margin: '0 auto', padding: '15px' }}>
+            {/* Fixed Mobile Container */}
+            <div style={{ padding: '15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%' }}>
                 
-                {activeTab === 'temporary' ? (
-                    <div>
-                        <h4 style={sectionTitle}>Today's Quick Updates</h4>
-                        {schedule.map(cls => (
-                            <div key={cls.id} style={{...cardStyle, borderLeft: cls.isConfirmed ? '5px solid #28a745' : cls.isCancelled ? '5px solid #dc3545' : '5px solid #F2A900', opacity: cls.isCancelled ? 0.6 : 1}}>
-                                <div style={cardHeader}>
-                                    <div>
-                                        <div style={{fontWeight: 'bold'}}>{cls.course}</div>
-                                        <div style={{fontSize: '0.8rem', color: '#666'}}>{cls.day} | {cls.start_time} - {cls.end_time}</div>
-                                    </div>
-                                    <div style={{textAlign: 'right', fontSize: '0.8rem', fontWeight: 'bold'}}>{cls.room}</div>
-                                </div>
-                                <div style={{display: 'flex', gap: '5px', marginTop: '10px'}}>
-                                    {cls.isCancelled ? <div style={statusBadge('#dc3545')}>Cancelled</div> : 
-                                     cls.isConfirmed ? <div style={statusBadge('#28a745')}>Confirmed</div> : 
-                                     <>
-                                        <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={actionBtn('#28a745')}>Held</button>
-                                        <button onClick={() => { setEditingClass(cls); setIsEditModalOpen(true); }} style={actionBtn('#007bff')}>Resched</button>
-                                        <button onClick={() => handleCancelClass(cls.id, cls.course)} style={actionBtn('#dc3545')}>Cancel</button>
-                                     </>
-                                    }
-                                </div>
+                {/* Search Box */}
+                <div style={{ background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', borderTop: '4px solid #F2A900' }}>
+                    {currentTab === 'class' && (
+                        <>
+                            <select value={semester} onChange={(e) => { setSemester(e.target.value); setSection(''); }} style={selectStyle}>
+                                <option value="">-- Select Semester --</option>
+                                {availableSemesters.map(s => <option key={s} value={s}>{s} Semester</option>)}
+                            </select>
+                            <select value={section} onChange={(e) => setSection(e.target.value)} style={selectStyle} disabled={!semester}>
+                                <option value="">-- Select Section --</option>
+                                {availableSections.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </>
+                    )}
+                    {currentTab === 'free' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <h3 style={{margin: '0 0 5px 0', fontSize: '0.9rem', color: '#002147'}}>Search Empty Rooms</h3>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <select value={freeDay} onChange={e => setFreeDay(e.target.value)} style={selectStyle}>
+                                    {days.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                                <select value={freeStart} onChange={e => setFreeStart(e.target.value)} style={selectStyle}>
+                                    {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
                             </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div>
-                        <h4 style={sectionTitle}>Permanent Schedule Editor</h4>
-                        <p style={{fontSize: '0.75rem', color: '#666', marginBottom: '15px'}}>Changes made here will update the timetable permanently for everyone.</p>
-                        {schedule.map(cls => (
-                            <div key={cls.id} style={cardStyle}>
-                                <div style={cardHeader}>
-                                    <div>
-                                        <div style={{fontWeight: 'bold'}}>{cls.course}</div>
-                                        <div style={{fontSize: '0.8rem', color: '#666'}}>{cls.day} | {cls.start_time} - {cls.end_time}</div>
-                                        <div style={{fontSize: '0.75rem', color: '#888'}}>{cls.teacher}</div>
-                                    </div>
-                                    <button onClick={() => openBaseEditModal(cls)} style={editPermanentBtn}>Edit Permanent</button>
-                                </div>
-                            </div>
+                            <button onClick={() => setShowFreeResults(true)} style={{ padding: '12px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                SEARCH FREE ROOMS
+                            </button>
+                        </div>
+                    )}
+                    {currentTab === 'teacher' && (
+                        <select value={teacher} onChange={(e) => setTeacher(e.target.value)} style={selectStyle}>
+                            <option value="">-- Select Teacher --</option>
+                            {availableTeachers.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    )}
+                    {currentTab === 'room' && (
+                        <select value={room} onChange={(e) => setRoom(e.target.value)} style={selectStyle}>
+                            <option value="">-- Select Room --</option>
+                            {availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                    )}
+                </div>
+
+                {/* Day Filter */}
+                {currentTab !== 'free' && (section || teacher || room) && (
+                    <div style={{ display: 'flex', gap: '5px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px' }}>
+                        {days.map(day => (
+                            <button
+                                key={day}
+                                onClick={() => setSelectedDay(day)}
+                                style={{
+                                    flex: '1', minWidth: '55px', padding: '10px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer',
+                                    background: selectedDay === day ? '#002147' : '#fff',
+                                    color: selectedDay === day ? '#F2A900' : '#555',
+                                    fontSize: '0.75rem',
+                                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                                }}
+                            >
+                                {day}
+                            </button>
                         ))}
                     </div>
                 )}
+
+                {/* Results Renderer */}
+                <div style={{ marginTop: '10px' }}>
+                    {currentTab === 'free' ? (
+                        showFreeResults && (
+                            <div style={{ background: '#fff', borderRadius: '12px', padding: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                                <h4 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '0.9rem' }}>Available Rooms on {freeDay} at {freeStart}</h4>
+                                {availableRooms.map(r => {
+                                    const isBusy = rawData.some(x => 
+                                        x.room === r && 
+                                        x.day === freeDay && 
+                                        parseTime(freeStart) >= parseTime(x.start_time) && 
+                                        parseTime(freeStart) < parseTime(x.end_time)
+                                    );
+                                    if (!isBusy) return <div key={r} style={{ padding: '12px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.85rem' }}>✅ Room {r} is FREE</div>;
+                                    return null;
+                                })}
+                            </div>
+                        )
+                    ) : (
+                        <div>
+                            {(section || teacher || room) ? (
+                                matchedClasses.length > 0 ? (
+                                    matchedClasses.map((cls, idx) => {
+                                        const status = getStatusStyles(cls.id);
+                                        return (
+                                            <div key={idx} style={{ 
+                                                background: status.bg, 
+                                                borderLeft: `5px solid ${status.border}`, 
+                                                padding: '15px', 
+                                                marginBottom: '12px', 
+                                                borderRadius: '10px', 
+                                                boxShadow: '0 4px 10px rgba(0,0,0,0.05)' 
+                                            }}>
+                                                <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem', marginBottom: '5px' }}>🕒 {cls.start_time} - {cls.end_time}</div>
+                                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000', marginBottom: '5px' }}>{cls.course}</div>
+                                                <div style={{ color: '#555', fontSize: '0.8rem', lineHeight: 1.4 }}>
+                                                    📍 <b>Room:</b> {cls.room} | 👨‍🏫 <b>{cls.teacher}</b>
+                                                </div>
+                                                <div style={{ marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>
+                                                    ● {status.label}
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <div style={{ textAlign: 'center', color: '#666', padding: '20px', background: '#fff', borderRadius: '10px' }}>No classes scheduled for {selectedDay}.</div>
+                                )
+                            ) : null}
+                        </div>
+                    )}
+                </div>
+
+                {/* BIG YELLOW LOGIN BUTTON */}
+                <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '30px' }}>
+                    <a href="/login" style={{ 
+                        display: 'inline-block', 
+                        background: '#F2A900', 
+                        color: '#002147', 
+                        padding: '12px 25px', 
+                        borderRadius: '8px', 
+                        fontWeight: 900, 
+                        fontSize: '0.85rem',
+                        textDecoration: 'none', 
+                        boxShadow: '0 4px 15px rgba(242, 169, 0, 0.4)',
+                        textTransform: 'uppercase'
+                    }}>
+                        👨‍💻 CR Login Portal
+                    </a>
+                </div>
+
             </div>
-
-            {/* MODAL: TEMPORARY RESCHEDULE */}
-            {isEditModalOpen && (
-                <div style={modalOverlay}>
-                    <div style={modalCard}>
-                        <h3>Temporary Reschedule</h3>
-                        <form onSubmit={submitReschedule} style={formStyle}>
-                            <input type="date" required value={newDate} onChange={e => setNewDate(e.target.value)} style={inputStyle} />
-                            <select value={newStartTime} onChange={e => setNewStartTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                            <select value={newRoom} onChange={e => setNewRoom(e.target.value)} style={inputStyle}>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}</select>
-                            <div style={{display: 'flex', gap: '10px'}}>
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={cancelBtn}>Close</button>
-                                <button type="submit" style={saveBtn}>Confirm Change</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL: PERMANENT BASE EDIT */}
-            {isBaseModalOpen && (
-                <div style={modalOverlay}>
-                    <div style={modalCard}>
-                        <h3 style={{margin: '0 0 15px 0', color: '#002147'}}>Permanent Edit</h3>
-                        <form onSubmit={submitPermanentUpdate} style={formStyle}>
-                            <label style={labelStyle}>Course Name</label>
-                            <input value={newCourse} onChange={e => setNewCourse(e.target.value)} style={inputStyle} />
-                            
-                            <label style={labelStyle}>Teacher</label>
-                            <input value={newTeacher} onChange={e => setNewTeacher(e.target.value)} style={inputStyle} />
-
-                            <div style={{display: 'flex', gap: '5px'}}>
-                                <div style={{flex:1}}>
-                                    <label style={labelStyle}>Day</label>
-                                    <select value={newDay} onChange={e => setNewDay(e.target.value)} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                                </div>
-                                <div style={{flex:1}}>
-                                    <label style={labelStyle}>Room</label>
-                                    <input value={newRoom} onChange={e => setNewRoom(e.target.value)} style={inputStyle} />
-                                </div>
-                            </div>
-
-                            <div style={{display: 'flex', gap: '5px'}}>
-                                <div style={{flex:1}}><label style={labelStyle}>Start</label><select value={newStartTime} onChange={e => setNewStartTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                                <div style={{flex:1}}><label style={labelStyle}>End</label><select value={newEndTime} onChange={e => setNewEndTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                            </div>
-
-                            <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
-                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={cancelBtn}>Discard</button>
-                                <button type="submit" style={saveBtn}>Save Permanently</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
 
-// STYLES
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const tabContainer = { display: 'flex', background: '#fff', borderBottom: '1px solid #ddd' };
-const tabStyle = (active) => ({ flex: 1, padding: '15px', border: 'none', background: active ? '#fff' : '#f8f9fa', color: active ? '#002147' : '#999', fontWeight: 'bold', borderBottom: active ? '3px solid #F2A900' : 'none', cursor: 'pointer' });
-const cardStyle = { background: '#fff', padding: '15px', borderRadius: '10px', marginBottom: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
-const cardHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const actionBtn = (bg) => ({ flex: 1, padding: '8px', border: 'none', borderRadius: '5px', background: bg, color: '#fff', fontWeight: 'bold', fontSize: '0.7rem', cursor: 'pointer' });
-const editPermanentBtn = { padding: '8px 12px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '5px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' };
-const logoutBtn = { background: '#F2A900', color: '#002147', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '0.7rem', fontWeight: 'bold' };
-const statusBadge = (color) => ({ width: '100%', textAlign: 'center', padding: '8px', background: color + '22', color: color, borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem' });
-const modalOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 };
-const modalCard = { background: '#fff', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '400px' };
-const inputStyle = { width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '0.9rem' };
-const saveBtn = { flex: 1, padding: '12px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 'bold' };
-const cancelBtn = { flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '8px', fontWeight: 'bold' };
-const formStyle = { display: 'flex', flexDirection: 'column' };
-const labelStyle = { fontSize: '0.7rem', fontWeight: 'bold', color: '#666', marginBottom: '3px' };
-const sectionTitle = { fontSize: '0.9rem', color: '#002147', marginBottom: '10px', textTransform: 'uppercase' };
-const centerStyle = { textAlign: 'center', marginTop: '50px' };
+const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '0.9rem', outline: 'none', background: '#fff' };
