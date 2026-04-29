@@ -18,6 +18,7 @@ export default function Home() {
     const [selectedDay, setSelectedDay] = useState('ALL');
     const [showAlerts, setShowAlerts] = useState(false);
     const [alertsRead, setAlertsRead] = useState(false);
+    const [showNotifBanner, setShowNotifBanner] = useState(false); // New Notification Banner State
     
     // Free Room Filters
     const [freeDay, setFreeDay] = useState('MON');
@@ -51,8 +52,9 @@ export default function Home() {
             setIsFirstVisit(false);
         }
 
-        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-            Notification.requestPermission();
+        // Show the manual prompt banner if permissions haven't been granted/denied yet
+        if ("Notification" in window && Notification.permission === "default") {
+            setShowNotifBanner(true);
         }
 
         fetchLiveSchedule();
@@ -173,6 +175,15 @@ export default function Home() {
         setSearchedFreeRooms(available);
     };
 
+    // This forces the Chrome permission popup based on a user click
+    const forceNotificationPermission = async () => {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+            setShowNotifBanner(false);
+            new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
+        }
+    };
+
     const relevantNotifs = notifications.filter(n => n.message.includes(userSection?.section));
 
     if (loading) return <div style={centerStyle}>Loading...</div>;
@@ -281,6 +292,17 @@ export default function Home() {
 
             <div style={{ padding: '15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%' }}>
                 
+                {/* NOTIFICATION BANNER */}
+                {showNotifBanner && (
+                    <div style={notifBannerStyle}>
+                        <div style={{flex: 1, paddingRight: '10px'}}>
+                            <b style={{display: 'block', marginBottom: '3px'}}>Stay Updated! 🔔</b>
+                            <span style={{fontSize: '0.75rem', opacity: 0.9}}>Allow notifications to get instant alerts for cancelled classes.</span>
+                        </div>
+                        <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
+                    </div>
+                )}
+
                 {/* ALERTS MODAL/VIEW */}
                 {showAlerts ? (
                     <div style={whiteCard}>
@@ -423,3 +445,24 @@ const loginBtn = { display: 'inline-block', background: '#F2A900', color: '#0021
 const emptyState = { textAlign: 'center', padding: '40px', color: '#999', fontSize: '0.9rem' };
 const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' };
 const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.9rem', marginTop: 'auto' };
+const notifBannerStyle = {
+    background: '#002147',
+    color: '#fff',
+    padding: '15px',
+    borderRadius: '10px',
+    marginBottom: '15px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '0.85rem',
+    border: '2px solid #F2A900'
+};
+const enableBtnStyle = {
+    background: '#F2A900',
+    color: '#002147',
+    border: 'none',
+    padding: '8px 15px',
+    borderRadius: '5px',
+    fontWeight: 'bold',
+    cursor: 'pointer'
+};
