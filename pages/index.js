@@ -151,7 +151,7 @@ export default function Home() {
     const getStatusStyles = (cls) => {
         if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
 
-        const exc = exceptions.find(e => e.base_schedule_id === cls.id);
+        const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
         if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#f5c6cb' };
         if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#c3e6cb' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#b8daff' };
