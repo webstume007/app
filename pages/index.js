@@ -89,8 +89,7 @@ export default function Home() {
 
     const fetchLiveSchedule = async () => {
     // en-CA format gives exactly YYYY-MM-DD in local time
-    const today = new Date().toLocaleDateString('en-CA'); 
-    
+    const today = new Date().toLocaleDateString('en-CA');    
     const { data: baseData } = await supabase.from('base_schedule').select('*');
     const { data: excData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
     const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
