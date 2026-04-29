@@ -258,7 +258,8 @@ export default function Home() {
                         const status = getStatusStyles(cls);
                         return (
                             <div key={idx} style={{...cardBase, background: status.bg, borderLeft: `5px solid ${status.border}`}}>
-                                <div style={{fontWeight: 900, color: '#002147', fontSize: '0.85rem'}}>🕒 {cls.start_time} - {cls.end_time}</div>
+                                {/* CONVERTED TIME VARIABLES APPLIED HERE */}
+                                <div style={{fontWeight: 900, color: '#002147', fontSize: '0.85rem'}}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                 <div style={{fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0'}}>{cls.course}</div>
                                 <div style={{color: '#555', fontSize: '0.8rem'}}>
                                     {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
@@ -277,11 +278,14 @@ export default function Home() {
     // --- MAIN APP VIEW ---
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
-            <Head><title>My Schedule | IUB AI</title></Head>
+            <Head>
+                <title>My Schedule | IUB AI</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+            </Head>
 
             <header style={headerStyle}>
                 <div style={{fontSize: '1.1rem', fontWeight: 900}}>🎓 {userSection.section}</div>
-                <div style={{display: 'flex', alignItems: 'center', gap: '15px'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
                     <div style={{position: 'relative', cursor: 'pointer', fontSize: '1.3rem'}} onClick={() => setShowAlerts(!showAlerts)}>
                         🔔
                         {!alertsRead && relevantNotifs.length > 0 && <span style={redDot}></span>}
@@ -298,7 +302,7 @@ export default function Home() {
                 ))}
             </div>
 
-            <div style={{ padding: '15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%' }}>
+            <div style={{ padding: '10px 15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
                 
                 {/* NOTIFICATION BANNER */}
                 {showNotifBanner && (
@@ -346,7 +350,7 @@ export default function Home() {
                         {/* 2. ROOM TAB */}
                         {currentTab === 'room' && (
                             <>
-                                <div style={{display: 'flex', gap: '10px', marginBottom: '15px'}}>
+                                <div style={{display: 'flex', gap: '8px', marginBottom: '15px'}}>
                                     <button onClick={() => setRoomSubTab('schedule')} style={subTabBtn(roomSubTab === 'schedule')}>ROOM SCHEDULE</button>
                                     <button onClick={() => setRoomSubTab('free')} style={subTabBtn(roomSubTab === 'free')}>FREE ROOM</button>
                                 </div>
@@ -415,7 +419,6 @@ export default function Home() {
                     </>
                 )}
 
-                
             </div>
 
             <footer style={footerStyle}>
@@ -427,48 +430,49 @@ export default function Home() {
 
 // STYLES
 const welcomeBg = { position: 'fixed', top:0, left:0, width:'100%', height:'100%', background:'#002147', display:'flex', justifyContent:'center', alignItems:'center', zIndex: 3000 };
-const welcomeCard = { background:'#fff', padding:'30px', borderRadius:'15px', width:'90%', maxWidth:'400px', textAlign:'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' };
+const welcomeCard = { background:'#fff', padding:'30px', borderRadius:'15px', width:'90%', maxWidth:'400px', textAlign:'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
 const bigBtn = { width:'100%', padding:'15px', background:'#F2A900', border:'none', borderRadius:'8px', fontWeight:900, color:'#002147', cursor:'pointer' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)' };
-const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
 const redDot = { position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
-const tabBar = { display: 'flex', background: '#fff', padding: '8px', gap: '5px', position: 'sticky', top: '60px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto' };
-const tabBtn = (active) => ({ flex: 1, minWidth: '100px', padding: '12px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' });
+const tabBar = { display: 'flex', background: '#fff', padding: '6px', gap: '4px', position: 'sticky', top: '55px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, minWidth: '85px', padding: '10px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' });
 const subTabBtn = (active) => ({ flex: 1, padding: '10px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' });
-const dayFilter = { display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '5px' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '50px', padding: '10px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' });
+const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '45px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' });
 const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '8px 15px', borderRadius: '8px', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', fontSize: '0.85rem' };
-const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none' };
+const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' };
 const searchInput = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' };
-const cardBase = { padding: '15px', marginBottom: '12px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
-const notifCard = { background: '#fff', padding: '15px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
-const whiteCard = { background: '#fff', padding: '18px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '20px', borderTop: '4px solid #F2A900' };
-const searchBtn = { width: '100%', padding: '14px', background: '#002147', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px' };
+const cardBase = { padding: '12px', marginBottom: '10px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
+const notifCard = { background: '#fff', padding: '12px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
+const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '15px', borderTop: '4px solid #F2A900' };
+const searchBtn = { width: '100%', padding: '14px', background: '#002147', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', boxSizing: 'border-box' };
 const markReadBtn = { background: '#e9ecef', border: 'none', padding: '6px 12px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', color: '#555' };
 const freeRoomItem = { padding: '12px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.85rem', background: '#f0fff4', borderRadius: '5px', marginBottom: '5px' };
 const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#25D366', color: '#fff', padding: '12px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '20px', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)' };
-const loginBtn = { display: 'inline-block', background: '#F2A900', color: '#002147', padding: '12px 25px', borderRadius: '8px', textDecoration: 'none', fontWeight: 900, fontSize: '0.8rem', boxShadow: '0 4px 15px rgba(242, 169, 0, 0.3)' };
-const emptyState = { textAlign: 'center', padding: '40px', color: '#999', fontSize: '0.9rem' };
+const emptyState = { textAlign: 'center', padding: '30px 10px', color: '#999', fontSize: '0.9rem' };
 const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' };
 const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.9rem', marginTop: 'auto' };
 const notifBannerStyle = {
     background: '#002147',
     color: '#fff',
-    padding: '15px',
+    padding: '12px 15px',
     borderRadius: '10px',
     marginBottom: '15px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     fontSize: '0.85rem',
-    border: '2px solid #F2A900'
+    border: '2px solid #F2A900',
+    gap: '10px'
 };
 const enableBtnStyle = {
     background: '#F2A900',
     color: '#002147',
     border: 'none',
-    padding: '8px 15px',
+    padding: '8px 12px',
     borderRadius: '5px',
     fontWeight: 'bold',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    whiteSpace: 'nowrap'
 };
