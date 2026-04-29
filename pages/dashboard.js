@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
 export default function Dashboard() {
@@ -36,13 +37,48 @@ export default function Dashboard() {
         ts += 30;
     }
 
+    // Convert any 24h DB time to 12h AM/PM for display
+    const convertTo12Hour = (timeStr) => {
+        if (!timeStr) return "";
+        if (timeStr.toUpperCase().includes('AM') || timeStr.toUpperCase().includes('PM')) return timeStr;
+        let [h, m] = timeStr.split(':').map(Number);
+        const suffix = h >= 12 ? "PM" : "AM";
+        h = h % 12 || 12;
+        return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
+    };
+
     useEffect(() => {
+        // Request Notification Permissions on load
+        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             if (session) fetchProfileAndSchedule(session.user.id);
             else window.location.href = '/login';
         });
     }, []);
+
+    // REALTIME LISTENER: CR gets notifications for their section
+    useEffect(() => {
+        if (!profile) return;
+        const channel = supabase
+            .channel('cr-realtime-updates')
+            .on('postgres_changes', 
+                { event: 'INSERT', schema: 'public', table: 'notifications' }, 
+                (payload) => {
+                    const newMsg = payload.new.message;
+                    if (newMsg.includes(profile.section)) {
+                        if (Notification.permission === "granted") {
+                            new Notification("IUB Update Alert", { body: newMsg, icon: "/icon.png" });
+                        }
+                    }
+                }
+            ).subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [profile]);
 
     const fetchProfileAndSchedule = async (userId) => {
         const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
@@ -89,20 +125,14 @@ export default function Dashboard() {
 
     // --- ACTION: WILL HELD (CONFIRM CLASS) ---
     const handleConfirmClass = async (classId, courseName) => {
-        // Optimistic UI
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
         
         const today = new Date().toISOString().split('T')[0];
         const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId,
-            exception_date: today,
-            status: 'confirmed',
-            cancelled_by: session.user.id
+            base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
         }]);
 
         if (error) alert("Error: " + error.message);
-        
-        // CRITICAL: Re-fetch silently in background so we get the newly created exception ID
         fetchProfileAndSchedule(session.user.id); 
     };
 
@@ -111,7 +141,6 @@ export default function Dashboard() {
         const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
         if (!confirmCancel) return;
 
-        // Optimistic UI
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
 
         const today = new Date().toISOString().split('T')[0];
@@ -122,47 +151,33 @@ export default function Dashboard() {
         if (error) {
             alert("Error: " + error.message);
         } else {
-            // Only insert notification if the database insertion was successful
             await supabase.from('notifications').insert([{ 
                 message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
             }]);
         }
         
-        // CRITICAL: Re-fetch silently
         fetchProfileAndSchedule(session.user.id);
     };
 
-    // --- ACTION: UNDO EXCEPTION (CANCEL/CONFIRM) ---
+    // --- ACTION: UNDO EXCEPTION (CANCEL/CONFIRM/RESCHEDULE) ---
     const handleUndoException = async (classId, actionType, courseName) => {
-        // Optimistic UI update to instantly revert the button
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false } : c));
+        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
 
         const today = new Date().toISOString().split('T')[0];
-        
-        // 1. Remove exception from DB (using .match is much safer for composite keys)
         const { error } = await supabase.from('schedule_exceptions')
             .delete()
-            .match({ 
-                base_schedule_id: classId, 
-                exception_date: today 
-            });
+            .match({ base_schedule_id: classId, exception_date: today });
 
         if (error) {
             console.error("Delete Error:", error);
             alert("Error undoing action in DB.");
         }
 
-        // 2. If reversing a cancellation, strictly delete the exact notification
         if (actionType === 'cancelled') {
             const targetMessage = `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`;
-            const { error: notifError } = await supabase.from('notifications')
-                .delete()
-                .eq('message', targetMessage);
-                
-            if (notifError) console.error("Error removing notification:", notifError);
+            await supabase.from('notifications').delete().eq('message', targetMessage);
         }
 
-        // 3. Re-fetch to guarantee the local view is synced with the DB
         fetchProfileAndSchedule(session.user.id);
     };
 
@@ -170,8 +185,8 @@ export default function Dashboard() {
     const openEditModal = (cls) => {
         setEditingClass(cls);
         setNewDate(new Date().toISOString().split('T')[0]);
-        setNewStartTime(cls.start_time);
-        setNewEndTime(cls.end_time);
+        setNewStartTime(convertTo12Hour(cls.start_time));
+        setNewEndTime(convertTo12Hour(cls.end_time));
         setNewRoom(cls.room);
         setIsEditModalOpen(true);
     };
@@ -180,13 +195,8 @@ export default function Dashboard() {
     const submitReschedule = async (e) => {
         e.preventDefault();
         const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: editingClass.id,
-            exception_date: newDate,
-            status: 'rescheduled',
-            new_start_time: newStartTime,
-            new_end_time: newEndTime,
-            new_room: newRoom,
-            cancelled_by: session.user.id
+            base_schedule_id: editingClass.id, exception_date: newDate, status: 'rescheduled',
+            new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
 
         if (error) return alert("Error: " + error.message);
@@ -199,7 +209,7 @@ export default function Dashboard() {
     // --- PERMANENT SCHEDULE ACTIONS ---
     const openBaseModal = (cls = null) => {
         if (cls) {
-            setBaseForm({ ...cls });
+            setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
         } else {
             setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'Monday', start_time: '8:00 AM', end_time: '9:30 AM' });
         }
@@ -208,6 +218,8 @@ export default function Dashboard() {
 
     const submitBaseSchedule = async (e) => {
         e.preventDefault();
+        setIsBaseModalOpen(false); // Close modal instantly for smooth UI
+        
         const payload = { 
             course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, 
             day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, 
@@ -220,14 +232,18 @@ export default function Dashboard() {
             await supabase.from('base_schedule').insert([payload]);
         }
         
-        setIsBaseModalOpen(false);
-        fetchProfileAndSchedule(session.user.id);
+        // Await the fetch to ensure DB is fully updated before UI refresh
+        await fetchProfileAndSchedule(session.user.id);
     };
 
     const deleteBaseLecture = async (id, courseName) => {
         if (!window.confirm(`Permanently delete ${courseName} from the base schedule? This cannot be undone.`)) return;
+        
+        // Optimistic UI Delete
+        setBaseSchedule(prev => prev.filter(c => c.id !== id));
+        
         await supabase.from('base_schedule').delete().eq('id', id);
-        fetchProfileAndSchedule(session.user.id);
+        await fetchProfileAndSchedule(session.user.id);
     };
 
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
@@ -235,18 +251,23 @@ export default function Dashboard() {
 
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
-            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Head>
+                <title>CR Dashboard | IUB</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+            </Head>
+
+            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                 <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>🔔 Notifications</a>
+                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>🔔 Notifications</a>
                     <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
                 </div>
             </header>
 
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900' }}>
-                    <h2 style={{ margin: '0 0 10px 0', color: '#002147' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                    <p style={{ margin: 0, color: '#555' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
+                    <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
+                    <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                 </div>
 
                 {/* --- NAVIGATION TABS --- */}
@@ -279,7 +300,7 @@ export default function Dashboard() {
                                     borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none',
                                     opacity: cls.isCancelled ? 0.6 : 1 
                                 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
                                                 {cls.course}
@@ -288,13 +309,13 @@ export default function Dashboard() {
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{cls.start_time} - {cls.end_time}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
 
                                     {cls.isRescheduled && (
                                         <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                                            🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date}
+                                            🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})
                                         </div>
                                     )}
 
@@ -309,6 +330,8 @@ export default function Dashboard() {
                                             <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
                                         ) : cls.isConfirmed ? (
                                             <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
+                                        ) : cls.isRescheduled ? (
+                                            <button onClick={() => handleUndoException(cls.id, 'rescheduled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button>
                                         ) : (
                                             <>
                                                 <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
@@ -333,14 +356,14 @@ export default function Dashboard() {
                         ) : (
                             baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
                                 <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
                                             <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{cls.start_time} - {cls.end_time}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -360,21 +383,21 @@ export default function Dashboard() {
 
             {/* TEMP EXCEPTION EDIT MODAL */}
             {isEditModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
+                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
                         <h3 style={{ marginTop: 0 }}>Reschedule Class (Temp)</h3>
                         <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
                                 {availableRooms.length > 0 ? availableRooms.map(r => <option key={r} value={r}>{r}</option>) : <option value={newRoom}>{newRoom}</option>}
                             </select>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Save</button>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -383,8 +406,8 @@ export default function Dashboard() {
 
             {/* PERMANENT BASE SCHEDULE MODAL */}
             {isBaseModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
+                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
                         <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <input type="text" placeholder="Course Name" required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} />
@@ -395,14 +418,14 @@ export default function Dashboard() {
                                 {days.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
 
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Save</button>
+                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -414,4 +437,4 @@ export default function Dashboard() {
 
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
 const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', marginBottom: '5px' };
-const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem' };
+const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
