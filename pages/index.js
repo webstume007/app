@@ -43,30 +43,43 @@ export default function Home() {
         ts += 30;
     }
 
-    useEffect(() => {
-        const saved = localStorage.getItem('iub_user_selection');
-        if (saved) {
-            setUserSection(JSON.parse(saved));
-            setIsFirstVisit(false);
-        }
+   useEffect(() => {
+    // 1. Check browser for saved selection
+    const saved = localStorage.getItem('iub_user_selection');
+    if (saved) {
+        setUserSection(JSON.parse(saved));
+        setIsFirstVisit(false);
+    }
 
-        // Push Notifications Permission
-        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
-            Notification.requestPermission();
-        }
+    // 2. Fetch initial data
+    fetchLiveSchedule();
 
-        fetchLiveSchedule();
-    }, []);
+    // 3. --- REALTIME LISTENER START ---
+    // This part listens for new rows in your "notifications" table
+    const channel = supabase
+        .channel('realtime-updates')
+        .on('postgres_changes', 
+            { event: 'INSERT', schema: 'public', table: 'notifications' }, 
+            (payload) => {
+                const newMsg = payload.new.message;
+                
+                // Only trigger if the notification message mentions THEIR section
+                // (e.g., if message is "BSAI-3M: Class Cancelled")
+                if (userSection && newMsg.includes(userSection.section)) {
+                    if (Notification.permission === "granted") {
+                        new Notification("IUB Update Alert", {
+                            body: newMsg,
+                            icon: "/icon.png" // Make sure you have an icon in your public folder
+                        });
+                    }
+                }
+            }
+        )
+        .subscribe();
 
-    const fetchLiveSchedule = async () => {
-        const { data: baseData } = await supabase.from('base_schedule').select('*');
-        const { data: excData } = await supabase.from('schedule_exceptions').select('*');
-        const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
-
-        setRawData(baseData || []);
-        setExceptions(excData || []);
-        setNotifications(notifData || []);
-        setLoading(false);
+    // Clean up the connection when the user closes the tab
+    return () => {
+        supabase.removeChannel(channel);
     };
 
     const handleInitialSelection = (sem, sec) => {
