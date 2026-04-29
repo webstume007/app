@@ -140,13 +140,12 @@ export default function Dashboard() {
         const today = new Date().toISOString().split('T')[0];
         
         // 1. Remove exception from DB (using .match is much safer for composite keys)
-        const { data, error } = await supabase.from('schedule_exceptions')
+        const { error } = await supabase.from('schedule_exceptions')
             .delete()
             .match({ 
                 base_schedule_id: classId, 
                 exception_date: today 
-            })
-            .select(); // Forces Supabase to confirm what it deleted
+            });
 
         if (error) {
             console.error("Delete Error:", error);
@@ -164,20 +163,6 @@ export default function Dashboard() {
         }
 
         // 3. Re-fetch to guarantee the local view is synced with the DB
-        fetchProfileAndSchedule(session.user.id);
-    };
-
-        // 2. If reversing a cancellation, strictly delete the exact notification
-        if (actionType === 'cancelled') {
-            const targetMessage = `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`;
-            const { error: notifError } = await supabase.from('notifications')
-                .delete()
-                .eq('message', targetMessage);
-                
-            if (notifError) console.error("Error removing notification:", notifError);
-        }
-
-        // 3. Re-fetch to guarantee sync with DB
         fetchProfileAndSchedule(session.user.id);
     };
 
