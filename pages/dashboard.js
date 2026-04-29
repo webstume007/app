@@ -9,6 +9,9 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [availableRooms, setAvailableRooms] = useState([]);
 
+    // --- TAB STATE ---
+    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly' or 'permanent'
+
     // --- MODAL STATES FOR TEMP RESCHEDULE ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
@@ -86,7 +89,6 @@ export default function Dashboard() {
 
     // --- ACTION: WILL HELD (CONFIRM CLASS) ---
     const handleConfirmClass = async (classId, courseName) => {
-        // Optimistic UI update for instant reversal feel
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
         
         const today = new Date().toISOString().split('T')[0];
@@ -99,10 +101,9 @@ export default function Dashboard() {
 
         if (error) {
             alert("Error: " + error.message);
-            fetchProfileAndSchedule(session.user.id); // Revert on error
+            fetchProfileAndSchedule(session.user.id); 
             return; 
         }
-        // Notification deliberately omitted for confirmations
     };
 
     // --- ACTION: CANCEL CLASS ---
@@ -110,7 +111,6 @@ export default function Dashboard() {
         const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
         if (!confirmCancel) return;
 
-        // Optimistic UI update
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
 
         const today = new Date().toISOString().split('T')[0];
@@ -124,7 +124,6 @@ export default function Dashboard() {
             return;
         }
 
-        // Only trigger notification on Cancellation
         await supabase.from('notifications').insert([{ 
             message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
         }]);
@@ -137,6 +136,7 @@ export default function Dashboard() {
 
         const today = new Date().toISOString().split('T')[0];
         
+        // 1. Remove exception from DB
         const { error } = await supabase.from('schedule_exceptions')
             .delete()
             .eq('base_schedule_id', classId)
@@ -148,11 +148,18 @@ export default function Dashboard() {
             return;
         }
 
-        // If reversing a cancellation, delete the notification from the database
+        // 2. If reversing a cancellation, strictly delete the exact notification
         if (actionType === 'cancelled') {
             const targetMessage = `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`;
-            await supabase.from('notifications').delete().eq('message', targetMessage);
+            const { error: notifError } = await supabase.from('notifications')
+                .delete()
+                .eq('message', targetMessage);
+                
+            if (notifError) console.error("Error removing notification:", notifError);
         }
+
+        // 3. Re-fetch to guarantee sync with DB
+        fetchProfileAndSchedule(session.user.id);
     };
 
     // --- ACTION: OPEN TEMP EDIT MODAL ---
@@ -180,7 +187,6 @@ export default function Dashboard() {
 
         if (error) return alert("Error: " + error.message);
 
-        // Notification deliberately omitted for reschedules
         alert(`Class rescheduled successfully!`);
         setIsEditModalOpen(false);
         fetchProfileAndSchedule(session.user.id);
@@ -239,91 +245,113 @@ export default function Dashboard() {
                     <p style={{ margin: 0, color: '#555' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                 </div>
 
-                {/* ================= WEEKLY SCHEDULE SECTION ================= */}
-                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Weekly Timetable (Temp Exceptions)</h3>
-                
-                {schedule.length === 0 ? (
-                    <p>No classes found.</p>
-                ) : (
-                    schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                        <div key={cls.id} style={{ 
-                            background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', 
-                            borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none',
-                            opacity: cls.isCancelled ? 0.6 : 1 
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-                                <div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
-                                        {cls.course}
+                {/* --- NAVIGATION TABS --- */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                    <button 
+                        onClick={() => setActiveTab('weekly')} 
+                        style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}
+                    >
+                        📅 Weekly Timetable
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('permanent')} 
+                        style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}
+                    >
+                        🏛️ Base Schedule
+                    </button>
+                </div>
+
+                {/* ================= WEEKLY SCHEDULE TAB ================= */}
+                {activeTab === 'weekly' && (
+                    <div>
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Weekly Timetable (Temp Exceptions)</h3>
+                        
+                        {schedule.length === 0 ? (
+                            <p>No classes found.</p>
+                        ) : (
+                            schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
+                                <div key={cls.id} style={{ 
+                                    background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', 
+                                    borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none',
+                                    opacity: cls.isCancelled ? 0.6 : 1 
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
+                                                {cls.course}
+                                            </div>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{cls.start_time} - {cls.end_time}</div>
+                                        </div>
                                     </div>
-                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
-                                    <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{cls.start_time} - {cls.end_time}</div>
-                                </div>
-                            </div>
 
-                            {cls.isRescheduled && (
-                                <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                                    🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date}
-                                </div>
-                            )}
+                                    {cls.isRescheduled && (
+                                        <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                            🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date}
+                                        </div>
+                                    )}
 
-                            {cls.isConfirmed && (
-                                <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                                    ✅ Confirmed for Today
+                                    {cls.isConfirmed && (
+                                        <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                            ✅ Confirmed for Today
+                                        </div>
+                                    )}
+                                    
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        {cls.isCancelled ? (
+                                            <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
+                                        ) : cls.isConfirmed ? (
+                                            <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                                <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
+                                                <button onClick={() => handleCancelClass(cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                            
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                {cls.isCancelled ? (
-                                    <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
-                                ) : cls.isConfirmed ? (
-                                    <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
-                                ) : (
-                                    <>
-                                        <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                        <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
-                                        <button onClick={() => handleCancelClass(cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    ))
+                            ))
+                        )}
+                    </div>
                 )}
 
-                <hr style={{ margin: '30px 0', border: 'none', borderTop: '2px solid #ddd' }} />
-
-                {/* ================= PERMANENT SCHEDULE SECTION ================= */}
-                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Permanent / Base Schedule</h3>
-                
-                {baseSchedule.length === 0 ? (
-                    <p>No base schedule found.</p>
-                ) : (
-                    baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                        <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-                                <div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
-                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                {/* ================= PERMANENT SCHEDULE TAB ================= */}
+                {activeTab === 'permanent' && (
+                    <div>
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Permanent / Base Schedule</h3>
+                        
+                        {baseSchedule.length === 0 ? (
+                            <p>No base schedule found.</p>
+                        ) : (
+                            baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
+                                <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{cls.start_time} - {cls.end_time}</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8')}>✏️ Edit Lecture</button>
+                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course)} style={btnStyle('#dc3545')}>🗑️ Delete Lecture</button>
+                                    </div>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
-                                    <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{cls.start_time} - {cls.end_time}</div>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8')}>✏️ Edit Lecture</button>
-                                <button onClick={() => deleteBaseLecture(cls.id, cls.course)} style={btnStyle('#dc3545')}>🗑️ Delete Lecture</button>
-                            </div>
-                        </div>
-                    ))
+                            ))
+                        )}
+                        
+                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>
+                            ➕ Add New Lecture
+                        </button>
+                    </div>
                 )}
-                
-                <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>
-                    ➕ Add New Lecture
-                </button>
             </div>
 
             {/* TEMP EXCEPTION EDIT MODAL */}
