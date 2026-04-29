@@ -43,43 +43,67 @@ export default function Home() {
         ts += 30;
     }
 
-   useEffect(() => {
-    // 1. Check browser for saved selection
-    const saved = localStorage.getItem('iub_user_selection');
-    if (saved) {
-        setUserSection(JSON.parse(saved));
-        setIsFirstVisit(false);
-    }
+    useEffect(() => {
+        // 1. Load saved section from browser storage
+        const saved = localStorage.getItem('iub_user_selection');
+        if (saved) {
+            setUserSection(JSON.parse(saved));
+            setIsFirstVisit(false);
+        }
 
-    // 2. Fetch initial data
-    fetchLiveSchedule();
+        // 2. Request Notification Permission from Chrome
+        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
 
-    // 3. --- REALTIME LISTENER START ---
-    // This part listens for new rows in your "notifications" table
-    const channel = supabase
-        .channel('realtime-updates')
-        .on('postgres_changes', 
-            { event: 'INSERT', schema: 'public', table: 'notifications' }, 
-            (payload) => {
-                const newMsg = payload.new.message;
-                
-                // Only trigger if the notification message mentions THEIR section
-                // (e.g., if message is "BSAI-3M: Class Cancelled")
-                if (userSection && newMsg.includes(userSection.section)) {
-                    if (Notification.permission === "granted") {
-                        new Notification("IUB Update Alert", {
-                            body: newMsg,
-                            icon: "/icon.png" // Make sure you have an icon in your public folder
-                        });
+        // 3. Fetch the actual schedule data
+        fetchLiveSchedule();
+
+        // 4. SUPABASE REALTIME LISTENER FOR PUSH NOTIFICATIONS
+        const channel = supabase
+            .channel('realtime-updates')
+            .on('postgres_changes', 
+                { event: 'INSERT', schema: 'public', table: 'notifications' }, 
+                (payload) => {
+                    const newMsg = payload.new.message;
+                    
+                    // We check localStorage directly here to guarantee we have the latest section
+                    const currentSelection = localStorage.getItem('iub_user_selection');
+                    const section = currentSelection ? JSON.parse(currentSelection).section : null;
+
+                    // If message contains their section, trigger Chrome Push Pop-up
+                    if (section && newMsg.includes(section)) {
+                        // Also update the local state so the red dot appears immediately
+                        setNotifications(prev => [payload.new, ...prev]);
+                        setAlertsRead(false);
+
+                        if (Notification.permission === "granted") {
+                            new Notification("IUB Update Alert", {
+                                body: newMsg,
+                                icon: "/icon.png" // Make sure you put a small icon.png in your public folder!
+                            });
+                        }
                     }
                 }
-            }
-        )
-        .subscribe();
+            )
+            .subscribe();
 
-    // Clean up the connection when the user closes the tab
-    return () => {
-        supabase.removeChannel(channel);
+        // 5. Cleanup connection when the page closes
+        return () => {
+            supabase.removeChannel(channel);
+        };
+
+    }, [userSection]);
+
+    const fetchLiveSchedule = async () => {
+        const { data: baseData } = await supabase.from('base_schedule').select('*');
+        const { data: excData } = await supabase.from('schedule_exceptions').select('*');
+        const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+
+        setRawData(baseData || []);
+        setExceptions(excData || []);
+        setNotifications(notifData || []);
+        setLoading(false);
     };
 
     const handleInitialSelection = (sem, sec) => {
@@ -122,7 +146,6 @@ export default function Home() {
     const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
 
     const getStatusStyles = (cls) => {
-        // Expiring Updates logic: If time has passed, remove public notification styling
         if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
 
         const exc = exceptions.find(e => e.base_schedule_id === cls.id);
@@ -140,14 +163,10 @@ export default function Home() {
             return;
         }
         
-        // STRICT LOGIC: ONLY show room if it was cancelled during this time slot
         const strictlyCancelledClasses = rawData.filter(cls => {
             if (cls.day !== freeDay) return false;
-            
             const clsS = parseTime(cls.start_time);
             const clsE = parseTime(cls.end_time);
-            
-            // Check if overlapping
             const overlaps = (sVal < clsE && eVal > clsS);
             if (!overlaps) return false;
 
@@ -160,13 +179,6 @@ export default function Home() {
     };
 
     const relevantNotifs = notifications.filter(n => n.message.includes(userSection?.section));
-    
-    // Browser Push Notification on new alerts
-    useEffect(() => {
-        if (relevantNotifs.length > 0 && !alertsRead && "Notification" in window && Notification.permission === "granted") {
-            new Notification("IUB Update Alert", { body: relevantNotifs[0].message });
-        }
-    }, [relevantNotifs, alertsRead]);
 
     if (loading) return <div style={centerStyle}>Loading...</div>;
 
@@ -294,7 +306,7 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        {/* GLOBAL DAY FILTER (Shows for all tabs if they have schedules) */}
+                        {/* GLOBAL DAY FILTER */}
                         {(currentTab === 'class' || currentTab === 'teacher' || (currentTab === 'room' && roomSubTab === 'schedule')) && (
                             <div style={dayFilter}>
                                 {filterDays.map(day => (
