@@ -120,6 +120,14 @@ export default function Home() {
         return h * 60 + (m || 0); 
     };
 
+    const convertTo12Hour = (time24) => {
+        if (!time24 || time24.includes('AM') || time24.includes('PM')) return time24;
+        let [h, m] = time24.split(':').map(Number);
+        const suffix = h >= 12 ? "PM" : "AM";
+        h = h % 12 || 12;
+        return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
+    };
+
     const isClassPassed = (cls) => {
         const now = new Date();
         const currentDayShort = now.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -407,9 +415,7 @@ export default function Home() {
                     </>
                 )}
 
-                <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '30px' }}>
-                    <a href="/login" style={loginBtn}>CR Login Portal</a>
-                </div>
+                
             </div>
 
             <footer style={footerStyle}>
