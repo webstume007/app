@@ -89,6 +89,7 @@ export default function Dashboard() {
 
     // --- ACTION: WILL HELD (CONFIRM CLASS) ---
     const handleConfirmClass = async (classId, courseName) => {
+        // Optimistic UI
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
         
         const today = new Date().toISOString().split('T')[0];
@@ -99,11 +100,10 @@ export default function Dashboard() {
             cancelled_by: session.user.id
         }]);
 
-        if (error) {
-            alert("Error: " + error.message);
-            fetchProfileAndSchedule(session.user.id); 
-            return; 
-        }
+        if (error) alert("Error: " + error.message);
+        
+        // CRITICAL: Re-fetch silently in background so we get the newly created exception ID
+        fetchProfileAndSchedule(session.user.id); 
     };
 
     // --- ACTION: CANCEL CLASS ---
@@ -111,6 +111,7 @@ export default function Dashboard() {
         const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
         if (!confirmCancel) return;
 
+        // Optimistic UI
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
 
         const today = new Date().toISOString().split('T')[0];
@@ -120,13 +121,15 @@ export default function Dashboard() {
 
         if (error) {
             alert("Error: " + error.message);
-            fetchProfileAndSchedule(session.user.id);
-            return;
+        } else {
+            // Only insert notification if the database insertion was successful
+            await supabase.from('notifications').insert([{ 
+                message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
+            }]);
         }
-
-        await supabase.from('notifications').insert([{ 
-            message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
-        }]);
+        
+        // CRITICAL: Re-fetch silently
+        fetchProfileAndSchedule(session.user.id);
     };
 
     // --- ACTION: UNDO EXCEPTION (CANCEL/CONFIRM) ---
@@ -136,17 +139,33 @@ export default function Dashboard() {
 
         const today = new Date().toISOString().split('T')[0];
         
-        // 1. Remove exception from DB
-        const { error } = await supabase.from('schedule_exceptions')
+        // 1. Remove exception from DB (using .match is much safer for composite keys)
+        const { data, error } = await supabase.from('schedule_exceptions')
             .delete()
-            .eq('base_schedule_id', classId)
-            .eq('exception_date', today);
+            .match({ 
+                base_schedule_id: classId, 
+                exception_date: today 
+            })
+            .select(); // Forces Supabase to confirm what it deleted
 
         if (error) {
-            alert("Error undoing action: " + error.message);
-            fetchProfileAndSchedule(session.user.id);
-            return;
+            console.error("Delete Error:", error);
+            alert("Error undoing action in DB.");
         }
+
+        // 2. If reversing a cancellation, strictly delete the exact notification
+        if (actionType === 'cancelled') {
+            const targetMessage = `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`;
+            const { error: notifError } = await supabase.from('notifications')
+                .delete()
+                .eq('message', targetMessage);
+                
+            if (notifError) console.error("Error removing notification:", notifError);
+        }
+
+        // 3. Re-fetch to guarantee the local view is synced with the DB
+        fetchProfileAndSchedule(session.user.id);
+    };
 
         // 2. If reversing a cancellation, strictly delete the exact notification
         if (actionType === 'cancelled') {
