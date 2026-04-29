@@ -9,19 +9,25 @@ export default function Home() {
     const [loading, setLoading] = useState(true);
     
     // Persistence States
-    const [userSection, setUserSection] = useState(null); // Stores { semester: '', section: '' }
+    const [userSection, setUserSection] = useState(null);
     const [isFirstVisit, setIsFirstVisit] = useState(true);
 
     // Active View States
     const [currentTab, setCurrentTab] = useState('class');
-    const [selectedDay, setSelectedDay] = useState('MON');
+    const [selectedDay, setSelectedDay] = useState('ALL'); // Set to ALL by default
     const [showFreeResults, setShowFreeResults] = useState(false);
     
     // Free Room Filters
     const [freeDay, setFreeDay] = useState('MON');
     const [freeStart, setFreeStart] = useState('8:00 AM');
+    const [freeEnd, setFreeEnd] = useState('9:30 AM');
 
-    const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    // Notification States
+    const [unreadAlerts, setUnreadAlerts] = useState(false);
+    const [alertsCleared, setAlertsCleared] = useState(false);
+
+    const daysFilter = ["ALL", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const actualDays = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
     const timeSlots = [];
     let ts = 8 * 60; 
@@ -40,9 +46,10 @@ export default function Home() {
             setIsFirstVisit(false);
         }
 
-        // 2. Set default selected day to current day
-        const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-        if (days.includes(today)) setSelectedDay(today);
+        // 2. Request Notification Permission
+        if ("Notification" in window && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
 
         fetchLiveSchedule();
     }, []);
@@ -79,19 +86,43 @@ export default function Home() {
     const availableSemesters = [...new Set(rawData.map(x => x.semester))].filter(Boolean).sort();
     const getSectionsForSem = (sem) => [...new Set(rawData.filter(x => x.semester === sem).map(x => x.section))].sort();
 
-    const getStatusStyles = (classId) => {
-        const exc = exceptions.find(e => e.base_schedule_id === classId);
-        if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#f5c6cb' };
-        if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#c3e6cb' };
-        if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#b8daff' };
+    // Notification Logic
+    const relevantNotifs = alertsCleared ? [] : notifications.filter(n => n.message.includes(userSection?.section));
+    
+    useEffect(() => {
+        if (relevantNotifs.length > 0 && currentTab !== 'notif') {
+            setUnreadAlerts(true);
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("IUB Schedule Alert", { body: relevantNotifs[0].message });
+            }
+        }
+    }, [notifications.length]);
+
+    // Status & Expiry Logic
+    const getStatusStyles = (cls) => {
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+        const now = new Date();
+        const currentMins = now.getHours() * 60 + now.getMinutes();
+        
+        const dayIdx = actualDays.indexOf(cls.day);
+        const todayIdx = actualDays.indexOf(today);
+
+        // Expire logic: If the day has passed, or it is today and the end time has passed
+        let isExpired = false;
+        if (dayIdx < todayIdx && todayIdx !== -1) isExpired = true;
+        if (dayIdx === todayIdx && currentMins > parseTime(cls.end_time)) isExpired = true;
+
+        const exc = exceptions.find(e => e.base_schedule_id === cls.id);
+        
+        // If expired or no exception, return default
+        if (!exc || isExpired) return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
+
+        if (exc.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#f5c6cb' };
+        if (exc.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#c3e6cb' };
+        if (exc.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#b8daff' };
+        
         return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
     };
-
-    // Filtered Content
-    const mySchedule = rawData.filter(c => c.section === userSection?.section && c.day === selectedDay)
-                               .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
-    
-    const relevantNotifs = notifications.filter(n => n.message.includes(userSection?.section));
 
     if (loading) return <div style={centerStyle}>Loading...</div>;
 
@@ -127,9 +158,22 @@ export default function Home() {
         );
     }
 
+    // --- RENDER HELPERS ---
+    const renderClassCard = (cls, idx) => {
+        const status = getStatusStyles(cls);
+        return (
+            <div key={cls.id || idx} style={{...cardBase, background: status.bg, borderLeft: `5px solid ${status.border}`}}>
+                <div style={{fontWeight: 900, color: '#002147', fontSize: '0.85rem'}}>🕒 {cls.start_time} - {cls.end_time}</div>
+                <div style={{fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0'}}>{cls.course}</div>
+                <div style={{color: '#555', fontSize: '0.8rem'}}>📍 Room: {cls.room} | 👨‍🏫 {cls.teacher}</div>
+                <div style={{marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase'}}>● {status.label}</div>
+            </div>
+        );
+    };
+
     // --- MAIN APP VIEW ---
     return (
-        <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
+        <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column', margin: '0 auto', maxWidth: '500px' }}>
             <Head><title>My Schedule | IUB AI</title></Head>
 
             <header style={headerStyle}>
@@ -138,82 +182,199 @@ export default function Home() {
             </header>
 
             <div style={tabBar}>
-                {['class', 'notif', 'free'].map(tab => (
-                    <button key={tab} onClick={() => { setCurrentTab(tab); setShowFreeResults(false); }} style={tabBtn(currentTab === tab)}>
-                        {tab === 'class' ? '📅 SCHEDULE' : tab === 'notif' ? '🔔 ALERTS' : '🔍 FREE ROOM'}
+                {[
+                    { id: 'class', label: '📅 SCHED' },
+                    { id: 'teacher', label: '👨‍🏫 TCH' },
+                    { id: 'room', label: '📍 RM' },
+                    { id: 'notif', label: '🔔 ALERTS' },
+                    { id: 'free', label: '🔍 FREE' }
+                ].map(tab => (
+                    <button key={tab.id} onClick={() => { 
+                        setCurrentTab(tab.id); 
+                        setShowFreeResults(false);
+                        if(tab.id === 'notif') setUnreadAlerts(false);
+                    }} style={tabBtn(currentTab === tab.id)}>
+                        <div style={{position: 'relative', display: 'inline-block'}}>
+                            {tab.label}
+                            {tab.id === 'notif' && unreadAlerts && <span style={redDotStyle}></span>}
+                        </div>
                     </button>
                 ))}
             </div>
 
-            <div style={{ padding: '15px', maxWidth: '500px', margin: '0 auto', flex: 1, width: '100%' }}>
+            <div style={{ padding: '15px', flex: 1, width: '100%' }}>
                 
                 {/* 1. Schedule Tab */}
                 {currentTab === 'class' && (
                     <>
-                        {relevantNotifs.length > 0 && (
-                            <div style={notifStrip}>⚠️ Update: {relevantNotifs[0].message}</div>
-                        )}
-
                         <div style={dayFilter}>
-                            {days.map(day => (
+                            {daysFilter.map(day => (
                                 <button key={day} onClick={() => setSelectedDay(day)} style={dayBtnStyle(selectedDay === day)}>{day}</button>
                             ))}
                         </div>
 
-                        {mySchedule.length > 0 ? mySchedule.map((cls, idx) => {
-                            const status = getStatusStyles(cls.id);
-                            return (
-                                <div key={idx} style={{...cardBase, background: status.bg, borderLeft: `5px solid ${status.border}`}}>
-                                    <div style={{fontWeight: 900, color: '#002147', fontSize: '0.85rem'}}>🕒 {cls.start_time} - {cls.end_time}</div>
-                                    <div style={{fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0'}}>{cls.course}</div>
-                                    <div style={{color: '#555', fontSize: '0.8rem'}}>📍 Room: {cls.room} | 👨‍🏫 {cls.teacher}</div>
-                                    <div style={{marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase'}}>● {status.label}</div>
-                                </div>
-                            );
-                        }) : <div style={emptyState}>No classes scheduled for {selectedDay}</div>}
+                        {selectedDay === 'ALL' ? (
+                            actualDays.map(day => {
+                                const dayClasses = rawData.filter(c => c.section === userSection?.section && c.day === day).sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
+                                if (dayClasses.length === 0) return null;
+                                return (
+                                    <div key={day}>
+                                        <div style={dayDivider}>{day}</div>
+                                        {dayClasses.map((cls, idx) => renderClassCard(cls, idx))}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            // Single Day View
+                            rawData.filter(c => c.section === userSection?.section && c.day === selectedDay)
+                                   .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time))
+                                   .map((cls, idx) => renderClassCard(cls, idx))
+                        )}
+                        
+                        {rawData.filter(c => c.section === userSection?.section && (selectedDay === 'ALL' || c.day === selectedDay)).length === 0 && (
+                            <div style={emptyState}>No classes scheduled.</div>
+                        )}
                     </>
                 )}
 
                 {/* 2. Notifications Tab */}
                 {currentTab === 'notif' && (
-                    <div>
-                        <h4 style={{margin: '0 0 15px 0', fontSize: '0.9rem', color: '#002147'}}>Updates for {userSection.section}</h4>
+                    <div style={whiteCard}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+                            <h4 style={{margin: 0, fontSize: '0.9rem', color: '#002147'}}>Alerts & Updates</h4>
+                            {relevantNotifs.length > 0 && (
+                                <button onClick={() => setAlertsCleared(true)} style={markReadBtn}>Mark as Read</button>
+                            )}
+                        </div>
                         {relevantNotifs.length > 0 ? relevantNotifs.map((n, i) => (
                             <div key={i} style={notifCard}>
                                 <p style={{margin: '0 0 5px 0', fontSize: '0.9rem'}}>{n.message}</p>
                                 <span style={{fontSize: '0.7rem', color: '#999'}}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             </div>
-                        )) : <div style={emptyState}>No specific updates for your section.</div>}
+                        )) : <div style={emptyState}>No new updates for your section.</div>}
                     </div>
                 )}
 
-                {/* 3. Free Room Tab */}
+                {/* 3. Free Room Tab (STRICT CANCELED LOGIC) */}
                 {currentTab === 'free' && (
                     <div style={whiteCard}>
-                        <h4 style={{marginTop: 0, fontSize: '0.9rem'}}>Find Empty Rooms</h4>
-                        <select value={freeDay} onChange={e => setFreeDay(e.target.value)} style={selectStyle}>
-                            {days.map(d => <option key={d} value={d}>{d}</option>)}
+                        <h4 style={{marginTop: 0, fontSize: '0.9rem'}}>Find Empty Rooms (Due to Cancellations)</h4>
+                        
+                        <label style={labelStyle}>Select Day:</label>
+                        <select value={freeDay} onChange={e => {setFreeDay(e.target.value); setShowFreeResults(false);}} style={selectStyle}>
+                            {actualDays.map(d => <option key={d} value={d}>{d}</option>)}
                         </select>
-                        <select value={freeStart} onChange={e => setFreeStart(e.target.value)} style={selectStyle}>
+                        
+                        <label style={labelStyle}>Start Time:</label>
+                        <select value={freeStart} onChange={e => {setFreeStart(e.target.value); setShowFreeResults(false);}} style={selectStyle}>
                             {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
+
+                        <label style={labelStyle}>End Time:</label>
+                        <select value={freeEnd} onChange={e => {setFreeEnd(e.target.value); setShowFreeResults(false);}} style={selectStyle}>
+                            {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+
                         <button onClick={() => setShowFreeResults(true)} style={searchBtn}>SEARCH FREE ROOMS</button>
                         
                         {showFreeResults && (
-                            <div style={{marginTop: '15px'}}>
-                                {[...new Set(rawData.map(x => x.room))].filter(Boolean).sort().map(r => {
-                                    const isBusy = rawData.some(x => x.room === r && x.day === freeDay && parseTime(freeStart) >= parseTime(x.start_time) && parseTime(freeStart) < parseTime(x.end_time));
-                                    return !isBusy ? <div key={r} style={freeRoomItem}>✅ Room {r} is FREE</div> : null;
-                                })}
+                            <div style={{marginTop: '20px'}}>
+                                {(() => {
+                                    const fStart = parseTime(freeStart);
+                                    const fEnd = parseTime(freeEnd);
+
+                                    // Filter to only find rooms that have a explicitly CANCELLED class during this exact overlapping time slot
+                                    const cancelledClassesInSlot = rawData.filter(base => {
+                                        if (base.day !== freeDay) return false;
+                                        
+                                        const exc = exceptions.find(e => e.base_schedule_id === base.id);
+                                        if (!exc || exc.status !== 'cancelled') return false; // Must strictly be cancelled
+                                        
+                                        const cStart = parseTime(base.start_time);
+                                        const cEnd = parseTime(base.end_time);
+
+                                        // Overlap condition
+                                        return (fStart < cEnd && fEnd > cStart);
+                                    });
+
+                                    const freeRooms = [...new Set(cancelledClassesInSlot.map(c => c.room))];
+
+                                    if (freeRooms.length === 0) {
+                                        return <div style={emptyState}>No cancelled classes found for this time slot.</div>;
+                                    }
+
+                                    return freeRooms.map(r => (
+                                        <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
+                                    ));
+                                })()}
                             </div>
                         )}
                     </div>
                 )}
 
-                <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '30px' }}>
+                {/* 4. Teacher Tab */}
+                {currentTab === 'teacher' && (
+                    <div>
+                        <h4 style={{color: '#002147'}}>Teacher Schedules</h4>
+                        {[...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort().map(t => (
+                            <div key={t} style={whiteCard}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                    <h3 style={{margin: '0 0 10px 0', fontSize: '1rem', color: '#002147'}}>{t}</h3>
+                                    <a href={`https://wa.me/?text=Hello Sir`} target="_blank" rel="noreferrer" style={waBtnStyle}>WhatsApp</a>
+                                </div>
+                                {actualDays.map(d => {
+                                    const tClasses = rawData.filter(c => c.teacher === t && c.day === d).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+                                    if(tClasses.length === 0) return null;
+                                    return (
+                                        <div key={d} style={{marginBottom: '10px'}}>
+                                            <div style={{fontSize: '0.8rem', fontWeight: 'bold', background: '#f0f2f5', padding: '4px 8px', borderRadius: '4px'}}>{d}</div>
+                                            {tClasses.map((c, i) => (
+                                                <div key={i} style={{fontSize: '0.85rem', padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                                                    {c.start_time} - {c.end_time} | <strong>{c.section}</strong> | Rm: {c.room}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* 5. Room Tab */}
+                {currentTab === 'room' && (
+                    <div>
+                        <h4 style={{color: '#002147'}}>Room Schedules</h4>
+                        {[...new Set(rawData.map(x => x.room))].filter(Boolean).sort().map(r => (
+                            <div key={r} style={whiteCard}>
+                                <h3 style={{margin: '0 0 10px 0', fontSize: '1rem', color: '#002147', borderBottom: '2px solid #F2A900', paddingBottom: '5px'}}>Room: {r}</h3>
+                                {actualDays.map(d => {
+                                    const rClasses = rawData.filter(c => c.room === r && c.day === d).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+                                    if(rClasses.length === 0) return null;
+                                    return (
+                                        <div key={d} style={{marginBottom: '10px'}}>
+                                            <div style={{fontSize: '0.8rem', fontWeight: 'bold', background: '#f0f2f5', padding: '4px 8px', borderRadius: '4px'}}>{d}</div>
+                                            {rClasses.map((c, i) => (
+                                                <div key={i} style={{fontSize: '0.85rem', padding: '5px 0', borderBottom: '1px solid #eee'}}>
+                                                    {c.start_time} - {c.end_time} | <strong>{c.course}</strong> | {c.section}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '10px' }}>
                     <a href="/login" style={loginBtn}>CR Login Portal</a>
                 </div>
             </div>
+
+            <footer style={footerStyle}>
+                Made with <span style={{color: '#dc3545'}}>❤️</span> by <a href="https://wa.me/YOUR_PHONE_NUMBER_HERE" style={{color: '#F2A900', textDecoration: 'none', fontWeight: 'bold'}}>Mohsin</a>
+            </footer>
         </div>
     );
 }
@@ -224,17 +385,22 @@ const welcomeCard = { background:'#fff', padding:'30px', borderRadius:'15px', wi
 const bigBtn = { width:'100%', padding:'15px', background:'#F2A900', border:'none', borderRadius:'8px', fontWeight:900, color:'#002147', cursor:'pointer' };
 const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000 };
 const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '4px 8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' };
-const tabBar = { display: 'flex', background: '#fff', padding: '8px', gap: '5px', sticky: 'top', top: '50px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
-const tabBtn = (active) => ({ flex: 1, padding: '12px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' });
+const tabBar = { display: 'flex', background: '#fff', padding: '8px', gap: '3px', position: 'sticky', top: '50px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', whiteSpace: 'nowrap' };
+const tabBtn = (active) => ({ flex: 1, minWidth: '70px', padding: '10px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer' });
 const dayFilter = { display: 'flex', gap: '5px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px' };
 const dayBtnStyle = (active) => ({ flex: 1, minWidth: '55px', padding: '10px', borderRadius: '8px', border: 'none', background: active ? '#F2A900' : '#fff', color: active ? '#002147' : '#555', fontWeight: 'bold', fontSize: '0.7rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' });
+const dayDivider = { background: '#002147', color: '#fff', padding: '5px 10px', borderRadius: '5px', fontSize: '0.8rem', fontWeight: 'bold', margin: '15px 0 10px 0', textAlign: 'center', letterSpacing: '2px' };
 const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '0.9rem', background: '#fff' };
+const labelStyle = { display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#555', marginBottom: '4px' };
 const cardBase = { padding: '15px', marginBottom: '12px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
-const notifStrip = { background: '#fff3cd', color: '#856404', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.75rem', border: '1px solid #ffeeba', fontWeight: 'bold' };
 const notifCard = { background: '#fff', padding: '12px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
-const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' };
-const searchBtn = { width: '100%', padding: '12px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
+const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px' };
+const searchBtn = { width: '100%', padding: '12px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' };
 const freeRoomItem = { padding: '12px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.85rem' };
 const loginBtn = { display: 'inline-block', background: '#F2A900', color: '#002147', padding: '12px 25px', borderRadius: '8px', textDecoration: 'none', fontWeight: 900, fontSize: '0.8rem', boxShadow: '0 4px 15px rgba(242, 169, 0, 0.3)' };
+const markReadBtn = { background: '#f8d7da', color: '#721c24', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' };
+const waBtnStyle = { background: '#25D366', color: '#fff', padding: '6px 12px', borderRadius: '20px', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(37,211,102,0.3)' };
+const redDotStyle = { position: 'absolute', top: '-5px', right: '-10px', width: '8px', height: '8px', background: '#dc3545', borderRadius: '50%', border: '2px solid #fff' };
 const emptyState = { textAlign: 'center', padding: '40px', color: '#999', fontSize: '0.9rem' };
 const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' };
+const footerStyle = { textAlign: 'center', padding: '20px', background: '#002147', color: '#fff', fontSize: '0.85rem', marginTop: 'auto' };
