@@ -104,11 +104,12 @@ export default function Home() {
     }, [userSection]); // <-- Now it safely watches the userSection
 
     const fetchLiveSchedule = async () => {
-        const today = new Date().toLocaleDateString('en-CA'); // Gets YYYY-MM-DD format
+        // Use the exact same date format as the CR Dashboard (YYYY-MM-DD)
+        const today = new Date().toISOString().split('T')[0]; 
         
         const { data: baseData } = await supabase.from('base_schedule').select('*');
         
-        // Only fetch exceptions for TODAY so students see accurate current status
+        // Fetch exceptions for THIS date
         const { data: excData } = await supabase.from('schedule_exceptions')
             .select('*')
             .eq('exception_date', today);
