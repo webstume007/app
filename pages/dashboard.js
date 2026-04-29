@@ -27,6 +27,7 @@ export default function Dashboard() {
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+    // Generate time slots for the dropdowns
     const timeSlots = [];
     let ts = 8 * 60; 
     while (ts < 18 * 60) {
@@ -36,6 +37,7 @@ export default function Dashboard() {
         ts += 30;
     }
 
+    // Convert any 24h DB time to 12h AM/PM for display
     const convertTo12Hour = (timeStr) => {
         if (!timeStr) return "";
         if (timeStr.toUpperCase().includes('AM') || timeStr.toUpperCase().includes('PM')) return timeStr;
@@ -45,26 +47,8 @@ export default function Dashboard() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    // --- NEW: CROSS-PLATFORM NOTIFICATION HELPER ---
-    const triggerNotification = async (title, body) => {
-        const options = { body, icon: "/icon.png" };
-        try {
-            // Try standard desktop way first
-            new Notification(title, options);
-        } catch (error) {
-            // If it throws "Illegal constructor" on mobile, use the Service Worker
-            if ('serviceWorker' in navigator) {
-                try {
-                    const registration = await navigator.serviceWorker.register('/sw.js');
-                    await registration.showNotification(title, options);
-                } catch (swError) {
-                    console.error("Service worker notification failed:", swError);
-                }
-            }
-        }
-    };
-
     useEffect(() => {
+        // Request Notification Permissions on load
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
         }
@@ -76,6 +60,7 @@ export default function Dashboard() {
         });
     }, []);
 
+    // REALTIME LISTENER: CR gets notifications for their section
     useEffect(() => {
         if (!profile) return;
         const channel = supabase
@@ -86,8 +71,7 @@ export default function Dashboard() {
                     const newMsg = payload.new.message;
                     if (newMsg.includes(profile.section)) {
                         if (Notification.permission === "granted") {
-                            // Uses the new helper here
-                            triggerNotification("IUB Update Alert", newMsg);
+                            new Notification("IUB Update Alert", { body: newMsg, icon: "/icon.png" });
                         }
                     }
                 }
@@ -101,20 +85,25 @@ export default function Dashboard() {
         setProfile(profileData);
 
         if (profileData) {
+            // Fetch Base Schedule
             const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
+            // Fetch all rooms for the Reschedule dropdown
             const { data: allData } = await supabase.from('base_schedule').select('room');
             if (allData) {
                 const rooms = [...new Set(allData.map(x => x.room))].filter(Boolean).sort();
                 setAvailableRooms(rooms);
             }
 
+            // Fetch Exceptions (Cancellations, Reschedules, & Confirmations)
             const today = new Date().toISOString().split('T')[0];
             const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
 
+            // Merge data to determine the current status of each class for the week
             const mergedSchedule = (scheduleData || []).map(cls => {
                 const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
+                
                 return { 
                     ...cls, 
                     isCancelled: exception?.status === 'cancelled',
@@ -134,19 +123,24 @@ export default function Dashboard() {
         window.location.href = '/login';
     };
 
+    // --- ACTION: WILL HELD (CONFIRM CLASS) ---
     const handleConfirmClass = async (classId, courseName) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
+        
         const today = new Date().toISOString().split('T')[0];
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
         }]);
+
         if (error) alert("Error: " + error.message);
         fetchProfileAndSchedule(session.user.id); 
     };
 
+    // --- ACTION: CANCEL CLASS ---
     const handleCancelClass = async (classId, courseName) => {
         const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
         if (!confirmCancel) return;
+
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
 
         const today = new Date().toISOString().split('T')[0];
@@ -157,15 +151,22 @@ export default function Dashboard() {
         if (error) {
             alert("Error: " + error.message);
         } else {
-            await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` }]);
+            await supabase.from('notifications').insert([{ 
+                message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
+            }]);
         }
+        
         fetchProfileAndSchedule(session.user.id);
     };
 
+    // --- ACTION: UNDO EXCEPTION (CANCEL/CONFIRM/RESCHEDULE) ---
     const handleUndoException = async (classId, actionType, courseName) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
+
         const today = new Date().toISOString().split('T')[0];
-        const { error } = await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
+        const { error } = await supabase.from('schedule_exceptions')
+            .delete()
+            .match({ base_schedule_id: classId, exception_date: today });
 
         if (error) {
             console.error("Delete Error:", error);
@@ -176,9 +177,11 @@ export default function Dashboard() {
             const targetMessage = `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`;
             await supabase.from('notifications').delete().eq('message', targetMessage);
         }
+
         fetchProfileAndSchedule(session.user.id);
     };
 
+    // --- ACTION: OPEN TEMP EDIT MODAL ---
     const openEditModal = (cls) => {
         setEditingClass(cls);
         setNewDate(new Date().toISOString().split('T')[0]);
@@ -188,18 +191,22 @@ export default function Dashboard() {
         setIsEditModalOpen(true);
     };
 
+    // --- ACTION: SUBMIT RESCHEDULE ---
     const submitReschedule = async (e) => {
         e.preventDefault();
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: editingClass.id, exception_date: newDate, status: 'rescheduled',
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
+
         if (error) return alert("Error: " + error.message);
+
         alert(`Class rescheduled successfully!`);
         setIsEditModalOpen(false);
         fetchProfileAndSchedule(session.user.id);
     };
 
+    // --- PERMANENT SCHEDULE ACTIONS ---
     const openBaseModal = (cls = null) => {
         if (cls) {
             setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
@@ -211,7 +218,8 @@ export default function Dashboard() {
 
     const submitBaseSchedule = async (e) => {
         e.preventDefault();
-        setIsBaseModalOpen(false);
+        setIsBaseModalOpen(false); // Close modal instantly for smooth UI
+        
         const payload = { 
             course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, 
             day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, 
@@ -223,12 +231,17 @@ export default function Dashboard() {
         } else {
             await supabase.from('base_schedule').insert([payload]);
         }
+        
+        // Await the fetch to ensure DB is fully updated before UI refresh
         await fetchProfileAndSchedule(session.user.id);
     };
 
     const deleteBaseLecture = async (id, courseName) => {
         if (!window.confirm(`Permanently delete ${courseName} from the base schedule? This cannot be undone.`)) return;
+        
+        // Optimistic UI Delete
         setBaseSchedule(prev => prev.filter(c => c.id !== id));
+        
         await supabase.from('base_schedule').delete().eq('id', id);
         await fetchProfileAndSchedule(session.user.id);
     };
@@ -257,20 +270,41 @@ export default function Dashboard() {
                     <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                 </div>
 
+                {/* --- NAVIGATION TABS --- */}
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                    <button onClick={() => setActiveTab('weekly')} style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>📅 Weekly Timetable</button>
-                    <button onClick={() => setActiveTab('permanent')} style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>🏛️ Base Schedule</button>
+                    <button 
+                        onClick={() => setActiveTab('weekly')} 
+                        style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}
+                    >
+                        📅 Weekly Timetable
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('permanent')} 
+                        style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}
+                    >
+                        🏛️ Base Schedule
+                    </button>
                 </div>
 
+                {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
                     <div>
                         <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Weekly Timetable (Temp Exceptions)</h3>
-                        {schedule.length === 0 ? <p>No classes found.</p> : (
+                        
+                        {schedule.length === 0 ? (
+                            <p>No classes found.</p>
+                        ) : (
                             schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                                <div key={cls.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none', opacity: cls.isCancelled ? 0.6 : 1 }}>
+                                <div key={cls.id} style={{ 
+                                    background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', 
+                                    borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none',
+                                    opacity: cls.isCancelled ? 0.6 : 1 
+                                }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
+                                                {cls.course}
+                                            </div>
                                             <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
@@ -286,7 +320,9 @@ export default function Dashboard() {
                                     )}
 
                                     {cls.isConfirmed && (
-                                        <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>✅ Confirmed for Today</div>
+                                        <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                            ✅ Confirmed for Today
+                                        </div>
                                     )}
                                     
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -310,10 +346,14 @@ export default function Dashboard() {
                     </div>
                 )}
 
+                {/* ================= PERMANENT SCHEDULE TAB ================= */}
                 {activeTab === 'permanent' && (
                     <div>
                         <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Permanent / Base Schedule</h3>
-                        {baseSchedule.length === 0 ? <p>No base schedule found.</p> : (
+                        
+                        {baseSchedule.length === 0 ? (
+                            <p>No base schedule found.</p>
+                        ) : (
                             baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
                                 <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
@@ -333,11 +373,15 @@ export default function Dashboard() {
                                 </div>
                             ))
                         )}
-                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>➕ Add New Lecture</button>
+                        
+                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>
+                            ➕ Add New Lecture
+                        </button>
                     </div>
                 )}
             </div>
 
+            {/* TEMP EXCEPTION EDIT MODAL */}
             {isEditModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
@@ -360,6 +404,7 @@ export default function Dashboard() {
                 </div>
             )}
 
+            {/* PERMANENT BASE SCHEDULE MODAL */}
             {isBaseModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
@@ -368,13 +413,16 @@ export default function Dashboard() {
                             <input type="text" placeholder="Course Name" required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} />
                             <input type="text" placeholder="Teacher Name" required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} />
                             <input type="text" placeholder="Room (e.g. 101)" required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} />
+                            
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>
                                 {days.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
+
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                 <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                                 <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
+                            
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
                                 <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
@@ -388,4 +436,5 @@ export default function Dashboard() {
 }
 
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
+const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', marginBottom: '5px' };
 const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
