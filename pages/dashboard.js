@@ -7,22 +7,16 @@ export default function Dashboard() {
     const [schedule, setSchedule] = useState([]);
     const [loading, setLoading] = useState(true);
     const [availableRooms, setAvailableRooms] = useState([]);
-    
-    // Tab Management
-    const [activeTab, setActiveTab] = useState('temporary'); // 'temporary' or 'base'
 
-    // --- MODAL STATES ---
+    // --- MODAL STATES FOR EDIT TIMING ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
-    
-    // Form States
-    const [formData, setFormData] = useState({
-        course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM', date: ''
-    });
+    const [newDate, setNewDate] = useState('');
+    const [newStartTime, setNewStartTime] = useState('8:00 AM');
+    const [newEndTime, setNewEndTime] = useState('9:30 AM');
+    const [newRoom, setNewRoom] = useState('');
 
-    const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    // Generate time slots for the dropdowns
     const timeSlots = [];
     let ts = 8 * 60; 
     while (ts < 18 * 60) {
@@ -41,227 +35,210 @@ export default function Dashboard() {
     }, []);
 
     const fetchProfileAndSchedule = async (userId) => {
-        const { data: p } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
-        setProfile(p);
-        
-        if (p) {
-            const { data: s } = await supabase.from('base_schedule').select('*').eq('semester', p.semester).eq('section', p.section);
-            const { data: allRooms } = await supabase.from('base_schedule').select('room');
-            if (allRooms) setAvailableRooms([...new Set(allRooms.map(x => x.room))].filter(Boolean).sort());
+        const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
+        setProfile(profileData);
 
-            const { data: e } = await supabase.from('schedule_exceptions').select('*');
+        if (profileData) {
+            // Fetch Base Schedule
+            const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
+            
+            // Fetch all rooms for the Reschedule dropdown
+            const { data: allData } = await supabase.from('base_schedule').select('room');
+            if (allData) {
+                const rooms = [...new Set(allData.map(x => x.room))].filter(Boolean).sort();
+                setAvailableRooms(rooms);
+            }
 
-            const merged = (s || []).map(cls => {
-                const exc = (e || []).find(ex => ex.base_schedule_id === cls.id);
-                return { ...cls, exc };
+            // Fetch Exceptions (Cancellations, Reschedules, & Confirmations)
+            const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*');
+
+            // Merge data to determine the current status of each class
+            const mergedSchedule = (scheduleData || []).map(cls => {
+                const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
+                
+                return { 
+                    ...cls, 
+                    isCancelled: exception?.status === 'cancelled',
+                    isRescheduled: exception?.status === 'rescheduled',
+                    isConfirmed: exception?.status === 'confirmed',
+                    exceptionDetails: exception
+                };
             });
-            setSchedule(merged);
+
+            setSchedule(mergedSchedule);
         }
         setLoading(false);
     };
 
-    // --- TEMPORARY ACTIONS (DAILY) ---
-    
-    const handleConfirm = async (cls) => {
-        const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: cls.id, status: 'confirmed', exception_date: new Date().toISOString().split('T')[0], cancelled_by: session.user.id
-        }]);
-        if (error) return alert(error.message);
-        fetchProfileAndSchedule(session.user.id);
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        window.location.href = '/login';
     };
 
-    const handleUndoConfirm = async (cls) => {
-        if (!confirm(`Undo confirmation for ${cls.course}?`)) return;
-        const { error } = await supabase.from('schedule_exceptions').delete().eq('base_schedule_id', cls.id).eq('status', 'confirmed');
-        if (error) return alert(error.message);
-        fetchProfileAndSchedule(session.user.id);
-    };
+    // --- ACTION: WILL HELD (CONFIRM CLASS) ---
+    const handleConfirmClass = async (classId, courseName) => {
+        const today = new Date().toISOString().split('T')[0];
 
-    const handleCancel = async (cls) => {
-        if (!confirm(`Cancel ${cls.course}?`)) return;
-        
         const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: cls.id, status: 'cancelled', exception_date: new Date().toISOString().split('T')[0], cancelled_by: session.user.id
+            base_schedule_id: classId,
+            exception_date: today,
+            status: 'confirmed',
+            cancelled_by: session.user.id
         }]);
-        if (error) return alert(error.message);
-        
-        // ONLY notify on cancellations
+
+        if (error) return alert("Error: " + error.message);
+
         await supabase.from('notifications').insert([{ 
-            message: `🚨 ALERT: ${cls.course} for ${profile.section} is CANCELLED. Room ${cls.room} is now free.` 
+            message: `✅ Confirmed: ${courseName} for Section ${profile.section} is happening as scheduled.` 
         }]);
-        
+
+        alert(`${courseName} marked as Confirmed!`);
         fetchProfileAndSchedule(session.user.id);
     };
 
-    const handleUndoCancel = async (cls) => {
-        if (!confirm(`Mark ${cls.course} as NOT cancelled?`)) return;
+    // --- ACTION: CANCEL CLASS ---
+    const handleCancelClass = async (classId, courseName) => {
+        const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
+        if (!confirmCancel) return;
 
-        const { error } = await supabase.from('schedule_exceptions').delete().eq('base_schedule_id', cls.id).eq('status', 'cancelled');
-        if (error) return alert(error.message);
+        const today = new Date().toISOString().split('T')[0];
 
-        // Remove the cancellation notification
-        await supabase.from('notifications').delete().ilike('message', `%${cls.course}%CANCELLED%`);
-        
-        alert("Class restored!");
+        const { error } = await supabase.from('schedule_exceptions').insert([{
+            base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
+        }]);
+
+        if (error) return alert("Error: " + error.message);
+
+        await supabase.from('notifications').insert([{ 
+            message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
+        }]);
+
+        alert(`Class cancelled successfully!`);
         fetchProfileAndSchedule(session.user.id);
     };
 
-    const handleTempReschedule = async (e) => {
+    // --- ACTION: OPEN EDIT MODAL ---
+    const openEditModal = (cls) => {
+        setEditingClass(cls);
+        setNewDate(new Date().toISOString().split('T')[0]);
+        setNewStartTime(cls.start_time);
+        setNewEndTime(cls.end_time);
+        setNewRoom(cls.room);
+        setIsEditModalOpen(true);
+    };
+
+    // --- ACTION: SUBMIT RESCHEDULE ---
+    const submitReschedule = async (e) => {
         e.preventDefault();
         const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: editingClass.id, status: 'rescheduled', exception_date: formData.date,
-            new_start_time: formData.start_time, new_end_time: formData.end_time, new_room: formData.room, cancelled_by: session.user.id
+            base_schedule_id: editingClass.id,
+            exception_date: newDate,
+            status: 'rescheduled',
+            new_start_time: newStartTime,
+            new_end_time: newEndTime,
+            new_room: newRoom,
+            cancelled_by: session.user.id
         }]);
-        if (error) return alert(error.message);
+
+        if (error) return alert("Error: " + error.message);
+
+        await supabase.from('notifications').insert([{ 
+            message: `🔄 Rescheduled: ${editingClass.course} (${profile.section}) moved to Room ${newRoom} on ${newDate} at ${newStartTime}.` 
+        }]);
+
+        alert(`Class rescheduled successfully!`);
         setIsEditModalOpen(false);
         fetchProfileAndSchedule(session.user.id);
     };
 
-    // --- PERMANENT ACTIONS (BASE SCHEDULE) ---
-    
-    const handleAddBase = async (e) => {
-        e.preventDefault();
-        const { error } = await supabase.from('base_schedule').insert([{
-            ...formData, semester: profile.semester, section: profile.section
-        }]);
-        if (error) return alert(error.message);
-        setIsAddModalOpen(false);
-        fetchProfileAndSchedule(session.user.id);
-    };
-
-    const handleUpdateBase = async (e) => {
-        e.preventDefault();
-        const { error } = await supabase.from('base_schedule').update({
-            course: formData.course, teacher: formData.teacher, room: formData.room,
-            day: formData.day, start_time: formData.start_time, end_time: formData.end_time
-        }).eq('id', editingClass.id);
-        if (error) return alert(error.message);
-        setIsBaseModalOpen(false);
-        fetchProfileAndSchedule(session.user.id);
-    };
-
-    const handleDeleteBase = async (id, courseName) => {
-        if (!confirm(`Permanently delete ${courseName} from the weekly schedule?`)) return;
-        const { error } = await supabase.from('base_schedule').delete().eq('id', id);
-        if (error) return alert(error.message);
-        fetchProfileAndSchedule(session.user.id);
-    };
-
-    if (loading) return <div style={centerStyle}>Loading Portal...</div>;
+    if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
+    if (!session) return null;
 
     return (
-        <div style={mobileWrapper}>
-            <header style={headerStyle}>
-                <div style={{ fontWeight: 900, fontSize: '0.9rem' }}>🛠 CR PORTAL: {profile?.section}</div>
-                <button onClick={() => supabase.auth.signOut().then(() => window.location.href='/')} style={logoutBtn}>Logout</button>
+        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
+            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>🔔 Notifications</a>
+                    <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
+                </div>
             </header>
 
-            {/* TAB TOGGLE */}
-            <div style={tabContainer}>
-                <button onClick={() => setActiveTab('temporary')} style={tabStyle(activeTab === 'temporary')}>🕒 Temporary</button>
-                <button onClick={() => setActiveTab('base')} style={tabStyle(activeTab === 'base')}>📅 Weekly Base</button>
+            <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
+                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900' }}>
+                    <h2 style={{ margin: '0 0 10px 0', color: '#002147' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
+                    <p style={{ margin: 0, color: '#555' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
+                </div>
+
+                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Weekly Timetable</h3>
+                
+                {schedule.length === 0 ? (
+                    <p>No classes found.</p>
+                ) : (
+                    schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
+                        <div key={cls.id} style={{ 
+                            background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', 
+                            borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none',
+                            opacity: cls.isCancelled ? 0.6 : 1 
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                                <div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
+                                        {cls.course}
+                                    </div>
+                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
+                                    <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{cls.start_time} - {cls.end_time}</div>
+                                </div>
+                            </div>
+
+                            {cls.isRescheduled && (
+                                <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                    🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date}
+                                </div>
+                            )}
+
+                            {cls.isConfirmed && (
+                                <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                    ✅ Confirmed for Today
+                                </div>
+                            )}
+                            
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                {cls.isCancelled ? (
+                                    <div style={{ width: '100%', textAlign: 'center', padding: '10px', background: '#ffeeba', color: '#856404', borderRadius: '5px', fontWeight: 'bold' }}>Class Cancelled for Today</div>
+                                ) : (
+                                    <>
+                                        <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                        <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
+                                        <button onClick={() => handleCancelClass(cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
 
-            <main style={{ padding: '15px', flex: 1 }}>
-                
-                {activeTab === 'temporary' ? (
-                    <div>
-                        <p style={subText}>Daily updates (Held, Cancel, Reschedule)</p>
-                        {schedule.sort((a,b)=>days.indexOf(a.day)-days.indexOf(b.day)).map(cls => (
-                            <div key={cls.id} style={{...cardStyle, borderLeft: cls.exc?.status === 'confirmed' ? '5px solid #28a745' : cls.exc?.status === 'cancelled' ? '5px solid #dc3545' : '5px solid #F2A900', opacity: cls.exc?.status === 'cancelled' ? 0.7 : 1}}>
-                                <div style={cardRow}>
-                                    <div style={{fontWeight: 'bold', fontSize: '1rem'}}>{cls.course}</div>
-                                    <div style={{fontSize: '0.8rem', fontWeight: 'bold'}}>{cls.room}</div>
-                                </div>
-                                <div style={{fontSize: '0.75rem', color: '#666'}}>{cls.day} | {cls.start_time} - {cls.end_time}</div>
-                                
-                                <div style={{display: 'flex', gap: '5px', marginTop: '10px'}}>
-                                    {cls.exc?.status === 'cancelled' ? (
-                                        <button onClick={() => handleUndoCancel(cls)} style={undoBtn}>↩️ Mark as not cancel</button>
-                                    ) : cls.exc?.status === 'confirmed' ? (
-                                        <button onClick={() => handleUndoConfirm(cls)} style={undoConfirmBtn}>↩️ Mark Not Confirm</button>
-                                    ) : (
-                                        <>
-                                            <button onClick={() => handleConfirm(cls)} style={actionBtn('#28a745')}>Held</button>
-                                            <button onClick={() => { setEditingClass(cls); setFormData({...formData, room: cls.room, start_time: cls.start_time, end_time: cls.end_time, date: new Date().toISOString().split('T')[0]}); setIsEditModalOpen(true); }} style={actionBtn('#007bff')}>Resched</button>
-                                            <button onClick={() => handleCancel(cls)} style={actionBtn('#dc3545')}>Cancel</button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div>
-                        <p style={subText}>Edit your permanent weekly timetable</p>
-                        
-                        {schedule.sort((a,b)=>days.indexOf(a.day)-days.indexOf(b.day)).map(cls => (
-                            <div key={cls.id} style={cardStyle}>
-                                <div style={cardRow}>
-                                    <div>
-                                        <div style={{fontWeight: 'bold', fontSize: '0.9rem'}}>{cls.course}</div>
-                                        <div style={{fontSize: '0.75rem', color: '#555'}}>{cls.day} | {cls.start_time} - {cls.end_time} | {cls.room}</div>
-                                        <div style={{fontSize: '0.7rem', color: '#888'}}>👨‍🏫 {cls.teacher}</div>
-                                    </div>
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
-                                        <button onClick={() => { setEditingClass(cls); setFormData(cls); setIsBaseModalOpen(true); }} style={smallBtn('#002147')}>✏️ Edit</button>
-                                        <button onClick={() => handleDeleteBase(cls.id, cls.course)} style={smallBtn('#dc3545')}>🗑️ Delete</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-                        {/* Add New Lecture Button below all permanent lectures */}
-                        <button onClick={() => {
-                            setFormData({course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM', date: ''});
-                            setIsAddModalOpen(true);
-                        }} style={largeAddBtn}>
-                            ➕ Add New Lecture
-                        </button>
-                    </div>
-                )}
-            </main>
-
-            {/* MODAL: ADD / EDIT BASE PERMANENTLY */}
-            {(isAddModalOpen || isBaseModalOpen) && (
-                <div style={overlay}>
-                    <div style={modal}>
-                        <h3 style={{marginTop: 0, color: '#002147'}}>{isAddModalOpen ? '➕ Add Lecture' : '✏️ Edit Lecture'}</h3>
-                        <form onSubmit={isAddModalOpen ? handleAddBase : handleUpdateBase}>
-                            <input placeholder="Course Name" style={input} value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} required />
-                            <input placeholder="Teacher Name" style={input} value={formData.teacher} onChange={e => setFormData({...formData, teacher: e.target.value})} required />
-                            <div style={{display: 'flex', gap: '5px'}}>
-                                <select style={input} value={formData.day} onChange={e => setFormData({...formData, day: e.target.value})}>{days.filter(d=>d!=='ALL').map(d=><option key={d} value={d}>{d}</option>)}</select>
-                                <input placeholder="Room" style={input} value={formData.room} onChange={e => setFormData({...formData, room: e.target.value})} required />
-                            </div>
-                            <div style={{display: 'flex', gap: '5px'}}>
-                                <select style={input} value={formData.start_time} onChange={e => setFormData({...formData, start_time: e.target.value})}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
-                                <select style={input} value={formData.end_time} onChange={e => setFormData({...formData, end_time: e.target.value})}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
-                            </div>
-                            <div style={{display: 'flex', gap: '5px', marginTop: '10px'}}>
-                                <button type="button" onClick={() => {setIsAddModalOpen(false); setIsBaseModalOpen(false);}} style={modalBtn('#eee', '#333')}>Cancel</button>
-                                <button type="submit" style={modalBtn('#002147', '#F2A900')}>Save Permanent</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL: TEMP RESCHEDULE */}
+            {/* EDIT MODAL */}
             {isEditModalOpen && (
-                <div style={overlay}>
-                    <div style={modal}>
-                        <h3 style={{marginTop: 0, color: '#002147'}}>🕒 Temp Reschedule</h3>
-                        <form onSubmit={handleTempReschedule}>
-                            <input type="date" style={input} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required />
-                            <div style={{display: 'flex', gap: '5px'}}>
-                                <select style={input} value={formData.start_time} onChange={e => setFormData({...formData, start_time: e.target.value})}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
-                                <select style={input} value={formData.end_time} onChange={e => setFormData({...formData, end_time: e.target.value})}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px' }}>
+                        <h3 style={{ marginTop: 0 }}>Reschedule Class</h3>
+                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
-                            <input placeholder="New Room" style={input} value={formData.room} onChange={e => setFormData({...formData, room: e.target.value})} required />
-                            <div style={{display: 'flex', gap: '5px', marginTop: '10px'}}>
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={modalBtn('#eee', '#333')}>Close</button>
-                                <button type="submit" style={modalBtn('#007bff', '#fff')}>Apply Today</button>
+                            <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
+                                {availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px' }}>Cancel</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -271,22 +248,6 @@ export default function Dashboard() {
     );
 }
 
-// STYLES
-const mobileWrapper = { maxWidth: '500px', margin: '0 auto', minHeight: '100vh', background: '#f0f2f5', display: 'flex', flexDirection: 'column', boxShadow: '0 0 20px rgba(0,0,0,0.1)', fontFamily: "'Roboto', sans-serif" };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const logoutBtn = { background: '#F2A900', color: '#002147', border: 'none', padding: '5px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer' };
-const tabContainer = { display: 'flex', background: '#fff', borderBottom: '1px solid #ddd' };
-const tabStyle = (active) => ({ flex: 1, padding: '15px', border: 'none', background: active ? '#fff' : '#f8f9fa', color: active ? '#002147' : '#999', fontWeight: 'bold', borderBottom: active ? '3px solid #F2A900' : 'none', fontSize: '0.8rem', cursor: 'pointer' });
-const cardStyle = { background: '#fff', padding: '15px', borderRadius: '10px', marginBottom: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };
-const cardRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' };
-const subText = { fontSize: '0.75rem', color: '#666', margin: '0 0 15px 0', fontWeight: 'bold' };
-const actionBtn = (bg) => ({ flex: 1, padding: '10px', border: 'none', borderRadius: '6px', background: bg, color: '#fff', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' });
-const undoBtn = { width: '100%', padding: '10px', background: '#6c757d', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer' };
-const undoConfirmBtn = { width: '100%', padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer' };
-const smallBtn = (bg) => ({ border: 'none', background: bg, color: '#fff', fontSize: '0.65rem', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' });
-const largeAddBtn = { width: '100%', padding: '15px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 900, cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 10px rgba(0,33,71,0.2)' };
-const overlay = { position: 'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.7)', display:'flex', justifyContent:'center', alignItems:'center', zIndex: 2000 };
-const modal = { background:'#fff', padding:'25px', borderRadius:'12px', width:'90%', maxWidth:'400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' };
-const input = { width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' };
-const modalBtn = (bg, col) => ({ flex: 1, padding: '12px', border: 'none', borderRadius: '6px', background: bg, color: col, fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' });
-const centerStyle = { textAlign: 'center', marginTop: '100px', fontFamily: "'Roboto', sans-serif" };
+const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
+const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', marginBottom: '5px' };
+const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem' };
