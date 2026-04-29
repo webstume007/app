@@ -16,6 +16,15 @@ export default function Dashboard() {
     const [newEndTime, setNewEndTime] = useState('9:30 AM');
     const [newRoom, setNewRoom] = useState('');
 
+    // --- MODAL STATES FOR ADD LECTURE ---
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [addCourse, setAddCourse] = useState('');
+    const [addTeacher, setAddTeacher] = useState('');
+    const [addDay, setAddDay] = useState('Monday');
+    const [addStartTime, setAddStartTime] = useState('8:00 AM');
+    const [addEndTime, setAddEndTime] = useState('9:30 AM');
+    const [addRoom, setAddRoom] = useState('');
+
     // Generate time slots for the dropdowns
     const timeSlots = [];
     let ts = 8 * 60; 
@@ -88,11 +97,18 @@ export default function Dashboard() {
 
         if (error) return alert("Error: " + error.message);
 
-        await supabase.from('notifications').insert([{ 
-            message: `✅ Confirmed: ${courseName} for Section ${profile.section} is happening as scheduled.` 
-        }]);
+        // Intentionally left blank: No Notification sent on confirmation as requested
 
         alert(`${courseName} marked as Confirmed!`);
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    // --- ACTION: UNDO CONFIRMATION ---
+    const handleUndoConfirmation = async (exceptionId) => {
+        const { error } = await supabase.from('schedule_exceptions').delete().eq('id', exceptionId);
+        if (error) return alert("Error: " + error.message);
+
+        alert("Confirmation removed!");
         fetchProfileAndSchedule(session.user.id);
     };
 
@@ -109,11 +125,61 @@ export default function Dashboard() {
 
         if (error) return alert("Error: " + error.message);
 
+        // Only Cancel triggers a notification!
         await supabase.from('notifications').insert([{ 
             message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
         }]);
 
         alert(`Class cancelled successfully!`);
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    // --- ACTION: UNDO CANCELLATION ---
+    const handleUndoCancellation = async (cls) => {
+        // Remove exception record
+        const { error } = await supabase.from('schedule_exceptions').delete().eq('id', cls.exceptionDetails.id);
+        if (error) return alert("Error: " + error.message);
+
+        // Find and delete the exact cancellation notification
+        const msg = `🚨 Cancelled: ${cls.course} for Section ${profile.section} is cancelled.`;
+        await supabase.from('notifications').delete().eq('message', msg);
+
+        alert("Cancellation undone!");
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    // --- ACTION: DELETE LECTURE (PERMANENT) ---
+    const handleDeleteClass = async (classId, courseName) => {
+        const confirmDelete = window.confirm(`⚠️ Are you sure you want to PERMANENTLY DELETE ${courseName} from the schedule? This cannot be undone.`);
+        if (!confirmDelete) return;
+
+        const { error } = await supabase.from('base_schedule').delete().eq('id', classId);
+        if (error) return alert("Error: " + error.message);
+
+        alert(`Class permanently deleted!`);
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    // --- ACTION: SUBMIT NEW LECTURE ---
+    const submitAddLecture = async (e) => {
+        e.preventDefault();
+        const { error } = await supabase.from('base_schedule').insert([{
+            semester: profile.semester,
+            section: profile.section,
+            course: addCourse,
+            teacher: addTeacher,
+            day: addDay,
+            start_time: addStartTime,
+            end_time: addEndTime,
+            room: addRoom
+        }]);
+
+        if (error) return alert("Error: " + error.message);
+
+        alert("New lecture added successfully!");
+        setIsAddModalOpen(false);
+        // Reset fields
+        setAddCourse(''); setAddTeacher(''); setAddRoom('');
         fetchProfileAndSchedule(session.user.id);
     };
 
@@ -142,9 +208,7 @@ export default function Dashboard() {
 
         if (error) return alert("Error: " + error.message);
 
-        await supabase.from('notifications').insert([{ 
-            message: `🔄 Rescheduled: ${editingClass.course} (${profile.section}) moved to Room ${newRoom} on ${newDate} at ${newStartTime}.` 
-        }]);
+        // Intentionally left blank: No Notification sent on reschedule as requested
 
         alert(`Class rescheduled successfully!`);
         setIsEditModalOpen(false);
@@ -155,7 +219,7 @@ export default function Dashboard() {
     if (!session) return null;
 
     return (
-        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
+        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", paddingBottom: '30px' }}>
             <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
@@ -208,21 +272,80 @@ export default function Dashboard() {
                             
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                 {cls.isCancelled ? (
-                                    <div style={{ width: '100%', textAlign: 'center', padding: '10px', background: '#ffeeba', color: '#856404', borderRadius: '5px', fontWeight: 'bold' }}>Class Cancelled for Today</div>
+                                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        <div style={{ textAlign: 'center', padding: '10px', background: '#ffeeba', color: '#856404', borderRadius: '5px', fontWeight: 'bold' }}>Class Cancelled for Today</div>
+                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                            <button onClick={() => handleUndoCancellation(cls)} style={{...btnStyle('#ffc107'), color: '#000'}}>↩️ Undo Cancellation</button>
+                                            <button onClick={() => handleDeleteClass(cls.id, cls.course)} style={btnStyle('#343a40')}>🗑️ Delete Permanent</button>
+                                        </div>
+                                    </div>
                                 ) : (
                                     <>
-                                        <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                        {cls.isConfirmed ? (
+                                            <button onClick={() => handleUndoConfirmation(cls.exceptionDetails.id)} style={btnStyle('#6c757d')}>❌ Mark Not Confirm</button>
+                                        ) : (
+                                            <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                        )}
                                         <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
                                         <button onClick={() => handleCancelClass(cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
+                                        <button onClick={() => handleDeleteClass(cls.id, cls.course)} style={btnStyle('#343a40')}>🗑️ Delete</button>
                                     </>
                                 )}
                             </div>
                         </div>
                     ))
                 )}
+
+                {/* ADD NEW LECTURE BUTTON */}
+                <button onClick={() => setIsAddModalOpen(true)} style={{ width: '100%', padding: '15px', background: '#002147', color: '#F2A900', border: '2px dashed #F2A900', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px' }}>
+                    ➕ Add New Lecture
+                </button>
             </div>
 
-            {/* EDIT MODAL */}
+            {/* ADD LECTURE MODAL */}
+            {isAddModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147' }}>Add New Lecture</h3>
+                        <form onSubmit={submitAddLecture} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <div>
+                                <label style={labelStyle}>Course Name</label>
+                                <input type="text" required value={addCourse} onChange={(e) => setAddCourse(e.target.value)} style={inputStyle} placeholder="e.g. Data Structures" />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Teacher</label>
+                                <input type="text" required value={addTeacher} onChange={(e) => setAddTeacher(e.target.value)} style={inputStyle} placeholder="e.g. Dr. Smith" />
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Day</label>
+                                <select required value={addDay} onChange={(e) => setAddDay(e.target.value)} style={inputStyle}>
+                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <div style={{flex: 1}}>
+                                    <label style={labelStyle}>Start Time</label>
+                                    <select value={addStartTime} onChange={(e) => setAddStartTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                </div>
+                                <div style={{flex: 1}}>
+                                    <label style={labelStyle}>End Time</label>
+                                    <select value={addEndTime} onChange={(e) => setAddEndTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                </div>
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Room</label>
+                                <input type="text" required value={addRoom} onChange={(e) => setAddRoom(e.target.value)} style={inputStyle} placeholder="e.g. 101 or Lab 2" />
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => setIsAddModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px' }}>Cancel</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Save Lecture</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* EDIT TIMING MODAL */}
             {isEditModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px' }}>
@@ -250,4 +373,4 @@ export default function Dashboard() {
 
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
 const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', marginBottom: '5px' };
-const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem' };
+const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
