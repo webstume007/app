@@ -97,7 +97,7 @@ export default function Dashboard() {
             }
 
             // Fetch Exceptions (Cancellations, Reschedules, & Confirmations)
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toLocaleDateString('en-CA');
             const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
 
             // Merge data to determine the current status of each class for the week
@@ -127,7 +127,7 @@ export default function Dashboard() {
     const handleConfirmClass = async (classId, courseName) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
         
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA');
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
         }]);
@@ -143,7 +143,7 @@ export default function Dashboard() {
 
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA');
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
         }]);
@@ -163,7 +163,7 @@ export default function Dashboard() {
     const handleUndoException = async (classId, actionType, courseName) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toLocaleDateString('en-CA');
         const { error } = await supabase.from('schedule_exceptions')
             .delete()
             .match({ base_schedule_id: classId, exception_date: today });
