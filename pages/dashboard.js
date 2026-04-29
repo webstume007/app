@@ -4,11 +4,12 @@ import { supabase } from '../lib/supabase';
 export default function Dashboard() {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
-    const [schedule, setSchedule] = useState([]);
+    const [schedule, setSchedule] = useState([]); // For Weekly view with exceptions
+    const [baseSchedule, setBaseSchedule] = useState([]); // For Permanent Base Schedule
     const [loading, setLoading] = useState(true);
     const [availableRooms, setAvailableRooms] = useState([]);
 
-    // --- MODAL STATES FOR EDIT TIMING ---
+    // --- MODAL STATES FOR TEMP RESCHEDULE ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
     const [newDate, setNewDate] = useState('');
@@ -16,14 +17,11 @@ export default function Dashboard() {
     const [newEndTime, setNewEndTime] = useState('9:30 AM');
     const [newRoom, setNewRoom] = useState('');
 
-    // --- MODAL STATES FOR ADD LECTURE ---
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [addCourse, setAddCourse] = useState('');
-    const [addTeacher, setAddTeacher] = useState('');
-    const [addDay, setAddDay] = useState('Monday');
-    const [addStartTime, setAddStartTime] = useState('8:00 AM');
-    const [addEndTime, setAddEndTime] = useState('9:30 AM');
-    const [addRoom, setAddRoom] = useState('');
+    // --- MODAL STATES FOR PERMANENT SCHEDULE ---
+    const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
+    const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'Monday', start_time: '8:00 AM', end_time: '9:30 AM' });
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
     // Generate time slots for the dropdowns
     const timeSlots = [];
@@ -50,6 +48,7 @@ export default function Dashboard() {
         if (profileData) {
             // Fetch Base Schedule
             const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
+            setBaseSchedule(scheduleData || []);
             
             // Fetch all rooms for the Reschedule dropdown
             const { data: allData } = await supabase.from('base_schedule').select('room');
@@ -59,9 +58,10 @@ export default function Dashboard() {
             }
 
             // Fetch Exceptions (Cancellations, Reschedules, & Confirmations)
-            const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*');
+            const today = new Date().toISOString().split('T')[0];
+            const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
 
-            // Merge data to determine the current status of each class
+            // Merge data to determine the current status of each class for the week
             const mergedSchedule = (scheduleData || []).map(cls => {
                 const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
                 
@@ -86,8 +86,10 @@ export default function Dashboard() {
 
     // --- ACTION: WILL HELD (CONFIRM CLASS) ---
     const handleConfirmClass = async (classId, courseName) => {
+        // Optimistic UI update for instant reversal feel
+        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
+        
         const today = new Date().toISOString().split('T')[0];
-
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId,
             exception_date: today,
@@ -95,21 +97,12 @@ export default function Dashboard() {
             cancelled_by: session.user.id
         }]);
 
-        if (error) return alert("Error: " + error.message);
-
-        // Intentionally left blank: No Notification sent on confirmation as requested
-
-        alert(`${courseName} marked as Confirmed!`);
-        fetchProfileAndSchedule(session.user.id);
-    };
-
-    // --- ACTION: UNDO CONFIRMATION ---
-    const handleUndoConfirmation = async (exceptionId) => {
-        const { error } = await supabase.from('schedule_exceptions').delete().eq('id', exceptionId);
-        if (error) return alert("Error: " + error.message);
-
-        alert("Confirmation removed!");
-        fetchProfileAndSchedule(session.user.id);
+        if (error) {
+            alert("Error: " + error.message);
+            fetchProfileAndSchedule(session.user.id); // Revert on error
+            return; 
+        }
+        // Notification deliberately omitted for confirmations
     };
 
     // --- ACTION: CANCEL CLASS ---
@@ -117,73 +110,52 @@ export default function Dashboard() {
         const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
         if (!confirmCancel) return;
 
-        const today = new Date().toISOString().split('T')[0];
+        // Optimistic UI update
+        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
 
+        const today = new Date().toISOString().split('T')[0];
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
         }]);
 
-        if (error) return alert("Error: " + error.message);
+        if (error) {
+            alert("Error: " + error.message);
+            fetchProfileAndSchedule(session.user.id);
+            return;
+        }
 
-        // Only Cancel triggers a notification!
+        // Only trigger notification on Cancellation
         await supabase.from('notifications').insert([{ 
             message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
         }]);
-
-        alert(`Class cancelled successfully!`);
-        fetchProfileAndSchedule(session.user.id);
     };
 
-    // --- ACTION: UNDO CANCELLATION ---
-    const handleUndoCancellation = async (cls) => {
-        // Remove exception record
-        const { error } = await supabase.from('schedule_exceptions').delete().eq('id', cls.exceptionDetails.id);
-        if (error) return alert("Error: " + error.message);
+    // --- ACTION: UNDO EXCEPTION (CANCEL/CONFIRM) ---
+    const handleUndoException = async (classId, actionType, courseName) => {
+        // Optimistic UI update to instantly revert the button
+        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false } : c));
 
-        // Find and delete the exact cancellation notification
-        const msg = `🚨 Cancelled: ${cls.course} for Section ${profile.section} is cancelled.`;
-        await supabase.from('notifications').delete().eq('message', msg);
+        const today = new Date().toISOString().split('T')[0];
+        
+        const { error } = await supabase.from('schedule_exceptions')
+            .delete()
+            .eq('base_schedule_id', classId)
+            .eq('exception_date', today);
 
-        alert("Cancellation undone!");
-        fetchProfileAndSchedule(session.user.id);
+        if (error) {
+            alert("Error undoing action: " + error.message);
+            fetchProfileAndSchedule(session.user.id);
+            return;
+        }
+
+        // If reversing a cancellation, delete the notification from the database
+        if (actionType === 'cancelled') {
+            const targetMessage = `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`;
+            await supabase.from('notifications').delete().eq('message', targetMessage);
+        }
     };
 
-    // --- ACTION: DELETE LECTURE (PERMANENT) ---
-    const handleDeleteClass = async (classId, courseName) => {
-        const confirmDelete = window.confirm(`⚠️ Are you sure you want to PERMANENTLY DELETE ${courseName} from the schedule? This cannot be undone.`);
-        if (!confirmDelete) return;
-
-        const { error } = await supabase.from('base_schedule').delete().eq('id', classId);
-        if (error) return alert("Error: " + error.message);
-
-        alert(`Class permanently deleted!`);
-        fetchProfileAndSchedule(session.user.id);
-    };
-
-    // --- ACTION: SUBMIT NEW LECTURE ---
-    const submitAddLecture = async (e) => {
-        e.preventDefault();
-        const { error } = await supabase.from('base_schedule').insert([{
-            semester: profile.semester,
-            section: profile.section,
-            course: addCourse,
-            teacher: addTeacher,
-            day: addDay,
-            start_time: addStartTime,
-            end_time: addEndTime,
-            room: addRoom
-        }]);
-
-        if (error) return alert("Error: " + error.message);
-
-        alert("New lecture added successfully!");
-        setIsAddModalOpen(false);
-        // Reset fields
-        setAddCourse(''); setAddTeacher(''); setAddRoom('');
-        fetchProfileAndSchedule(session.user.id);
-    };
-
-    // --- ACTION: OPEN EDIT MODAL ---
+    // --- ACTION: OPEN TEMP EDIT MODAL ---
     const openEditModal = (cls) => {
         setEditingClass(cls);
         setNewDate(new Date().toISOString().split('T')[0]);
@@ -208,10 +180,43 @@ export default function Dashboard() {
 
         if (error) return alert("Error: " + error.message);
 
-        // Intentionally left blank: No Notification sent on reschedule as requested
-
+        // Notification deliberately omitted for reschedules
         alert(`Class rescheduled successfully!`);
         setIsEditModalOpen(false);
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    // --- PERMANENT SCHEDULE ACTIONS ---
+    const openBaseModal = (cls = null) => {
+        if (cls) {
+            setBaseForm({ ...cls });
+        } else {
+            setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'Monday', start_time: '8:00 AM', end_time: '9:30 AM' });
+        }
+        setIsBaseModalOpen(true);
+    };
+
+    const submitBaseSchedule = async (e) => {
+        e.preventDefault();
+        const payload = { 
+            course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, 
+            day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, 
+            semester: profile.semester, section: profile.section 
+        };
+
+        if (baseForm.id) {
+            await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
+        } else {
+            await supabase.from('base_schedule').insert([payload]);
+        }
+        
+        setIsBaseModalOpen(false);
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    const deleteBaseLecture = async (id, courseName) => {
+        if (!window.confirm(`Permanently delete ${courseName} from the base schedule? This cannot be undone.`)) return;
+        await supabase.from('base_schedule').delete().eq('id', id);
         fetchProfileAndSchedule(session.user.id);
     };
 
@@ -219,7 +224,7 @@ export default function Dashboard() {
     if (!session) return null;
 
     return (
-        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", paddingBottom: '30px' }}>
+        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
             <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
@@ -234,7 +239,8 @@ export default function Dashboard() {
                     <p style={{ margin: 0, color: '#555' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                 </div>
 
-                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Weekly Timetable</h3>
+                {/* ================= WEEKLY SCHEDULE SECTION ================= */}
+                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Weekly Timetable (Temp Exceptions)</h3>
                 
                 {schedule.length === 0 ? (
                     <p>No classes found.</p>
@@ -272,23 +278,14 @@ export default function Dashboard() {
                             
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                 {cls.isCancelled ? (
-                                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        <div style={{ textAlign: 'center', padding: '10px', background: '#ffeeba', color: '#856404', borderRadius: '5px', fontWeight: 'bold' }}>Class Cancelled for Today</div>
-                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                            <button onClick={() => handleUndoCancellation(cls)} style={{...btnStyle('#ffc107'), color: '#000'}}>↩️ Undo Cancellation</button>
-                                            <button onClick={() => handleDeleteClass(cls.id, cls.course)} style={btnStyle('#343a40')}>🗑️ Delete Permanent</button>
-                                        </div>
-                                    </div>
+                                    <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
+                                ) : cls.isConfirmed ? (
+                                    <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
                                 ) : (
                                     <>
-                                        {cls.isConfirmed ? (
-                                            <button onClick={() => handleUndoConfirmation(cls.exceptionDetails.id)} style={btnStyle('#6c757d')}>❌ Mark Not Confirm</button>
-                                        ) : (
-                                            <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                        )}
+                                        <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
                                         <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
                                         <button onClick={() => handleCancelClass(cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
-                                        <button onClick={() => handleDeleteClass(cls.id, cls.course)} style={btnStyle('#343a40')}>🗑️ Delete</button>
                                     </>
                                 )}
                             </div>
@@ -296,60 +293,44 @@ export default function Dashboard() {
                     ))
                 )}
 
-                {/* ADD NEW LECTURE BUTTON */}
-                <button onClick={() => setIsAddModalOpen(true)} style={{ width: '100%', padding: '15px', background: '#002147', color: '#F2A900', border: '2px dashed #F2A900', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px' }}>
+                <hr style={{ margin: '30px 0', border: 'none', borderTop: '2px solid #ddd' }} />
+
+                {/* ================= PERMANENT SCHEDULE SECTION ================= */}
+                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Permanent / Base Schedule</h3>
+                
+                {baseSchedule.length === 0 ? (
+                    <p>No base schedule found.</p>
+                ) : (
+                    baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
+                        <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
+                                <div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
+                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
+                                    <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{cls.start_time} - {cls.end_time}</div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8')}>✏️ Edit Lecture</button>
+                                <button onClick={() => deleteBaseLecture(cls.id, cls.course)} style={btnStyle('#dc3545')}>🗑️ Delete Lecture</button>
+                            </div>
+                        </div>
+                    ))
+                )}
+                
+                <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>
                     ➕ Add New Lecture
                 </button>
             </div>
 
-            {/* ADD LECTURE MODAL */}
-            {isAddModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h3 style={{ marginTop: 0, color: '#002147' }}>Add New Lecture</h3>
-                        <form onSubmit={submitAddLecture} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div>
-                                <label style={labelStyle}>Course Name</label>
-                                <input type="text" required value={addCourse} onChange={(e) => setAddCourse(e.target.value)} style={inputStyle} placeholder="e.g. Data Structures" />
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Teacher</label>
-                                <input type="text" required value={addTeacher} onChange={(e) => setAddTeacher(e.target.value)} style={inputStyle} placeholder="e.g. Dr. Smith" />
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Day</label>
-                                <select required value={addDay} onChange={(e) => setAddDay(e.target.value)} style={inputStyle}>
-                                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(d => <option key={d} value={d}>{d}</option>)}
-                                </select>
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <div style={{flex: 1}}>
-                                    <label style={labelStyle}>Start Time</label>
-                                    <select value={addStartTime} onChange={(e) => setAddStartTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                </div>
-                                <div style={{flex: 1}}>
-                                    <label style={labelStyle}>End Time</label>
-                                    <select value={addEndTime} onChange={(e) => setAddEndTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                </div>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>Room</label>
-                                <input type="text" required value={addRoom} onChange={(e) => setAddRoom(e.target.value)} style={inputStyle} placeholder="e.g. 101 or Lab 2" />
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={() => setIsAddModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Save Lecture</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* EDIT TIMING MODAL */}
+            {/* TEMP EXCEPTION EDIT MODAL */}
             {isEditModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px' }}>
-                        <h3 style={{ marginTop: 0 }}>Reschedule Class</h3>
+                        <h3 style={{ marginTop: 0 }}>Reschedule Class (Temp)</h3>
                         <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
                             <div style={{ display: 'flex', gap: '10px' }}>
@@ -357,10 +338,38 @@ export default function Dashboard() {
                                 <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
-                                {availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
+                                {availableRooms.length > 0 ? availableRooms.map(r => <option key={r} value={r}>{r}</option>) : <option value={newRoom}>{newRoom}</option>}
                             </select>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px' }}>Cancel</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* PERMANENT BASE SCHEDULE MODAL */}
+            {isBaseModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px' }}>
+                        <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
+                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <input type="text" placeholder="Course Name" required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} />
+                            <input type="text" placeholder="Teacher Name" required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} />
+                            <input type="text" placeholder="Room (e.g. 101)" required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} />
+                            
+                            <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>
+                                {days.map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px' }}>Cancel</button>
                                 <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Save</button>
                             </div>
                         </form>
@@ -373,4 +382,4 @@ export default function Dashboard() {
 
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
 const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', marginBottom: '5px' };
-const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
+const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem' };
