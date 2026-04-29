@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function Login() {
+export default function Auth() {
     const [isSignUp, setIsSignUp] = useState(false);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -15,6 +15,21 @@ export default function Login() {
     const [semester, setSemester] = useState('3RD');
     const [section, setSection] = useState('');
     const [phone, setPhone] = useState('');
+
+    // --- NEW: State for Sections from Database ---
+    const [availableSections, setAvailableSections] = useState([]);
+
+    // --- NEW: Fetch sections when the page loads ---
+    useEffect(() => {
+        const fetchSections = async () => {
+            const { data } = await supabase.from('base_schedule').select('section');
+            if (data) {
+                const uniqueSections = [...new Set(data.map(item => item.section))].sort();
+                setAvailableSections(uniqueSections);
+            }
+        };
+        fetchSections();
+    }, []);
 
     const handleAuth = async (e) => {
         e.preventDefault();
@@ -67,7 +82,6 @@ export default function Login() {
                 setMessage(`Error: ${error.message}`);
             } else {
                 setMessage('Login successful! Redirecting to dashboard...');
-                // Redirect to dashboard logic will go here later
                 window.location.href = '/dashboard'; 
             }
         }
@@ -97,7 +111,20 @@ export default function Login() {
                             <option value="7TH">7th Semester</option>
                             <option value="8TH">8th Semester</option>
                         </select>
-                        <input type="text" placeholder="Section (e.g., 3M)" required value={section} onChange={(e) => setSection(e.target.value)} style={inputStyle} />
+                        
+                        {/* --- CHANGED: Section Input replaced with Dropdown --- */}
+                        <select 
+                            required 
+                            value={section} 
+                            onChange={(e) => setSection(e.target.value)} 
+                            style={inputStyle}
+                        >
+                            <option value="">-- Select Your Section --</option>
+                            {availableSections.map((sec) => (
+                                <option key={sec} value={sec}>{sec}</option>
+                            ))}
+                        </select>
+
                         <input type="tel" placeholder="Phone Number" required value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
                     </>
                 )}
@@ -122,7 +149,6 @@ export default function Login() {
     );
 }
 
-// Simple styling object for the inputs
 const inputStyle = {
     padding: '10px',
     border: '1px solid #ddd',
