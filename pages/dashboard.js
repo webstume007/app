@@ -184,7 +184,7 @@ export default function Dashboard() {
     // --- ACTION: OPEN TEMP EDIT MODAL ---
     const openEditModal = (cls) => {
         setEditingClass(cls);
-        setNewDate(new Date().toISOString().split('T')[0]);
+        setNewDate(new Date().toLocaleDateString('en-CA'));
         setNewStartTime(convertTo12Hour(cls.start_time));
         setNewEndTime(convertTo12Hour(cls.end_time));
         setNewRoom(cls.room);
