@@ -1,34 +1,28 @@
 import { useEffect, useState } from 'react';
-import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
-export default function Home() {
-    const [rawData, setRawData] = useState([]);
-    const [exceptions, setExceptions] = useState([]);
-    const [notifications, setNotifications] = useState([]);
+export default function Dashboard() {
+    const [session, setSession] = useState(null);
+    const [profile, setProfile] = useState(null);
+    const [schedule, setSchedule] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [availableRooms, setAvailableRooms] = useState([]);
     
-    // Persistence & Tracking States
-    const [userSection, setUserSection] = useState(null); 
-    const [isFirstVisit, setIsFirstVisit] = useState(true);
-    const [readAlerts, setReadAlerts] = useState([]);
+    // Tab Management
+    const [activeTab, setActiveTab] = useState('temporary'); // 'temporary' or 'base'
 
-    // Active View States
-    const [currentTab, setCurrentTab] = useState('class');
-    const [selectedDay, setSelectedDay] = useState('ALL');
-    const [showFreeResults, setShowFreeResults] = useState(false);
+    // --- MODAL STATES ---
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingClass, setEditingClass] = useState(null);
     
-    // Search States
-    const [teacherSearch, setTeacherSearch] = useState('');
-    const [roomSearch, setRoomSearch] = useState('');
+    // Form States
+    const [formData, setFormData] = useState({
+        course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM', date: ''
+    });
 
-    // Free Room Filters
-    const [freeDay, setFreeDay] = useState('MON');
-    const [freeStart, setFreeStart] = useState('8:00 AM');
-    const [freeEnd, setFreeEnd] = useState('9:30 AM');
-
-    const days = ["ALL", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-
+    const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const timeSlots = [];
     let ts = 8 * 60; 
     while (ts < 18 * 60) {
@@ -39,340 +33,260 @@ export default function Home() {
     }
 
     useEffect(() => {
-        const savedSec = localStorage.getItem('iub_user_selection');
-        if (savedSec) {
-            setUserSection(JSON.parse(savedSec));
-            setIsFirstVisit(false);
-        }
-
-        const savedRead = localStorage.getItem('iub_read_alerts');
-        if (savedRead) {
-            setReadAlerts(JSON.parse(savedRead));
-        }
-
-        fetchLiveSchedule();
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if (session) fetchProfileAndSchedule(session.user.id);
+            else window.location.href = '/login';
+        });
     }, []);
 
-    const fetchLiveSchedule = async () => {
-        const { data: baseData } = await supabase.from('base_schedule').select('*');
-        const { data: excData } = await supabase.from('schedule_exceptions').select('*');
-        const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+    const fetchProfileAndSchedule = async (userId) => {
+        const { data: p } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
+        setProfile(p);
+        
+        if (p) {
+            const { data: s } = await supabase.from('base_schedule').select('*').eq('semester', p.semester).eq('section', p.section);
+            const { data: allRooms } = await supabase.from('base_schedule').select('room');
+            if (allRooms) setAvailableRooms([...new Set(allRooms.map(x => x.room))].filter(Boolean).sort());
 
-        setRawData(baseData || []);
-        setExceptions(excData || []);
-        setNotifications(notifData || []);
+            const { data: e } = await supabase.from('schedule_exceptions').select('*');
+
+            const merged = (s || []).map(cls => {
+                const exc = (e || []).find(ex => ex.base_schedule_id === cls.id);
+                return { ...cls, exc };
+            });
+            setSchedule(merged);
+        }
         setLoading(false);
     };
 
-    const handleInitialSelection = (sem, sec) => {
-        const selection = { semester: sem, section: sec };
-        localStorage.setItem('iub_user_selection', JSON.stringify(selection));
-        setUserSection(selection);
-        setIsFirstVisit(false);
+    // --- TEMPORARY ACTIONS (DAILY) ---
+    
+    const handleConfirm = async (cls) => {
+        const { error } = await supabase.from('schedule_exceptions').insert([{
+            base_schedule_id: cls.id, status: 'confirmed', exception_date: new Date().toISOString().split('T')[0], cancelled_by: session.user.id
+        }]);
+        if (error) return alert(error.message);
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    const parseTime = (t) => { 
-        if (!t) return 0; 
-        let clean = t.replace(/\./g, '').trim().toUpperCase(); 
-        let [tm, ap] = clean.split(' '); 
-        let [h, m] = tm.split(':').map(Number); 
-        if (h === 12) h = 0; 
-        if (ap === 'PM') h += 12; 
-        return h * 60 + (m || 0); 
+    const handleUndoConfirm = async (cls) => {
+        if (!confirm(`Undo confirmation for ${cls.course}?`)) return;
+        const { error } = await supabase.from('schedule_exceptions').delete().eq('base_schedule_id', cls.id).eq('status', 'confirmed');
+        if (error) return alert(error.message);
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    // EXPIRING LOGIC: Checks if current time is past lecture end time
-    const isUpdateActive = (classId, endTime, exceptionDate) => {
-        const exc = exceptions.find(e => e.base_schedule_id === classId);
-        if (!exc) return null;
+    const handleCancel = async (cls) => {
+        if (!confirm(`Cancel ${cls.course}?`)) return;
         
-        const now = new Date();
-        const todayIso = now.toISOString().split('T')[0];
+        const { error } = await supabase.from('schedule_exceptions').insert([{
+            base_schedule_id: cls.id, status: 'cancelled', exception_date: new Date().toISOString().split('T')[0], cancelled_by: session.user.id
+        }]);
+        if (error) return alert(error.message);
         
-        // If exception is for today, check the clock
-        if (exc.exception_date === todayIso) {
-            const endMins = parseTime(endTime);
-            const nowMins = now.getHours() * 60 + now.getMinutes();
-            if (nowMins > endMins) return null; // Expired
-        }
-        return exc;
+        // ONLY notify on cancellations
+        await supabase.from('notifications').insert([{ 
+            message: `🚨 ALERT: ${cls.course} for ${profile.section} is CANCELLED. Room ${cls.room} is now free.` 
+        }]);
+        
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    const getStatusStyles = (cls) => {
-        const exc = isUpdateActive(cls.id, cls.end_time, cls.exception_date);
-        if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#dc3545', bg: '#f8d7da', border: '#f5c6cb', icon: '🚨' };
-        if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#28a745', bg: '#d4edda', border: '#c3e6cb', icon: '✅' };
-        if (exc?.status === 'rescheduled') return { label: `Moved to Room ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#b8daff', icon: '🔄' };
-        return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900', icon: '📅' };
+    const handleUndoCancel = async (cls) => {
+        if (!confirm(`Mark ${cls.course} as NOT cancelled?`)) return;
+
+        const { error } = await supabase.from('schedule_exceptions').delete().eq('base_schedule_id', cls.id).eq('status', 'cancelled');
+        if (error) return alert(error.message);
+
+        // Remove the cancellation notification
+        await supabase.from('notifications').delete().ilike('message', `%${cls.course}%CANCELLED%`);
+        
+        alert("Class restored!");
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    // Dynamic Lists
-    const availableSemesters = [...new Set(rawData.map(x => x.semester))].filter(Boolean).sort();
-    const getSectionsForSem = (sem) => [...new Set(rawData.filter(x => x.semester === sem).map(x => x.section))].sort();
-
-    // Filters
-    const filterByDay = (data) => selectedDay === 'ALL' ? data : data.filter(d => d.day === selectedDay);
-
-    const scheduleData = filterByDay(rawData.filter(c => c.section === userSection?.section))
-                        .sort((a, b) => days.indexOf(a.day) - days.indexOf(b.day) || parseTime(a.start_time) - parseTime(b.start_time));
-
-    const teacherData = filterByDay(rawData.filter(c => teacherSearch && c.teacher === teacherSearch))
-                        .sort((a, b) => days.indexOf(a.day) - days.indexOf(b.day) || parseTime(a.start_time) - parseTime(b.start_time));
-
-    const roomData = filterByDay(rawData.filter(c => roomSearch && c.room === roomSearch))
-                        .sort((a, b) => days.indexOf(a.day) - days.indexOf(b.day) || parseTime(a.start_time) - parseTime(b.start_time));
-
-    // FREE ROOM LOGIC: Naturally Free + Cancelled Rooms
-    const getFreeRooms = () => {
-        const searchStart = parseTime(freeStart);
-        const searchEnd = parseTime(freeEnd);
-        const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
-
-        return allRooms.filter(room => {
-            const overlappingClasses = rawData.filter(x => 
-                x.room === room && 
-                x.day === freeDay && 
-                searchStart < parseTime(x.end_time) && 
-                searchEnd > parseTime(x.start_time)
-            );
-
-            if (overlappingClasses.length === 0) return true; // Naturally free
-
-            // If classes overlap, ALL of them must have an active 'cancelled' status to be considered free
-            return overlappingClasses.every(cls => {
-                const exc = isUpdateActive(cls.id, cls.end_time, cls.exception_date);
-                return exc?.status === 'cancelled';
-            });
-        });
+    const handleTempReschedule = async (e) => {
+        e.preventDefault();
+        const { error } = await supabase.from('schedule_exceptions').insert([{
+            base_schedule_id: editingClass.id, status: 'rescheduled', exception_date: formData.date,
+            new_start_time: formData.start_time, new_end_time: formData.end_time, new_room: formData.room, cancelled_by: session.user.id
+        }]);
+        if (error) return alert(error.message);
+        setIsEditModalOpen(false);
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    // Notification Logic
-    const relevantNotifs = notifications.filter(n => n.message.includes(userSection?.section));
-    const hasUnreadAlerts = relevantNotifs.some(n => !readAlerts.includes(n.id));
-
-    const markAlertsAsRead = () => {
-        const ids = relevantNotifs.map(n => n.id);
-        localStorage.setItem('iub_read_alerts', JSON.stringify(ids));
-        setReadAlerts(ids);
+    // --- PERMANENT ACTIONS (BASE SCHEDULE) ---
+    
+    const handleAddBase = async (e) => {
+        e.preventDefault();
+        const { error } = await supabase.from('base_schedule').insert([{
+            ...formData, semester: profile.semester, section: profile.section
+        }]);
+        if (error) return alert(error.message);
+        setIsAddModalOpen(false);
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    if (loading) return <div style={centerStyle}>Loading...</div>;
+    const handleUpdateBase = async (e) => {
+        e.preventDefault();
+        const { error } = await supabase.from('base_schedule').update({
+            course: formData.course, teacher: formData.teacher, room: formData.room,
+            day: formData.day, start_time: formData.start_time, end_time: formData.end_time
+        }).eq('id', editingClass.id);
+        if (error) return alert(error.message);
+        setIsBaseModalOpen(false);
+        fetchProfileAndSchedule(session.user.id);
+    };
 
-    if (isFirstVisit) {
-        return (
-            <div style={welcomeBg}>
-                <div style={welcomeCard}>
-                    <h2 style={{color: '#002147', margin: '0 0 10px 0'}}>IUB Schedule 👋</h2>
-                    <p style={{color: '#666', fontSize: '0.8rem', marginBottom: '20px'}}>Select your section once to get your personalized schedule and alerts.</p>
-                    
-                    <select id="initSem" style={selectStyle} onChange={(e) => {
-                        const secDropdown = document.getElementById('initSec');
-                        const secs = getSectionsForSem(e.target.value);
-                        secDropdown.innerHTML = '<option value="">-- Select Section --</option>' + 
-                                                secs.map(s => `<option value="${s}">${s}</option>`).join('');
-                    }}>
-                        <option value="">-- Select Semester --</option>
-                        {availableSemesters.map(s => <option key={s} value={s}>{s} Semester</option>)}
-                    </select>
+    const handleDeleteBase = async (id, courseName) => {
+        if (!confirm(`Permanently delete ${courseName} from the weekly schedule?`)) return;
+        const { error } = await supabase.from('base_schedule').delete().eq('id', id);
+        if (error) return alert(error.message);
+        fetchProfileAndSchedule(session.user.id);
+    };
 
-                    <select id="initSec" style={selectStyle}>
-                        <option value="">-- Select Section --</option>
-                    </select>
-
-                    <button onClick={() => {
-                        const sem = document.getElementById('initSem').value;
-                        const sec = document.getElementById('initSec').value;
-                        if(sem && sec) handleInitialSelection(sem, sec);
-                    }} style={bigBtn}>Show My Schedule</button>
-                </div>
-            </div>
-        );
-    }
+    if (loading) return <div style={centerStyle}>Loading Portal...</div>;
 
     return (
         <div style={mobileWrapper}>
-            <Head>
-                <title>My Schedule | IUB AI</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-            </Head>
-
             <header style={headerStyle}>
-                <div style={{fontSize: '1rem', fontWeight: 900}}>🎓 {userSection.section}</div>
-                <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); }} style={changeBtn}>Change Section</button>
+                <div style={{ fontWeight: 900, fontSize: '0.9rem' }}>🛠 CR PORTAL: {profile?.section}</div>
+                <button onClick={() => supabase.auth.signOut().then(() => window.location.href='/')} style={logoutBtn}>Logout</button>
             </header>
 
-            <div style={tabBar}>
-                {[
-                    { id: 'class', icon: '📅', label: 'Schedule' },
-                    { id: 'teacher', icon: '👨‍🏫', label: 'Teacher' },
-                    { id: 'room', icon: '🚪', label: 'Room' },
-                    { id: 'free', icon: '🔍', label: 'Free' },
-                    { id: 'notif', icon: '🔔', label: 'Alerts', badge: hasUnreadAlerts }
-                ].map(tab => (
-                    <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowFreeResults(false); }} style={tabBtn(currentTab === tab.id)}>
-                        <div style={{position: 'relative', display: 'inline-block'}}>
-                            <div style={{fontSize: '1.2rem'}}>{tab.icon}</div>
-                            {tab.badge && <span style={redDot}></span>}
-                        </div>
-                        <div style={{fontSize: '0.6rem', marginTop: '2px'}}>{tab.label}</div>
-                    </button>
-                ))}
+            {/* TAB TOGGLE */}
+            <div style={tabContainer}>
+                <button onClick={() => setActiveTab('temporary')} style={tabStyle(activeTab === 'temporary')}>🕒 Temporary</button>
+                <button onClick={() => setActiveTab('base')} style={tabStyle(activeTab === 'base')}>📅 Weekly Base</button>
             </div>
 
-            <main style={contentArea}>
+            <main style={{ padding: '15px', flex: 1 }}>
                 
-                {/* GLOBAL DAY FILTER (Hidden for Free Room & Alerts) */}
-                {currentTab !== 'free' && currentTab !== 'notif' && (
-                    <div style={dayFilter}>
-                        {days.map(day => (
-                            <button key={day} onClick={() => setSelectedDay(day)} style={dayBtnStyle(selectedDay === day)}>{day}</button>
+                {activeTab === 'temporary' ? (
+                    <div>
+                        <p style={subText}>Daily updates (Held, Cancel, Reschedule)</p>
+                        {schedule.sort((a,b)=>days.indexOf(a.day)-days.indexOf(b.day)).map(cls => (
+                            <div key={cls.id} style={{...cardStyle, borderLeft: cls.exc?.status === 'confirmed' ? '5px solid #28a745' : cls.exc?.status === 'cancelled' ? '5px solid #dc3545' : '5px solid #F2A900', opacity: cls.exc?.status === 'cancelled' ? 0.7 : 1}}>
+                                <div style={cardRow}>
+                                    <div style={{fontWeight: 'bold', fontSize: '1rem'}}>{cls.course}</div>
+                                    <div style={{fontSize: '0.8rem', fontWeight: 'bold'}}>{cls.room}</div>
+                                </div>
+                                <div style={{fontSize: '0.75rem', color: '#666'}}>{cls.day} | {cls.start_time} - {cls.end_time}</div>
+                                
+                                <div style={{display: 'flex', gap: '5px', marginTop: '10px'}}>
+                                    {cls.exc?.status === 'cancelled' ? (
+                                        <button onClick={() => handleUndoCancel(cls)} style={undoBtn}>↩️ Mark as not cancel</button>
+                                    ) : cls.exc?.status === 'confirmed' ? (
+                                        <button onClick={() => handleUndoConfirm(cls)} style={undoConfirmBtn}>↩️ Mark Not Confirm</button>
+                                    ) : (
+                                        <>
+                                            <button onClick={() => handleConfirm(cls)} style={actionBtn('#28a745')}>Held</button>
+                                            <button onClick={() => { setEditingClass(cls); setFormData({...formData, room: cls.room, start_time: cls.start_time, end_time: cls.end_time, date: new Date().toISOString().split('T')[0]}); setIsEditModalOpen(true); }} style={actionBtn('#007bff')}>Resched</button>
+                                            <button onClick={() => handleCancel(cls)} style={actionBtn('#dc3545')}>Cancel</button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
                         ))}
                     </div>
-                )}
-
-                {/* 1. SCHEDULE TAB */}
-                {currentTab === 'class' && (
-                    <>
-                        {scheduleData.length > 0 ? scheduleData.map((cls, idx) => {
-                            const status = getStatusStyles(cls);
-                            return (
-                                <div key={idx} style={{...cardBase, background: status.bg, borderLeft: `5px solid ${status.border}`}}>
-                                    <div style={dayBadge}>{cls.day}</div>
-                                    <div style={{fontWeight: 900, color: '#002147', fontSize: '0.85rem'}}>🕒 {cls.start_time} - {cls.end_time}</div>
-                                    <div style={{fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0', color: '#000'}}>{cls.course}</div>
-                                    <div style={{color: '#555', fontSize: '0.8rem'}}>📍 Room: {cls.room} | 👨‍🏫 {cls.teacher}</div>
-                                    <div style={{marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase'}}>{status.icon} {status.label}</div>
-                                </div>
-                            );
-                        }) : <div style={emptyState}>No classes scheduled for {selectedDay}</div>}
-                    </>
-                )}
-
-                {/* 2. TEACHER TAB */}
-                {currentTab === 'teacher' && (
+                ) : (
                     <div>
-                        <select value={teacherSearch} onChange={e => setTeacherSearch(e.target.value)} style={selectStyle}>
-                            <option value="">-- Select Teacher --</option>
-                            {[...new Set(rawData.map(x => x.teacher))].sort().map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        <p style={subText}>Edit your permanent weekly timetable</p>
                         
-                        {teacherSearch && (
-                            <div style={whiteCard}>
-                                <div style={{background: '#e8f5e9', padding: '10px', borderRadius: '8px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px'}}>
-                                    <span style={{fontSize: '1.5rem'}}>📱</span>
-                                    <a href={`https://wa.me/`} style={{color: '#25D366', fontWeight: 'bold', textDecoration: 'none'}}>WhatsApp Prof. {teacherSearch}</a>
-                                </div>
-                                <h4 style={{margin: '0 0 10px 0', fontSize: '0.9rem'}}>Lectures ({selectedDay})</h4>
-                                {teacherData.length > 0 ? teacherData.map((cls, idx) => (
-                                    <div key={idx} style={listItem}>
-                                        <div style={{fontWeight: 'bold', fontSize: '0.85rem'}}>{cls.course}</div>
-                                        <div style={{fontSize: '0.75rem', color: '#666'}}>{cls.day} | {cls.start_time} - {cls.end_time} | 🚪 Room {cls.room} | Sec: {cls.section}</div>
+                        {schedule.sort((a,b)=>days.indexOf(a.day)-days.indexOf(b.day)).map(cls => (
+                            <div key={cls.id} style={cardStyle}>
+                                <div style={cardRow}>
+                                    <div>
+                                        <div style={{fontWeight: 'bold', fontSize: '0.9rem'}}>{cls.course}</div>
+                                        <div style={{fontSize: '0.75rem', color: '#555'}}>{cls.day} | {cls.start_time} - {cls.end_time} | {cls.room}</div>
+                                        <div style={{fontSize: '0.7rem', color: '#888'}}>👨‍🏫 {cls.teacher}</div>
                                     </div>
-                                )) : <div style={emptyState}>No lectures found.</div>}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* 3. ROOM TAB */}
-                {currentTab === 'room' && (
-                    <div>
-                        <select value={roomSearch} onChange={e => setRoomSearch(e.target.value)} style={selectStyle}>
-                            <option value="">-- Select Room --</option>
-                            {[...new Set(rawData.map(x => x.room))].sort().map(r => <option key={r} value={r}>Room {r}</option>)}
-                        </select>
-                        
-                        {roomSearch && (
-                            <div style={whiteCard}>
-                                <h4 style={{margin: '0 0 10px 0', fontSize: '0.9rem'}}>Room {roomSearch} Schedule ({selectedDay})</h4>
-                                {roomData.length > 0 ? roomData.map((cls, idx) => (
-                                    <div key={idx} style={listItem}>
-                                        <div style={{fontWeight: 'bold', fontSize: '0.85rem'}}>{cls.course}</div>
-                                        <div style={{fontSize: '0.75rem', color: '#666'}}>{cls.day} | {cls.start_time} - {cls.end_time} | 👨‍🏫 {cls.teacher} | Sec: {cls.section}</div>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
+                                        <button onClick={() => { setEditingClass(cls); setFormData(cls); setIsBaseModalOpen(true); }} style={smallBtn('#002147')}>✏️ Edit</button>
+                                        <button onClick={() => handleDeleteBase(cls.id, cls.course)} style={smallBtn('#dc3545')}>🗑️ Delete</button>
                                     </div>
-                                )) : <div style={emptyState}>Room is free.</div>}
+                                </div>
                             </div>
-                        )}
-                    </div>
-                )}
+                        ))}
 
-                {/* 4. FREE ROOM TAB */}
-                {currentTab === 'free' && (
-                    <div style={whiteCard}>
-                        <h4 style={{marginTop: 0, fontSize: '0.9rem', color: '#002147'}}>Find Empty Rooms</h4>
-                        <select value={freeDay} onChange={e => setFreeDay(e.target.value)} style={selectStyle}>
-                            {days.filter(d => d !== 'ALL').map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                        <div style={{display: 'flex', gap: '5px'}}>
-                            <select value={freeStart} onChange={e => setFreeStart(e.target.value)} style={selectStyle}>
-                                <option value="">Start Time</option>
-                                {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                            <select value={freeEnd} onChange={e => setFreeEnd(e.target.value)} style={selectStyle}>
-                                <option value="">End Time</option>
-                                {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                        </div>
-                        <button onClick={() => setShowFreeResults(true)} style={searchBtn}>SEARCH FREE ROOMS</button>
-                        
-                        {showFreeResults && (
-                            <div style={{marginTop: '15px'}}>
-                                {getFreeRooms().length > 0 ? getFreeRooms().map(r => (
-                                    <div key={r} style={freeRoomItem}>✅ Room {r} is FREE</div>
-                                )) : <div style={emptyState}>No rooms available for this time slot.</div>}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* 5. ALERTS TAB */}
-                {currentTab === 'notif' && (
-                    <div>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                            <h4 style={{margin: 0, fontSize: '0.9rem', color: '#002147'}}>Section Alerts</h4>
-                            {hasUnreadAlerts && <button onClick={markAlertsAsRead} style={markReadBtn}>✔️ Mark as Read</button>}
-                        </div>
-                        {relevantNotifs.length > 0 ? relevantNotifs.map((n, i) => (
-                            <div key={i} style={{...notifCard, opacity: readAlerts.includes(n.id) ? 0.7 : 1}}>
-                                <p style={{margin: '0 0 5px 0', fontSize: '0.85rem', fontWeight: readAlerts.includes(n.id) ? 'normal' : 'bold'}}>{n.message}</p>
-                                <span style={{fontSize: '0.7rem', color: '#999'}}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                            </div>
-                        )) : <div style={emptyState}>No specific updates for your section.</div>}
+                        {/* Add New Lecture Button below all permanent lectures */}
+                        <button onClick={() => {
+                            setFormData({course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM', date: ''});
+                            setIsAddModalOpen(true);
+                        }} style={largeAddBtn}>
+                            ➕ Add New Lecture
+                        </button>
                     </div>
                 )}
             </main>
 
-            <footer style={footerStyle}>
-                <div>Made with love by <a href="https://wa.me/923000000000" style={{color: '#F2A900', textDecoration: 'none', fontWeight: 'bold'}}>Mohsin</a></div>
-                <div style={{margin: '0 10px', color: '#666'}}>|</div>
-                <a href="/login" style={{color: '#fff', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 'bold'}}>CR Login</a>
-            </footer>
+            {/* MODAL: ADD / EDIT BASE PERMANENTLY */}
+            {(isAddModalOpen || isBaseModalOpen) && (
+                <div style={overlay}>
+                    <div style={modal}>
+                        <h3 style={{marginTop: 0, color: '#002147'}}>{isAddModalOpen ? '➕ Add Lecture' : '✏️ Edit Lecture'}</h3>
+                        <form onSubmit={isAddModalOpen ? handleAddBase : handleUpdateBase}>
+                            <input placeholder="Course Name" style={input} value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})} required />
+                            <input placeholder="Teacher Name" style={input} value={formData.teacher} onChange={e => setFormData({...formData, teacher: e.target.value})} required />
+                            <div style={{display: 'flex', gap: '5px'}}>
+                                <select style={input} value={formData.day} onChange={e => setFormData({...formData, day: e.target.value})}>{days.filter(d=>d!=='ALL').map(d=><option key={d} value={d}>{d}</option>)}</select>
+                                <input placeholder="Room" style={input} value={formData.room} onChange={e => setFormData({...formData, room: e.target.value})} required />
+                            </div>
+                            <div style={{display: 'flex', gap: '5px'}}>
+                                <select style={input} value={formData.start_time} onChange={e => setFormData({...formData, start_time: e.target.value})}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
+                                <select style={input} value={formData.end_time} onChange={e => setFormData({...formData, end_time: e.target.value})}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
+                            </div>
+                            <div style={{display: 'flex', gap: '5px', marginTop: '10px'}}>
+                                <button type="button" onClick={() => {setIsAddModalOpen(false); setIsBaseModalOpen(false);}} style={modalBtn('#eee', '#333')}>Cancel</button>
+                                <button type="submit" style={modalBtn('#002147', '#F2A900')}>Save Permanent</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: TEMP RESCHEDULE */}
+            {isEditModalOpen && (
+                <div style={overlay}>
+                    <div style={modal}>
+                        <h3 style={{marginTop: 0, color: '#002147'}}>🕒 Temp Reschedule</h3>
+                        <form onSubmit={handleTempReschedule}>
+                            <input type="date" style={input} value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required />
+                            <div style={{display: 'flex', gap: '5px'}}>
+                                <select style={input} value={formData.start_time} onChange={e => setFormData({...formData, start_time: e.target.value})}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
+                                <select style={input} value={formData.end_time} onChange={e => setFormData({...formData, end_time: e.target.value})}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
+                            </div>
+                            <input placeholder="New Room" style={input} value={formData.room} onChange={e => setFormData({...formData, room: e.target.value})} required />
+                            <div style={{display: 'flex', gap: '5px', marginTop: '10px'}}>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={modalBtn('#eee', '#333')}>Close</button>
+                                <button type="submit" style={modalBtn('#007bff', '#fff')}>Apply Today</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
 // STYLES
-const mobileWrapper = { maxWidth: '500px', margin: '0 auto', background: '#f0f2f5', minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '0 0 20px rgba(0,0,0,0.1)', overflowX: 'hidden' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1000 };
-const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '4px', padding: '4px 8px', fontSize: '0.65rem', cursor: 'pointer', fontWeight: 'bold' };
-const tabBar = { display: 'flex', background: '#fff', padding: '10px 5px', gap: '2px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto' };
-const tabBtn = (active) => ({ flex: 1, minWidth: '60px', border: 'none', background: 'transparent', color: active ? '#002147' : '#999', cursor: 'pointer', textAlign: 'center', transition: '0.3s', fontWeight: active ? 'bold' : 'normal' });
-const redDot = { position: 'absolute', top: '-2px', right: '-5px', width: '8px', height: '8px', background: '#dc3545', borderRadius: '50%', border: '1px solid #fff' };
-const contentArea = { padding: '15px', flex: 1 };
-const dayFilter = { display: 'flex', gap: '5px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '50px', padding: '10px 5px', borderRadius: '8px', border: 'none', background: active ? '#F2A900' : '#fff', color: active ? '#002147' : '#666', fontWeight: 'bold', fontSize: '0.7rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' });
-const cardBase = { padding: '15px', marginBottom: '12px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', position: 'relative' };
-const dayBadge = { position: 'absolute', top: '15px', right: '15px', fontSize: '0.65rem', fontWeight: 900, color: '#002147', background: '#f0f2f5', padding: '3px 8px', borderRadius: '12px' };
-const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '0.9rem', outline: 'none', background: '#fff' };
-const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' };
-const searchBtn = { width: '100%', padding: '12px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' };
-const freeRoomItem = { padding: '12px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.85rem' };
-const listItem = { padding: '10px 0', borderBottom: '1px solid #f0f2f5' };
-const notifCard = { background: '#fff', padding: '15px', borderRadius: '10px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
-const markReadBtn = { background: '#e9ecef', border: 'none', padding: '5px 10px', borderRadius: '5px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', color: '#495057' };
-const footerStyle = { padding: '20px', textAlign: 'center', background: '#002147', color: '#fff', fontSize: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: 'auto' };
-const welcomeBg = { position: 'fixed', top:0, left:0, width:'100%', height:'100%', background:'#002147', display:'flex', justifyContent:'center', alignItems:'center', zIndex: 3000 };
-const welcomeCard = { background:'#fff', padding:'30px', borderRadius:'15px', width:'90%', maxWidth:'400px', textAlign:'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' };
-const bigBtn = { width:'100%', padding: '15px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer', marginTop: '10px' };
-const emptyState = { textAlign: 'center', padding: '40px', color: '#999', fontSize: '0.85rem' };
-const centerStyle = { textAlign: 'center', marginTop: '100px', fontFamily: 'sans-serif' };
+const mobileWrapper = { maxWidth: '500px', margin: '0 auto', minHeight: '100vh', background: '#f0f2f5', display: 'flex', flexDirection: 'column', boxShadow: '0 0 20px rgba(0,0,0,0.1)', fontFamily: "'Roboto', sans-serif" };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+const logoutBtn = { background: '#F2A900', color: '#002147', border: 'none', padding: '5px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer' };
+const tabContainer = { display: 'flex', background: '#fff', borderBottom: '1px solid #ddd' };
+const tabStyle = (active) => ({ flex: 1, padding: '15px', border: 'none', background: active ? '#fff' : '#f8f9fa', color: active ? '#002147' : '#999', fontWeight: 'bold', borderBottom: active ? '3px solid #F2A900' : 'none', fontSize: '0.8rem', cursor: 'pointer' });
+const cardStyle = { background: '#fff', padding: '15px', borderRadius: '10px', marginBottom: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };
+const cardRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' };
+const subText = { fontSize: '0.75rem', color: '#666', margin: '0 0 15px 0', fontWeight: 'bold' };
+const actionBtn = (bg) => ({ flex: 1, padding: '10px', border: 'none', borderRadius: '6px', background: bg, color: '#fff', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer' });
+const undoBtn = { width: '100%', padding: '10px', background: '#6c757d', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer' };
+const undoConfirmBtn = { width: '100%', padding: '10px', background: '#28a745', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer' };
+const smallBtn = (bg) => ({ border: 'none', background: bg, color: '#fff', fontSize: '0.65rem', padding: '6px 10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' });
+const largeAddBtn = { width: '100%', padding: '15px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 900, cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 10px rgba(0,33,71,0.2)' };
+const overlay = { position: 'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.7)', display:'flex', justifyContent:'center', alignItems:'center', zIndex: 2000 };
+const modal = { background:'#fff', padding:'25px', borderRadius:'12px', width:'90%', maxWidth:'400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' };
+const input = { width: '100%', padding: '12px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' };
+const modalBtn = (bg, col) => ({ flex: 1, padding: '12px', border: 'none', borderRadius: '6px', background: bg, color: col, fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' });
+const centerStyle = { textAlign: 'center', marginTop: '100px', fontFamily: "'Roboto', sans-serif" };
