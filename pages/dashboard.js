@@ -42,26 +42,25 @@ export default function Dashboard() {
             // Fetch Base Schedule
             const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
             
-            // Fetch ALL base schedules just to extract all possible rooms in the university
+            // Fetch all rooms for the Reschedule dropdown
             const { data: allData } = await supabase.from('base_schedule').select('room');
             if (allData) {
                 const rooms = [...new Set(allData.map(x => x.room))].filter(Boolean).sort();
                 setAvailableRooms(rooms);
             }
 
-            // Fetch Exceptions (Cancellations & Reschedules)
+            // Fetch Exceptions (Cancellations, Reschedules, & Confirmations)
             const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*');
 
-            // Merge data
+            // Merge data to determine the current status of each class
             const mergedSchedule = (scheduleData || []).map(cls => {
-                // Find if this specific class has an active exception today/in the future
-                // (For a real production app, we would filter exceptions by date here)
                 const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
                 
                 return { 
                     ...cls, 
                     isCancelled: exception?.status === 'cancelled',
                     isRescheduled: exception?.status === 'rescheduled',
+                    isConfirmed: exception?.status === 'confirmed',
                     exceptionDetails: exception
                 };
             });
@@ -74,6 +73,27 @@ export default function Dashboard() {
     const handleLogout = async () => {
         await supabase.auth.signOut();
         window.location.href = '/login';
+    };
+
+    // --- ACTION: WILL HELD (CONFIRM CLASS) ---
+    const handleConfirmClass = async (classId, courseName) => {
+        const today = new Date().toISOString().split('T')[0];
+
+        const { error } = await supabase.from('schedule_exceptions').insert([{
+            base_schedule_id: classId,
+            exception_date: today,
+            status: 'confirmed',
+            cancelled_by: session.user.id
+        }]);
+
+        if (error) return alert("Error: " + error.message);
+
+        await supabase.from('notifications').insert([{ 
+            message: `✅ Confirmed: ${courseName} for Section ${profile.section} is happening as scheduled.` 
+        }]);
+
+        alert(`${courseName} marked as Confirmed!`);
+        fetchProfileAndSchedule(session.user.id);
     };
 
     // --- ACTION: CANCEL CLASS ---
@@ -89,7 +109,10 @@ export default function Dashboard() {
 
         if (error) return alert("Error: " + error.message);
 
-        await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled. Room is now free.` }]);
+        await supabase.from('notifications').insert([{ 
+            message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
+        }]);
+
         alert(`Class cancelled successfully!`);
         fetchProfileAndSchedule(session.user.id);
     };
@@ -97,7 +120,7 @@ export default function Dashboard() {
     // --- ACTION: OPEN EDIT MODAL ---
     const openEditModal = (cls) => {
         setEditingClass(cls);
-        setNewDate(new Date().toISOString().split('T')[0]); // Default to today
+        setNewDate(new Date().toISOString().split('T')[0]);
         setNewStartTime(cls.start_time);
         setNewEndTime(cls.end_time);
         setNewRoom(cls.room);
@@ -107,7 +130,6 @@ export default function Dashboard() {
     // --- ACTION: SUBMIT RESCHEDULE ---
     const submitReschedule = async (e) => {
         e.preventDefault();
-        
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: editingClass.id,
             exception_date: newDate,
@@ -118,12 +140,8 @@ export default function Dashboard() {
             cancelled_by: session.user.id
         }]);
 
-        if (error) {
-            alert("Error rescheduling: " + error.message);
-            return;
-        }
+        if (error) return alert("Error: " + error.message);
 
-        // Send Notification
         await supabase.from('notifications').insert([{ 
             message: `🔄 Rescheduled: ${editingClass.course} (${profile.section}) moved to Room ${newRoom} on ${newDate} at ${newStartTime}.` 
         }]);
@@ -149,16 +167,20 @@ export default function Dashboard() {
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900' }}>
                     <h2 style={{ margin: '0 0 10px 0', color: '#002147' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                    <p style={{ margin: 0, color: '#555' }}>Managing Schedule for: <strong>{profile?.department} | {profile?.semester} | Section {profile?.section}</strong></p>
+                    <p style={{ margin: 0, color: '#555' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                 </div>
 
-                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '1rem' }}>Your Weekly Timetable</h3>
+                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Weekly Timetable</h3>
                 
                 {schedule.length === 0 ? (
-                    <p>No classes found. Ensure data is imported to Supabase.</p>
+                    <p>No classes found.</p>
                 ) : (
                     schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                        <div key={cls.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : 'none', opacity: cls.isCancelled ? 0.6 : 1 }}>
+                        <div key={cls.id} style={{ 
+                            background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', 
+                            borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none',
+                            opacity: cls.isCancelled ? 0.6 : 1 
+                        }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
                                 <div>
                                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
@@ -172,10 +194,15 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            {/* Show Reschedule Notice if applicable */}
                             {cls.isRescheduled && (
                                 <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                                    🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} at {cls.exceptionDetails.new_start_time}
+                                    🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date}
+                                </div>
+                            )}
+
+                            {cls.isConfirmed && (
+                                <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                    ✅ Confirmed for Today
                                 </div>
                             )}
                             
@@ -184,7 +211,7 @@ export default function Dashboard() {
                                     <div style={{ width: '100%', textAlign: 'center', padding: '10px', background: '#ffeeba', color: '#856404', borderRadius: '5px', fontWeight: 'bold' }}>Class Cancelled for Today</div>
                                 ) : (
                                     <>
-                                        <button style={btnStyle('#28a745')}>✅ Will Held</button>
+                                        <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
                                         <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
                                         <button onClick={() => handleCancelClass(cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
                                     </>
@@ -195,45 +222,23 @@ export default function Dashboard() {
                 )}
             </div>
 
-            {/* --- THE EDIT TIMING MODAL POPUP --- */}
+            {/* EDIT MODAL */}
             {isEditModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px', boxShadow: '0 5px 15px rgba(0,0,0,0.3)' }}>
-                        <h3 style={{ marginTop: 0, color: '#002147' }}>Reschedule Class</h3>
-                        <p style={{ fontSize: '0.9rem', color: '#555' }}>Editing: <strong>{editingClass?.course}</strong></p>
-                        
+                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '90%', maxWidth: '400px' }}>
+                        <h3 style={{ marginTop: 0 }}>Reschedule Class</h3>
                         <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div>
-                                <label style={labelStyle}>New Date</label>
-                                <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
-                            </div>
-                            
+                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label style={labelStyle}>Start Time</label>
-                                    <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={inputStyle}>
-                                        {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label style={labelStyle}>End Time</label>
-                                    <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={inputStyle}>
-                                        {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                </div>
+                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={inputStyle}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
-
-                            <div>
-                                <label style={labelStyle}>New Room</label>
-                                <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
-                                    <option value="">-- Select Room --</option>
-                                    {availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
-                                </select>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#e9ecef', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save Changes</button>
+                            <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
+                                {availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px' }}>Cancel</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -243,7 +248,6 @@ export default function Dashboard() {
     );
 }
 
-// Styling helpers to keep code clean
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
 const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', marginBottom: '5px' };
-const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
+const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem' };
