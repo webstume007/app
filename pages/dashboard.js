@@ -195,7 +195,7 @@ export default function Dashboard() {
     const submitReschedule = async (e) => {
         e.preventDefault();
         const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: editingClass.id, exception_date: newDate, status: 'rescheduled',
+            base_schedule_id: editingClass.id, exception_date: new Date().toLocaleDateString('en-CA'), status: 'rescheduled',
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
 
