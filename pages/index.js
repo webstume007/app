@@ -65,64 +65,41 @@ export default function Home() {
 
     // 2. SUPABASE REALTIME LISTENER (Updated to listen for schedule changes)
     useEffect(() => {
-        // If there's no section selected yet, don't open a connection
-        if (!userSection) return;
+    if (!userSection) return;
 
-        const channel = supabase
-            .channel('realtime-updates')
-            // Listen for new manual notification alerts
-            .on('postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'notifications' },
-                (payload) => {
-                    const newMsg = payload.new.message;
-
-                    if (newMsg.includes(userSection.section)) {
-                        setNotifications(prev => [payload.new, ...prev]);
-                        setAlertsRead(false);
-
-                        if (Notification.permission === "granted") {
-                            new Notification("IUB Update Alert", {
-                                body: newMsg,
-                                icon: "/icon.png"
-                            });
-                        }
-                    }
+    const channel = supabase
+        .channel('db-changes')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+            if (payload.new.message.includes(userSection.section)) {
+                setNotifications(prev => [payload.new, ...prev]);
+                setAlertsRead(false);
+                if (Notification.permission === "granted") {
+                    new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
                 }
-            )
-            // Listen for database updates in exceptions (Cancellations/Reschedules)
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'schedule_exceptions' },
-                () => {
-                    fetchLiveSchedule(); // Instantly update view when CR makes a change
-                }
-            )
-            .subscribe();
+            }
+        })
+        // ADD THIS: Listen for any change in the exceptions table to update card colors
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
+            fetchLiveSchedule(); 
+        })
+        .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [userSection]); // <-- Now it safely watches the userSection
+    return () => { supabase.removeChannel(channel); };
+}, [userSection]);
 
     const fetchLiveSchedule = async () => {
-        // Use the exact same date format as the CR Dashboard (YYYY-MM-DD)
-        const today = new Date().toISOString().split('T')[0]; 
-        
-        const { data: baseData } = await supabase.from('base_schedule').select('*');
-        
-        // Fetch exceptions for THIS date
-        const { data: excData } = await supabase.from('schedule_exceptions')
-            .select('*')
-            .eq('exception_date', today);
-            
-        const { data: notifData } = await supabase.from('notifications')
-            .select('*')
-            .order('created_at', { ascending: false });
+    // en-CA format gives exactly YYYY-MM-DD in local time
+    const today = new Date().toLocaleDateString('en-CA'); 
+    
+    const { data: baseData } = await supabase.from('base_schedule').select('*');
+    const { data: excData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
+    const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
 
-        setRawData(baseData || []);
-        setExceptions(excData || []);
-        setNotifications(notifData || []);
-        setLoading(false);
-    };
+    setRawData(baseData || []);
+    setExceptions(excData || []);
+    setNotifications(notifData || []);
+    setLoading(false);
+};
 
     const handleInitialSelection = (sem, sec) => {
         const selection = { semester: sem, section: sec };
