@@ -49,43 +49,61 @@ export default function Home() {
 
     // 1. INITIAL LOAD (Runs ONLY ONCE when the app opens)
     useEffect(() => {
-        const saved = localStorage.getItem('iub_user_selection');
-        if (saved) {
-            setUserSection(JSON.parse(saved));
-            setIsFirstVisit(false);
-        }
+    const saved = localStorage.getItem('iub_user_selection');
+    if (saved) {
+        setUserSection(JSON.parse(saved));
+        setIsFirstVisit(false);
+    }
 
-        // Show the manual prompt banner if permissions haven't been granted/denied yet
-        if ("Notification" in window && Notification.permission === "default") {
-            setShowNotifBanner(true);
-        }
+    if ("Notification" in window && Notification.permission === "default") {
+        setShowNotifBanner(true);
+    }
 
-        fetchLiveSchedule();
-    }, []); // <-- Empty array stops the infinite loop!
+    fetchLiveSchedule();
+}, []);
 
-    // 2. SUPABASE REALTIME LISTENER (Updated to listen for schedule changes)
+    // 2. SUPABASE REALTIME LISTENER
     useEffect(() => {
-    if (!userSection) return;
-
-    const channel = supabase
-        .channel('db-changes')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-            if (payload.new.message.includes(userSection.section)) {
-                setNotifications(prev => [payload.new, ...prev]);
-                setAlertsRead(false);
-                if (Notification.permission === "granted") {
-                    new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
+        if (!userSection) return;
+    
+        const channel = supabase
+            .channel('db-changes')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+                if (payload.new.message.includes(userSection.section)) {
+                    setNotifications(prev => [payload.new, ...prev]);
+                    setAlertsRead(false);
+                    
+                    if (Notification.permission === "granted") {
+                        if ('serviceWorker' in navigator) {
+                            navigator.serviceWorker.ready.then((registration) => {
+                                registration.showNotification("IUB Update Alert", {
+                                    body: payload.new.message,
+                                    icon: "/icon.png",
+                                    vibrate: [200, 100, 200]
+                                });
+                            });
+                        } else {
+                            new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
+                        }
+                    }
                 }
-            }
-        })
-        // ADD THIS: Listen for any change in the exceptions table to update card colors
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
-            fetchLiveSchedule(); 
-        })
-        .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-}, [userSection]);
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
+                fetchLiveSchedule(); 
+            })
+            .subscribe();
+    
+        return () => { supabase.removeChannel(channel); };
+    }, [userSection]);
+    
+    // 3. INITIALIZE SERVICE WORKER
+    useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('Service Worker Registered!'))
+                .catch((err) => console.error('Service Worker Failed!', err));
+        }
+    }, []);
 
     const fetchLiveSchedule = async () => {
     // en-CA format gives exactly YYYY-MM-DD in local time
