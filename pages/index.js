@@ -148,13 +148,17 @@ export default function Home() {
     const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
 
     const getStatusStyles = (cls) => {
-        if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
+    // 1. Check Exceptions FIRST
+    const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
+    
+    if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
+    if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#28a745' };
+    if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
 
-        const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
-        if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#f5c6cb' };
-        if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#c3e6cb' };
-        if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#b8daff' };
-        return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
+    // 2. ONLY check if passed if there are no exceptions
+    if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
+
+    return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
     };
 
     const searchFreeRooms = () => {
