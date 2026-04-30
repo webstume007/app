@@ -127,13 +127,14 @@ export default function Home() {
     const fetchLiveSchedule = async () => {
         const today = new Date().toLocaleDateString('en-CA');    
         
-        // HUGE SPEED BOOST: Promise.all fetches all 3 tables at the exact same time instead of waiting sequentially
+        // Promise.all triggers all three requests simultaneously
         const [baseRes, excRes, notifRes] = await Promise.all([
             supabase.from('base_schedule').select('*'),
             supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
             supabase.from('notifications').select('*').order('created_at', { ascending: false })
         ]);
-
+    
+        // Data is extracted from the results once they all settle
         setRawData(baseRes.data || []);
         setExceptions(excRes.data || []);
         setNotifications(notifRes.data || []);
