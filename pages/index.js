@@ -18,7 +18,7 @@ export default function Home() {
     const [selectedDay, setSelectedDay] = useState('ALL');
     const [showAlerts, setShowAlerts] = useState(false);
     const [alertsRead, setAlertsRead] = useState(false);
-    const [showNotifBanner, setShowNotifBanner] = useState(false); // New Notification Banner State
+    const [showNotifBanner, setShowNotifBanner] = useState(false);
 
     // Free Room Filters
     const [freeDay, setFreeDay] = useState('MON');
@@ -47,27 +47,29 @@ export default function Home() {
         ts += 30;
     }
 
-    // 1. INITIAL LOAD (Runs ONLY ONCE when the app opens)
+    // 1. INITIAL LOAD
     useEffect(() => {
-    const saved = localStorage.getItem('iub_user_selection');
-    if (saved) {
-        setUserSection(JSON.parse(saved));
-        setIsFirstVisit(false);
-    }
+        const saved = localStorage.getItem('iub_user_selection');
+        if (saved) {
+            setUserSection(JSON.parse(saved));
+            setIsFirstVisit(false);
+        }
 
-    if ("Notification" in window && Notification.permission === "default") {
-        setShowNotifBanner(true);
-    }
+        // Show the manual prompt banner if permissions haven't been granted/denied yet
+        if ("Notification" in window && Notification.permission === "default") {
+            setShowNotifBanner(true);
+        }
 
-    fetchLiveSchedule();
-}, []);
+        fetchLiveSchedule();
+    }, []);
 
-    // 2. SUPABASE REALTIME LISTENER
+    // 2. SUPABASE REALTIME LISTENER (Updated for instant UI reactions)
     useEffect(() => {
         if (!userSection) return;
-    
+
         const channel = supabase
-            .channel('db-changes')
+            .channel('student-dashboard-updates')
+            // Listen for Notifications
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
                 if (payload.new.message.includes(userSection.section)) {
                     setNotifications(prev => [payload.new, ...prev]);
@@ -88,35 +90,45 @@ export default function Home() {
                     }
                 }
             })
+            // Listen for Exceptions (Color changes, Confirmations, Cancellations)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
-                fetchLiveSchedule(); 
+                // Instantly fetch ONLY exceptions to update colors without reloading everything
+                const today = new Date().toLocaleDateString('en-CA');
+                supabase.from('schedule_exceptions').select('*').eq('exception_date', today).then(res => setExceptions(res.data || []));
+            })
+            // Listen for Base Schedule changes (New lectures added/deleted by CR)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'base_schedule' }, () => {
+                supabase.from('base_schedule').select('*').then(res => setRawData(res.data || []));
             })
             .subscribe();
-    
+
         return () => { supabase.removeChannel(channel); };
     }, [userSection]);
-    
+
     // 3. INITIALIZE SERVICE WORKER
     useEffect(() => {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('Service Worker Registered!'))
+                .then((reg) => console.log('Service Worker Registered!'))
                 .catch((err) => console.error('Service Worker Failed!', err));
         }
     }, []);
 
     const fetchLiveSchedule = async () => {
-    // en-CA format gives exactly YYYY-MM-DD in local time
-    const today = new Date().toLocaleDateString('en-CA');    
-    const { data: baseData } = await supabase.from('base_schedule').select('*');
-    const { data: excData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
-    const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+        const today = new Date().toLocaleDateString('en-CA');    
+        
+        // HUGE SPEED BOOST: Promise.all fetches all 3 tables at the exact same time instead of waiting sequentially
+        const [baseRes, excRes, notifRes] = await Promise.all([
+            supabase.from('base_schedule').select('*'),
+            supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
+            supabase.from('notifications').select('*').order('created_at', { ascending: false })
+        ]);
 
-    setRawData(baseData || []);
-    setExceptions(excData || []);
-    setNotifications(notifData || []);
-    setLoading(false);
-};
+        setRawData(baseRes.data || []);
+        setExceptions(excRes.data || []);
+        setNotifications(notifRes.data || []);
+        setLoading(false);
+    };
 
     const handleInitialSelection = (sem, sec) => {
         const selection = { semester: sem, section: sec };
@@ -166,17 +178,17 @@ export default function Home() {
     const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
 
     const getStatusStyles = (cls) => {
-    // 1. Check Exceptions FIRST
-    const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
-    
-    if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
-    if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#28a745' };
-    if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
+        // 1. Check Exceptions FIRST so they override "Passed"
+        const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
+        
+        if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
+        if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#28a745' };
+        if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
 
-    // 2. ONLY check if passed if there are no exceptions
-    if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
+        // 2. Only check if passed if there are no exceptions
+        if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
 
-    return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
+        return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
     };
 
     const searchFreeRooms = () => {
@@ -277,7 +289,6 @@ export default function Home() {
                         const status = getStatusStyles(cls);
                         return (
                             <div key={idx} style={{ ...cardBase, background: status.bg, borderLeft: `5px solid ${status.border}` }}>
-                                {/* CONVERTED TIME VARIABLES APPLIED HERE */}
                                 <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                 <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
                                 <div style={{ color: '#555', fontSize: '0.8rem' }}>
