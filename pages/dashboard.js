@@ -8,7 +8,15 @@ export default function Dashboard() {
     const [schedule, setSchedule] = useState([]); // For Weekly view with exceptions
     const [baseSchedule, setBaseSchedule] = useState([]); // For Permanent Base Schedule
     const [loading, setLoading] = useState(true);
+    
+    // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
+    const [availableCourses, setAvailableCourses] = useState([]);
+    const [availableTeachers, setAvailableTeachers] = useState([]);
+
+    // --- TOGGLE STATES FOR MANUAL ENTRY ---
+    const [isManualCourse, setIsManualCourse] = useState(false);
+    const [isManualTeacher, setIsManualTeacher] = useState(false);
 
     // --- TAB STATE ---
     const [activeTab, setActiveTab] = useState('weekly'); // 'weekly' or 'permanent'
@@ -23,9 +31,10 @@ export default function Dashboard() {
 
     // --- MODAL STATES FOR PERMANENT SCHEDULE ---
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
-    const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'Monday', start_time: '8:00 AM', end_time: '9:30 AM' });
+    const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
 
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    // Updated days to match index.js exactly
+    const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
     // Generate time slots for the dropdowns
     const timeSlots = [];
@@ -89,11 +98,12 @@ export default function Dashboard() {
             const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
-            // Fetch all rooms for the Reschedule dropdown
-            const { data: allData } = await supabase.from('base_schedule').select('room');
+            // Fetch all rooms, courses, and teachers for the dropdowns
+            const { data: allData } = await supabase.from('base_schedule').select('room, course, teacher');
             if (allData) {
-                const rooms = [...new Set(allData.map(x => x.room))].filter(Boolean).sort();
-                setAvailableRooms(rooms);
+                setAvailableRooms([...new Set(allData.map(x => x.room))].filter(Boolean).sort());
+                setAvailableCourses([...new Set(allData.map(x => x.course))].filter(Boolean).sort());
+                setAvailableTeachers([...new Set(allData.map(x => x.teacher))].filter(Boolean).sort());
             }
 
             // Fetch Exceptions (Cancellations, Reschedules, & Confirmations)
@@ -210,8 +220,13 @@ export default function Dashboard() {
     const openBaseModal = (cls = null) => {
         if (cls) {
             setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
+            // Check if existing course/teacher is in our lists, if not, toggle manual entry
+            setIsManualCourse(!availableCourses.includes(cls.course));
+            setIsManualTeacher(!availableTeachers.includes(cls.teacher));
         } else {
-            setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'Monday', start_time: '8:00 AM', end_time: '9:30 AM' });
+            setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
+            setIsManualCourse(false);
+            setIsManualTeacher(false);
         }
         setIsBaseModalOpen(true);
     };
@@ -410,10 +425,38 @@ export default function Dashboard() {
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
                         <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <input type="text" placeholder="Course Name" required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} />
-                            <input type="text" placeholder="Teacher Name" required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} />
+                            
+                            {/* COURSE / SUBJECT DROPDOWN */}
+                            {isManualCourse ? (
+                                <input type="text" placeholder="Type Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} />
+                            ) : (
+                                <select required value={baseForm.course} onChange={(e) => {
+                                    if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); }
+                                    else setBaseForm({...baseForm, course: e.target.value});
+                                }} style={inputStyle}>
+                                    <option value="" disabled>-- Select Subject --</option>
+                                    {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
+                                    <option value="MANUAL">+ Add Manually</option>
+                                </select>
+                            )}
+
+                            {/* TEACHER DROPDOWN */}
+                            {isManualTeacher ? (
+                                <input type="text" placeholder="Type Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} />
+                            ) : (
+                                <select required value={baseForm.teacher} onChange={(e) => {
+                                    if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); }
+                                    else setBaseForm({...baseForm, teacher: e.target.value});
+                                }} style={inputStyle}>
+                                    <option value="" disabled>-- Select Teacher --</option>
+                                    {availableTeachers.map(t => <option key={t} value={t}>{t}</option>)}
+                                    <option value="MANUAL">+ Add Manually</option>
+                                </select>
+                            )}
+                            
                             <input type="text" placeholder="Room (e.g. 101)" required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} />
                             
+                            {/* DAYS DROPDOWN (Matches index.js formatting) */}
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>
                                 {days.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
