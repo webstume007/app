@@ -16,7 +16,11 @@ export default function Home() {
     // Active View States
     const [currentTab, setCurrentTab] = useState('class'); // 'class' | 'room' | 'teacher'
     const [roomSubTab, setRoomSubTab] = useState('schedule'); // 'schedule' | 'free'
-    const [selectedDay, setSelectedDay] = useState('ALL');
+    const [selectedDay, setSelectedDay] = useState(() => {
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+        // If today is Sunday (usually off), default to 'ALL'. Otherwise, set to the current day.
+        return today === 'SUN' ? 'ALL' : today;
+    });
     const [showAlerts, setShowAlerts] = useState(false);
     const [alertsRead, setAlertsRead] = useState(false);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
