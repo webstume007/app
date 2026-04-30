@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
 export default function Home() {
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [rawData, setRawData] = useState([]);
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
@@ -112,6 +113,15 @@ export default function Home() {
                 .then((reg) => console.log('Service Worker Registered!'))
                 .catch((err) => console.error('Service Worker Failed!', err));
         }
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome's default mini-infobar from appearing
+            e.preventDefault();
+            // Save the event so we can trigger it later via a button
+            setDeferredPrompt(e);
+        });
     }, []);
 
     const fetchLiveSchedule = async () => {
@@ -305,12 +315,25 @@ export default function Home() {
         });
     };
 
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                setDeferredPrompt(null);
+            }
+        }
+    };
+
     // --- MAIN APP VIEW ---
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
                 <title>My Schedule | IUB AI</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+                <meta name="theme-color" content="#002147" />
+                <link rel="manifest" href="/manifest.json" />
+                <link rel="apple-touch-icon" href="/icon-192x192.png" />
             </Head>
 
             <header style={headerStyle}>
@@ -332,7 +355,19 @@ export default function Home() {
                 ))}
             </div>
 
+            {/* MAIN CONTENT CONTAINER */}
             <div style={{ padding: '10px 15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
+
+                {/* APP INSTALL BANNER (Moved here for proper mobile padding!) */}
+                {deferredPrompt && (
+                    <div style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', marginBottom: '15px' }}>
+                        <div style={{ flex: 1, paddingRight: '10px' }}>
+                            <b style={{ display: 'block', marginBottom: '3px' }}>Install App 📱</b>
+                            <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>Add IUB Assistant to your home screen for better performance and reliable notifications.</span>
+                        </div>
+                        <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
+                    </div>
+                )}
 
                 {/* NOTIFICATION BANNER */}
                 {showNotifBanner && (
