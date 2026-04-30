@@ -17,6 +17,7 @@ export default function Dashboard() {
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
     const [isManualTeacher, setIsManualTeacher] = useState(false);
+    const [isManualRoom, setIsManualRoom] = useState(false); // Room Manual Toggle
 
     // --- TAB STATE ---
     const [activeTab, setActiveTab] = useState('weekly'); // 'weekly' or 'permanent'
@@ -145,7 +146,7 @@ export default function Dashboard() {
         if (error) {
             alert("Error: " + error.message);
         } else {
-            // NEW: Send notification to the public dashboard
+            // Send notification to index.js
             await supabase.from('notifications').insert([{ 
                 message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.` 
             }]);
@@ -169,6 +170,7 @@ export default function Dashboard() {
         if (error) {
             alert("Error: " + error.message);
         } else {
+            // Send notification to index.js
             await supabase.from('notifications').insert([{ 
                 message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
             }]);
@@ -189,11 +191,16 @@ export default function Dashboard() {
         if (error) {
             console.error("Delete Error:", error);
             alert("Error undoing action in DB.");
+            return;
         }
 
+        // Remove the specific notification so students don't see false alerts
         if (actionType === 'cancelled') {
-            const targetMessage = `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`;
-            await supabase.from('notifications').delete().eq('message', targetMessage);
+            await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`);
+        } else if (actionType === 'confirmed') {
+            await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.`);
+        } else if (actionType === 'rescheduled') {
+            await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${profile.section}%`);
         }
 
         fetchProfileAndSchedule(session.user.id);
@@ -219,7 +226,7 @@ export default function Dashboard() {
 
         if (error) return alert("Error: " + error.message);
 
-        // NEW: Send notification to the public dashboard
+        // Send notification to index.js
         await supabase.from('notifications').insert([{ 
             message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` 
         }]);
@@ -233,13 +240,15 @@ export default function Dashboard() {
     const openBaseModal = (cls = null) => {
         if (cls) {
             setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
-            // Check if existing course/teacher is in our lists, if not, toggle manual entry
+            // Check if existing course/teacher/room is in our lists, if not, toggle manual entry
             setIsManualCourse(!availableCourses.includes(cls.course));
             setIsManualTeacher(!availableTeachers.includes(cls.teacher));
+            setIsManualRoom(!availableRooms.includes(cls.room));
         } else {
             setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
             setIsManualCourse(false);
             setIsManualTeacher(false);
+            setIsManualRoom(false);
         }
         setIsBaseModalOpen(true);
     };
@@ -467,7 +476,19 @@ export default function Dashboard() {
                                 </select>
                             )}
                             
-                            <input type="text" placeholder="Room (e.g. 101)" required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} />
+                            {/* ROOM DROPDOWN */}
+                            {isManualRoom ? (
+                                <input type="text" placeholder="Type Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} />
+                            ) : (
+                                <select required value={baseForm.room} onChange={(e) => {
+                                    if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); }
+                                    else setBaseForm({...baseForm, room: e.target.value});
+                                }} style={inputStyle}>
+                                    <option value="" disabled>-- Select Room --</option>
+                                    {availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
+                                    <option value="MANUAL">+ Add Manually</option>
+                                </select>
+                            )}
                             
                             {/* DAYS DROPDOWN (Matches index.js formatting) */}
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>
