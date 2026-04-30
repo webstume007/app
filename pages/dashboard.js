@@ -142,7 +142,15 @@ export default function Dashboard() {
             base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
         }]);
 
-        if (error) alert("Error: " + error.message);
+        if (error) {
+            alert("Error: " + error.message);
+        } else {
+            // NEW: Send notification to the public dashboard
+            await supabase.from('notifications').insert([{ 
+                message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.` 
+            }]);
+        }
+        
         fetchProfileAndSchedule(session.user.id); 
     };
 
@@ -210,6 +218,11 @@ export default function Dashboard() {
         }]);
 
         if (error) return alert("Error: " + error.message);
+
+        // NEW: Send notification to the public dashboard
+        await supabase.from('notifications').insert([{ 
+            message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` 
+        }]);
 
         alert(`Class rescheduled successfully!`);
         setIsEditModalOpen(false);
