@@ -191,24 +191,33 @@ export default function TeacherLoginAndDashboard() {
 
     const handleSignup = async (e) => {
         e.preventDefault();
-        setAuthError('');
         
-        if (!signupName) return setAuthError('Please select your name from the dropdown.');
+        if (!signupName) {
+            return showToast('Please select your name from the dropdown.', 'error');
+        }
     
+        // 1. Sign up the user in Supabase Auth
         const { data, error } = await supabase.auth.signUp({ 
             email, 
             password,
             options: {
-                data: { full_name: signupName, phone: phone, cnic: cnic }
+                // This forces the email button to redirect to your success page
+                emailRedirectTo: 'https://mohsinakhtar.me/verify-success',
+                data: { 
+                    full_name: signupName, 
+                    phone: phone, 
+                    cnic: cnic 
+                }
             }
         });
     
+        // 2. Handle Auth Errors
         if (error) {
-            setAuthError(error.message);
+            showToast(error.message, "error");
             return;
         }
 
-        // Profile Insert moved safely inside the signup function
+        // 3. Insert Profile Data into teacher_profiles
         if (data?.user) {
             const { error: profileError } = await supabase.from('teacher_profiles').insert([{
                 id: data.user.id, 
@@ -220,13 +229,14 @@ export default function TeacherLoginAndDashboard() {
 
             if (profileError) {
                 console.error("Profile Insert Error:", profileError);
-                setAuthError("Auth created, but profile failed: " + profileError.message);
+                showToast("Auth created, but profile failed: " + profileError.message, "error");
             } else {
+                // Success! Set timers, show toast, and switch to Login screen
                 setUnverifiedEmail(email);
-                setResendTimer(60); // Start 60s cooldown
+                setResendTimer(60); // Start 60s cooldown timer
                 showToast("Verification email sent! Please check your inbox and click the link.", "success");
                 setIsLoginMode(true);
-                fetchUnclaimedTeachers(); // Refresh the list
+                fetchUnclaimedTeachers(); // Remove the teacher's name from the dropdown
             }
         }
     };
