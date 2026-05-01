@@ -102,11 +102,26 @@ export default function TeacherLoginAndDashboard() {
 
     // --- 1. INITIAL LOAD & AUTH CHECK ---
     useEffect(() => {
+        // A. REGISTER SERVICE WORKER
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(() => console.log('SW Registered'))
+                .catch((err) => console.error('SW Registration Failed', err));
+        }
+
+        // B. CAPTURE INSTALL PROMPT
+        const handleInstall = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleInstall);
+
+        // C. AUTH & SESSION CHECK
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 verifyTeacherAndLoad(session.user.id, session);
             } else {
-                fetchUnclaimedTeachers(); // Fetch dropdown for signup
+                fetchUnclaimedTeachers();
                 setLoading(false);
             }
         });
@@ -119,17 +134,15 @@ export default function TeacherLoginAndDashboard() {
             }
         });
 
-        // PWA & Notification setup
+        // D. NOTIFICATION CHECK
         if ("Notification" in window && Notification.permission === "default") {
             setShowNotifBanner(true);
         }
 
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        });
-
-        return () => { authListener.subscription.unsubscribe(); };
+        return () => {
+            authListener.subscription.unsubscribe();
+            window.removeEventListener('beforeinstallprompt', handleInstall);
+        };
     }, []);
 
     // --- STRICT TEACHER VERIFICATION (BLOCKS CRs) ---
@@ -525,10 +538,13 @@ export default function TeacherLoginAndDashboard() {
     // ==========================================
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
-            <Head>
-                <title>Teacher Dashboard | IUB</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
-            </Head>
+          <Head>
+            <title>Teacher Dashboard | IUB</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+            {/* ADD THESE TWO LINES */}
+            <link rel="manifest" href="/manifest.json" />
+            <meta name="theme-color" content="#002147" />
+        </Head>
 
             {/* DASHBOARD CSS TOAST */}
             <div style={{...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
