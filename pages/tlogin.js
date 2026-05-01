@@ -140,24 +140,26 @@ export default function TeacherLoginAndDashboard() {
         
         if (!signupName) return setAuthError('Please select your name from the dropdown.');
     
-        // 1. Create the Auth User
         const { data, error } = await supabase.auth.signUp({ 
             email, 
             password,
             options: {
-                // This ensures the metadata is attached to the auth user as well
-                data: {
+                // These values are sent to 'raw_user_meta_data' for the SQL trigger
+                data: { 
                     full_name: signupName,
+                    phone: phone,
+                    cnic: cnic
+                }
             }
+        });
+    
+        if (error) {
+            setAuthError(error.message);
+        } else {
+            alert("Verification email sent! Please check your inbox and click the link to activate your account.");
+            setIsLoginMode(true);
         }
-    });
-
-    if (error) return setAuthError(error.message);
-
-    // 2. CRITICAL CHECK: Ensure we actually have a user ID
-    if (!data?.user?.id) {
-        return setAuthError("Auth user creation failed. Please try a different email.");
-    }
+    };
 
     // 3. Insert the Profile
     const { error: profileError } = await supabase
