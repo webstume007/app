@@ -85,13 +85,13 @@ export default function TeacherLoginAndDashboard() {
         return h * 60 + (m || 0);
     };
 
-    // --- NEW: CSS TOAST FUNCTION ---
+    // --- CSS TOAST FUNCTION ---
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
         setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
     };
 
-    // --- NEW: RESEND TIMER EFFECT ---
+    // --- RESEND TIMER EFFECT ---
     useEffect(() => {
         let interval;
         if (resendTimer > 0) {
@@ -132,7 +132,7 @@ export default function TeacherLoginAndDashboard() {
         return () => { authListener.subscription.unsubscribe(); };
     }, []);
 
-    // --- NEW: STRICT TEACHER VERIFICATION (BLOCKS CRs) ---
+    // --- STRICT TEACHER VERIFICATION (BLOCKS CRs) ---
     const verifyTeacherAndLoad = async (userId, activeSession) => {
         const { data: profileData, error } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
         if (error || !profileData) {
@@ -195,7 +195,7 @@ export default function TeacherLoginAndDashboard() {
             return;
         }
 
-        // CORRECTED: Profile Insert moved safely inside the signup function
+        // Profile Insert moved safely inside the signup function
         if (data?.user) {
             const { error: profileError } = await supabase.from('teacher_profiles').insert([{
                 id: data.user.id, 
@@ -218,7 +218,7 @@ export default function TeacherLoginAndDashboard() {
         }
     };
 
-    // --- NEW: RESEND EMAIL HANDLER ---
+    // --- RESEND EMAIL HANDLER ---
     const handleResendEmail = async () => {
         if (resendTimer > 0) return;
         const { error } = await supabase.auth.resend({ type: 'signup', email: unverifiedEmail });
@@ -337,16 +337,23 @@ export default function TeacherLoginAndDashboard() {
         }
     };
 
-    // --- LECTURE ACTIONS ---
+    // ==========================================
+    // --- LECTURE ACTIONS (WITH ERROR HANDLING) ---
+    // ==========================================
     const handleConfirmClass = async (classId, courseName, section) => {
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
+        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false, isRescheduled: false } : c));
+        
         const today = new Date().toLocaleDateString('en-CA');
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
         }]);
 
-        if (!error) {
-            await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.` }]);
+        if (error) {
+            showToast("Failed to update: " + error.message, "error");
+        } else {
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.` }]);
+            if(notifError) showToast("Updated, but notification failed: " + notifError.message, "error");
+            else showToast("Class confirmed & students notified!", "success");
         }
         fetchProfileAndSchedule(profile.name); 
     };
@@ -355,14 +362,19 @@ export default function TeacherLoginAndDashboard() {
         const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
         if (!confirmCancel) return;
 
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
+        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false, isRescheduled: false } : c));
+        
         const today = new Date().toLocaleDateString('en-CA');
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
         }]);
 
-        if (!error) {
-            await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.` }]);
+        if (error) {
+            showToast("Failed to cancel: " + error.message, "error");
+        } else {
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.` }]);
+            if(notifError) showToast("Cancelled, but notification failed: " + notifError.message, "error");
+            else showToast("Class cancelled & students notified!", "success");
         }
         fetchProfileAndSchedule(profile.name);
     };
@@ -370,23 +382,19 @@ export default function TeacherLoginAndDashboard() {
     const handleUndoException = async (classId, actionType, courseName, section) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
         const today = new Date().toLocaleDateString('en-CA');
-        await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
+        
+        const { error } = await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
 
-        if (actionType === 'cancelled') {
-            await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.`);
-        } else if (actionType === 'confirmed') {
-            await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.`);
-        } else if (actionType === 'rescheduled') {
-            await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${section}%`);
+        if (error) {
+            showToast("Failed to undo: " + error.message, "error");
+        } else {
+            if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.`);
+            else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.`);
+            else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${section}%`);
+            
+            showToast("Action reversed successfully.", "success");
         }
         fetchProfileAndSchedule(profile.name);
-    };
-
-    // --- MODAL FUNCTIONS (Edit / Permanent) ---
-    const openEditModal = (cls) => {
-        setEditingClass(cls); setNewDate(new Date().toLocaleDateString('en-CA'));
-        setNewStartTime(convertTo12Hour(cls.start_time)); setNewEndTime(convertTo12Hour(cls.end_time));
-        setNewRoom(cls.room); setIsEditModalOpen(true);
     };
 
     const submitReschedule = async (e) => {
@@ -396,11 +404,22 @@ export default function TeacherLoginAndDashboard() {
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
 
-        if (!error) {
-            await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
-            showToast(`Class rescheduled successfully!`, "success");
+        if (error) {
+            showToast("Failed to reschedule: " + error.message, "error");
+        } else {
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
+            if(notifError) showToast("Rescheduled, but notification failed.", "error");
+            else showToast(`Class rescheduled & students notified!`, "success");
         }
-        setIsEditModalOpen(false); fetchProfileAndSchedule(profile.name);
+        setIsEditModalOpen(false); 
+        fetchProfileAndSchedule(profile.name);
+    };
+
+    // --- PERMANENT MODAL FUNCTIONS ---
+    const openEditModal = (cls) => {
+        setEditingClass(cls); setNewDate(new Date().toLocaleDateString('en-CA'));
+        setNewStartTime(convertTo12Hour(cls.start_time)); setNewEndTime(convertTo12Hour(cls.end_time));
+        setNewRoom(cls.room); setIsEditModalOpen(true);
     };
 
     const openBaseModal = (cls = null) => {
@@ -633,7 +652,7 @@ export default function TeacherLoginAndDashboard() {
                             </select>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -657,7 +676,7 @@ export default function TeacherLoginAndDashboard() {
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -669,6 +688,4 @@ export default function TeacherLoginAndDashboard() {
 
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' });
 const inputStyle = { width: '100%', padding: '12px', border: '2px solid #dee2e6', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', boxSizing: 'border-box' };
-
-// NEW CSS STYLES FOR TOAST
 const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.95rem' };
