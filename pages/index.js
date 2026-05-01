@@ -344,7 +344,7 @@ export default function Home() {
                                 
                                 {/* Nearest Points UI Strip */}
                                 <div style={pointStripStyle}>
-                                    <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>NEAREST POINTS:</span>
+                                    <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
                                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                                         {/* Up Green Icon & Time */}
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
