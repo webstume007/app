@@ -161,28 +161,6 @@ export default function TeacherLoginAndDashboard() {
         }
     };
 
-    // 3. Insert the Profile
-    const { error: profileError } = await supabase
-        .from('teacher_profiles')
-        .insert([{
-            id: data.user.id, // This MUST match auth.users.id
-            name: signupName,
-            email: email,
-            phone: phone,
-            cnic: cnic
-        }]);
-
-    if (profileError) {
-        console.error("Profile Insert Error:", profileError);
-        // If profile fails, the user is still in Auth, but we need to tell them
-        setAuthError("Auth created, but profile failed: " + profileError.message);
-    } else {
-        alert("Account created successfully! You can now login.");
-        setIsLoginMode(true);
-        fetchUnclaimedTeachers(); // Refresh the list
-    }
-};
-
     const handleLogout = async () => {
         await supabase.auth.signOut();
         setSession(null);
