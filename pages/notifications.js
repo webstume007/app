@@ -49,9 +49,9 @@ export default function Notifications() {
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
             <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
-                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🔔 Notification Center</div>
+                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🔔 Notifications</div>
                 <div style={{ display: 'flex', gap: '15px' }}>
-                    <a href="/dashboard" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', alignSelf: 'center' }}>⬅ Back to Dashboard</a>
+                    <a href="/crlogin" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', alignSelf: 'center' }}>⬅ Back to Dashboard</a>
                 </div>
             </header>
 
