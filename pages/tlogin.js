@@ -137,20 +137,49 @@ export default function TeacherLoginAndDashboard() {
     const handleSignup = async (e) => {
         e.preventDefault();
         setAuthError('');
+        
         if (!signupName) return setAuthError('Please select your name from the dropdown.');
-
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) return setAuthError(error.message);
-
-        if (data?.user) {
-            // Insert profile immediately after successful signup
-            const { error: profileError } = await supabase.from('teacher_profiles').insert([{
-                id: data.user.id, name: signupName, email, phone, cnic
-            }]);
-            if (profileError) setAuthError(profileError.message);
-            else alert("Account created successfully!");
+    
+        // 1. Create the Auth User
+        const { data, error } = await supabase.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                // This ensures the metadata is attached to the auth user as well
+                data: {
+                    full_name: signupName,
+            }
         }
-    };
+    });
+
+    if (error) return setAuthError(error.message);
+
+    // 2. CRITICAL CHECK: Ensure we actually have a user ID
+    if (!data?.user?.id) {
+        return setAuthError("Auth user creation failed. Please try a different email.");
+    }
+
+    // 3. Insert the Profile
+    const { error: profileError } = await supabase
+        .from('teacher_profiles')
+        .insert([{
+            id: data.user.id, // This MUST match auth.users.id
+            name: signupName,
+            email: email,
+            phone: phone,
+            cnic: cnic
+        }]);
+
+    if (profileError) {
+        console.error("Profile Insert Error:", profileError);
+        // If profile fails, the user is still in Auth, but we need to tell them
+        setAuthError("Auth created, but profile failed: " + profileError.message);
+    } else {
+        alert("Account created successfully! You can now login.");
+        setIsLoginMode(true);
+        fetchUnclaimedTeachers(); // Refresh the list
+    }
+};
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
