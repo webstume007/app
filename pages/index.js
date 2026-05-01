@@ -7,6 +7,7 @@ export default function Home() {
     const [rawData, setRawData] = useState([]);
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    const [pointsData, setPointsData] = useState([]); // NEW: Point Schedules State
     const [loading, setLoading] = useState(true);
 
     // Persistence States
@@ -17,8 +18,7 @@ export default function Home() {
     const [currentTab, setCurrentTab] = useState('class'); // 'class' | 'room' | 'teacher'
     const [roomSubTab, setRoomSubTab] = useState('schedule'); // 'schedule' | 'free'
     const [selectedDay, setSelectedDay] = useState(() => {
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-        // If today is Sunday (usually off), default to 'ALL'. Otherwise, set to the current day.
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
         return today === 'SUN' ? 'ALL' : today;
     });
     const [showAlerts, setShowAlerts] = useState(false);
@@ -60,7 +60,6 @@ export default function Home() {
             setIsFirstVisit(false);
         }
 
-        // Show the manual prompt banner if permissions haven't been granted/denied yet
         if ("Notification" in window && Notification.permission === "default") {
             setShowNotifBanner(true);
         }
@@ -68,13 +67,12 @@ export default function Home() {
         fetchLiveSchedule();
     }, []);
 
-    // 2. SUPABASE REALTIME LISTENER (Updated for instant UI reactions)
+    // 2. SUPABASE REALTIME LISTENER
     useEffect(() => {
         if (!userSection) return;
 
         const channel = supabase
             .channel('student-dashboard-updates')
-            // Listen for Notifications
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
                 if (payload.new.message.includes(userSection.section)) {
                     setNotifications(prev => [payload.new, ...prev]);
@@ -95,13 +93,10 @@ export default function Home() {
                     }
                 }
             })
-            // Listen for Exceptions (Color changes, Confirmations, Cancellations)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
-                // Instantly fetch ONLY exceptions to update colors without reloading everything
                 const today = new Date().toLocaleDateString('en-CA');
                 supabase.from('schedule_exceptions').select('*').eq('exception_date', today).then(res => setExceptions(res.data || []));
             })
-            // Listen for Base Schedule changes (New lectures added/deleted by CR)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'base_schedule' }, () => {
                 supabase.from('base_schedule').select('*').then(res => setRawData(res.data || []));
             })
@@ -121,27 +116,26 @@ export default function Home() {
 
     useEffect(() => {
         window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome's default mini-infobar from appearing
             e.preventDefault();
-            // Save the event so we can trigger it later via a button
             setDeferredPrompt(e);
         });
     }, []);
 
     const fetchLiveSchedule = async () => {
-        const today = new Date().toLocaleDateString('en-CA');    
+        const today = new Date().toLocaleDateString('en-CA');  
         
-        // Promise.all triggers all three requests simultaneously
-        const [baseRes, excRes, notifRes] = await Promise.all([
+        // Added point_schedules to the Promise.all fetch
+        const [baseRes, excRes, notifRes, pointsRes] = await Promise.all([
             supabase.from('base_schedule').select('*'),
             supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
-            supabase.from('notifications').select('*').order('created_at', { ascending: false })
+            supabase.from('notifications').select('*').order('created_at', { ascending: false }),
+            supabase.from('point_schedules').select('*')
         ]);
     
-        // Data is extracted from the results once they all settle
         setRawData(baseRes.data || []);
         setExceptions(excRes.data || []);
         setNotifications(notifRes.data || []);
+        setPointsData(pointsRes.data || []); // Save points data
         setLoading(false);
     };
 
@@ -160,6 +154,13 @@ export default function Home() {
         if (h === 12) h = 0;
         if (ap === 'PM') h += 12;
         return h * 60 + (m || 0);
+    };
+
+    // NEW: Helper to parse SQL TIME strings (e.g., "13:30:00") into minutes
+    const parseDbTime = (t) => {
+        if (!t) return 0;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
     };
 
     const convertTo12Hour = (time24) => {
@@ -193,17 +194,42 @@ export default function Home() {
     const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
 
     const getStatusStyles = (cls) => {
-        // 1. Check Exceptions FIRST so they override "Passed"
         const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
         
         if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
         if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#28a745' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
 
-        // 2. Only check if passed if there are no exceptions
         if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
 
         return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
+    };
+
+    // NEW: Function to find the nearest up/down point timings with travel buffer
+    const getNearestPoints = (cls) => {
+        if (!pointsData || pointsData.length === 0) return { up: '--:--', down: '--:--' };
+
+        const isSat = cls.day === 'SAT';
+        const clsStartMins = parseTime(cls.start_time);
+        const clsEndMins = parseTime(cls.end_time);
+
+        // Target UP: Must leave AC 30 minutes before class starts
+        const targetUpMins = clsStartMins - 30;
+        const validUp = pointsData
+            .filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins)
+            .sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); // Sort Desc to get closest
+        
+        const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
+
+        // Target DOWN: Can leave BJC exactly at or after class ends
+        const targetDownMins = clsEndMins;
+        const validDown = pointsData
+            .filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins)
+            .sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); // Sort Asc to get closest
+        
+        const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
+
+        return { up: bestUp, down: bestDown };
     };
 
     const searchFreeRooms = () => {
@@ -229,7 +255,6 @@ export default function Home() {
         setSearchedFreeRooms(available);
     };
 
-    // This forces the Chrome permission popup based on a user click
     const forceNotificationPermission = async () => {
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
@@ -274,7 +299,6 @@ export default function Home() {
         );
     }
 
-    // Filter Logic for Views
     const getFilteredClasses = (filterKey, filterValue) => {
         let classes = rawData.filter(c => c[filterKey] === filterValue);
         if (selectedDay !== 'ALL') {
@@ -302,16 +326,42 @@ export default function Home() {
                     <div style={dayHeaderStrip}>{day}</div>
                     {dayClasses.map((cls, idx) => {
                         const status = getStatusStyles(cls);
+                        const points = getNearestPoints(cls); // Fetch calculated point timings
+
                         return (
-                            <div key={idx} style={{ ...cardBase, background: status.bg, borderLeft: `5px solid ${status.border}` }}>
-                                <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
-                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
-                                <div style={{ color: '#555', fontSize: '0.8rem' }}>
-                                    {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
-                                    {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
-                                    <span>👥 {cls.section}</span>
+                            <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px' }}>
+                                {/* Main Class Card - Modified for flat bottom */}
+                                <div style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: status.bg, borderLeft: `5px solid ${status.border}` }}>
+                                    <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
+                                    <div style={{ color: '#555', fontSize: '0.8rem' }}>
+                                        {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
+                                        {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
+                                        <span>👥 {cls.section}</span>
+                                    </div>
+                                    <div style={{ marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>● {status.label}</div>
                                 </div>
-                                <div style={{ marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>● {status.label}</div>
+                                
+                                {/* Nearest Points UI Strip */}
+                                <div style={pointStripStyle}>
+                                    <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>NEAREST POINTS:</span>
+                                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                                        {/* Up Green Icon & Time */}
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745">
+                                                <path d="M12 2L4 10h5v12h6V10h5L12 2z"/>
+                                            </svg>
+                                            {points.up}
+                                        </span>
+                                        {/* Down Blue Icon & Time */}
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#007bff">
+                                                <path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/>
+                                            </svg>
+                                            {points.down}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         );
                     })}
@@ -360,10 +410,8 @@ export default function Home() {
                 ))}
             </div>
 
-            {/* MAIN CONTENT CONTAINER */}
             <div style={{ padding: '10px 15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
 
-                {/* APP INSTALL BANNER (Moved here for proper mobile padding!) */}
                 {deferredPrompt && (
                     <div style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', marginBottom: '15px' }}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
@@ -374,7 +422,6 @@ export default function Home() {
                     </div>
                 )}
 
-                {/* NOTIFICATION BANNER */}
                 {showNotifBanner && (
                     <div style={notifBannerStyle}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
@@ -385,7 +432,6 @@ export default function Home() {
                     </div>
                 )}
 
-                {/* ALERTS MODAL/VIEW */}
                 {showAlerts ? (
                     <div style={whiteCard}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -405,7 +451,6 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        {/* GLOBAL DAY FILTER */}
                         {(currentTab === 'class' || currentTab === 'teacher' || (currentTab === 'room' && roomSubTab === 'schedule')) && (
                             <div style={dayFilter}>
                                 {filterDays.map(day => (
@@ -414,10 +459,8 @@ export default function Home() {
                             </div>
                         )}
 
-                        {/* 1. SCHEDULE TAB */}
                         {currentTab === 'class' && renderClassCards(mySchedule, 'class')}
 
-                        {/* 2. ROOM TAB */}
                         {currentTab === 'room' && (
                             <>
                                 <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
@@ -466,7 +509,6 @@ export default function Home() {
                             </>
                         )}
 
-                        {/* 3. TEACHER TAB */}
                         {currentTab === 'teacher' && (
                             <div style={whiteCard}>
                                 <input type="text" placeholder="🔍 Search teacher name..." value={teacherSearch} onChange={e => setTeacherSearch(e.target.value)} style={searchInput} />
@@ -513,7 +555,7 @@ const dayBtnStyle = (active) => ({ flex: 1, minWidth: '45px', padding: '8px', bo
 const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '8px 15px', borderRadius: '8px', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', fontSize: '0.85rem' };
 const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' };
 const searchInput = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' };
-const cardBase = { padding: '12px', marginBottom: '10px', borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' };
+const cardBase = { padding: '12px', borderRadius: '10px' };
 const notifCard = { background: '#fff', padding: '12px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
 const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '15px', borderTop: '4px solid #F2A900' };
 const searchBtn = { width: '100%', padding: '14px', background: '#002147', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', boxSizing: 'border-box' };
@@ -523,26 +565,19 @@ const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'ce
 const emptyState = { textAlign: 'center', padding: '30px 10px', color: '#999', fontSize: '0.9rem' };
 const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' };
 const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.9rem', marginTop: 'auto' };
-const notifBannerStyle = {
-    background: '#002147',
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900', gap: '10px' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' };
+
+// NEW: Point Strip Style perfectly mapping your points-demo.jpg
+const pointStripStyle = {
+    background: '#3f3f3f',
     color: '#fff',
-    padding: '12px 15px',
-    borderRadius: '10px',
-    marginBottom: '15px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontSize: '0.85rem',
-    border: '2px solid #F2A900',
-    gap: '10px'
-};
-const enableBtnStyle = {
-    background: '#F2A900',
-    color: '#002147',
-    border: 'none',
     padding: '8px 12px',
-    borderRadius: '5px',
+    borderBottomLeftRadius: '10px',
+    borderBottomRightRadius: '10px',
+    display: 'flex',
+    alignItems: 'center',
+    fontSize: '0.8rem',
     fontWeight: 'bold',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap'
+    justifyContent: 'flex-start'
 };
