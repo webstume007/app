@@ -14,8 +14,9 @@ export default function TeacherLoginAndDashboard() {
     const [cnic, setCnic] = useState('');
     const [phone, setPhone] = useState('');
     const [availableTeacherNames, setAvailableTeacherNames] = useState([]);
-    
-    // --- TOAST & TIMER STATES ---
+    const [authError, setAuthError] = useState('');
+
+    // --- NEW: TOAST & TIMER STATES ---
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [resendTimer, setResendTimer] = useState(0);
     const [unverifiedEmail, setUnverifiedEmail] = useState('');
@@ -27,16 +28,25 @@ export default function TeacherLoginAndDashboard() {
     const [loading, setLoading] = useState(true);
     const alertedClasses = useRef(new Set()); 
 
-    // --- PWA & NOTIFICATION STATES ---
+    // --- PWA & NOTIFICATION STATES (From index.js) ---
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
 
-    // --- DROPDOWN & MODAL STATES ---
+    // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
     const [availableCourses, setAvailableCourses] = useState([]);
     const [availableSemesters, setAvailableSemesters] = useState([]);
     const [availableSections, setAvailableSections] = useState([]);
+
+    // --- TOGGLE STATES FOR MANUAL ENTRY ---
+    const [isManualCourse, setIsManualCourse] = useState(false);
+    const [isManualRoom, setIsManualRoom] = useState(false);
+    const [isManualSemester, setIsManualSemester] = useState(false);
+    const [isManualSection, setIsManualSection] = useState(false);
+
     const [activeTab, setActiveTab] = useState('weekly');
+
+    // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
     const [newDate, setNewDate] = useState('');
@@ -45,10 +55,6 @@ export default function TeacherLoginAndDashboard() {
     const [newRoom, setNewRoom] = useState('');
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
     const [baseForm, setBaseForm] = useState({ id: null, semester: '', section: '', course: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
-    const [isManualCourse, setIsManualCourse] = useState(false);
-    const [isManualRoom, setIsManualRoom] = useState(false);
-    const [isManualSemester, setIsManualSemester] = useState(false);
-    const [isManualSection, setIsManualSection] = useState(false);
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
     const timeSlots = [];
@@ -79,13 +85,13 @@ export default function TeacherLoginAndDashboard() {
         return h * 60 + (m || 0);
     };
 
-    // --- CUSTOM TOAST FUNCTION ---
+    // --- NEW: CSS TOAST FUNCTION ---
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
-        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
     };
 
-    // --- TIMER EFFECT ---
+    // --- NEW: RESEND TIMER EFFECT ---
     useEffect(() => {
         let interval;
         if (resendTimer > 0) {
@@ -94,25 +100,56 @@ export default function TeacherLoginAndDashboard() {
         return () => clearInterval(interval);
     }, [resendTimer]);
 
-    // --- INITIAL LOAD ---
+    // --- 1. INITIAL LOAD & AUTH CHECK ---
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
-                verifyTeacherRole(session.user.id, session);
+                verifyTeacherAndLoad(session.user.id, session);
             } else {
-                fetchUnclaimedTeachers(); 
+                fetchUnclaimedTeachers(); // Fetch dropdown for signup
                 setLoading(false);
             }
         });
 
-        // PWA setup
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session) {
+                verifyTeacherAndLoad(session.user.id, session);
+            } else { 
+                setSession(null); setProfile(null); setLoading(false); 
+            }
+        });
+
+        // PWA & Notification setup
         if ("Notification" in window && Notification.permission === "default") {
             setShowNotifBanner(true);
         }
-        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); setDeferredPrompt(e); });
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        });
+
+        return () => { authListener.subscription.unsubscribe(); };
     }, []);
 
-    // --- FETCH UNCLAIMED TEACHERS ---
+    // --- NEW: STRICT TEACHER VERIFICATION (BLOCKS CRs) ---
+    const verifyTeacherAndLoad = async (userId, activeSession) => {
+        const { data: profileData, error } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
+        if (error || !profileData) {
+            // It's a CR or invalid user, sign them out immediately
+            await supabase.auth.signOut();
+            setSession(null);
+            setLoading(false);
+            setAuthError("Unauthorized: This email is not registered as a Teacher.");
+        } else {
+            // Valid Teacher
+            setSession(activeSession);
+            setProfile(profileData);
+            fetchProfileAndSchedule(profileData.name);
+        }
+    };
+
+    // --- FETCH UNCLAIMED TEACHERS FOR SIGNUP ---
     const fetchUnclaimedTeachers = async () => {
         const { data: allLectures } = await supabase.from('base_schedule').select('teacher');
         const { data: claimedProfiles } = await supabase.from('teacher_profiles').select('name');
@@ -120,58 +157,48 @@ export default function TeacherLoginAndDashboard() {
         if (allLectures) {
             const allTeacherNames = [...new Set(allLectures.map(x => x.teacher))].filter(Boolean);
             const claimedNames = claimedProfiles ? claimedProfiles.map(p => p.name) : [];
+            
+            // Only show teachers who haven't created an account yet
             const unclaimed = allTeacherNames.filter(name => !claimedNames.includes(name));
             setAvailableTeacherNames(unclaimed.sort());
         }
     };
 
-    // --- VERIFY TEACHER ROLE (BLOCKS CRs) ---
-    const verifyTeacherRole = async (userId, activeSession) => {
-        const { data: profileData, error } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
-        
-        if (error || !profileData) {
-            // IF NOT A TEACHER: Sign them out immediately
-            await supabase.auth.signOut();
-            setSession(null);
-            setLoading(false);
-            showToast("Unauthorized: This email is not registered as a Teacher.", "error");
-        } else {
-            // IF VALID TEACHER: Set session and load dashboard
-            setSession(activeSession);
-            setProfile(profileData);
-            fetchProfileAndSchedule(profileData);
-        }
-    };
-
-    // --- LOGIN HANDLER ---
+    // --- AUTHENTICATION HANDLERS ---
     const handleLogin = async (e) => {
         e.preventDefault();
+        setAuthError('');
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-            showToast(error.message, "error");
+            setAuthError(error.message);
         } else if (data?.user) {
-            verifyTeacherRole(data.user.id, data.session);
+            // Verification is handled by verifyTeacherAndLoad via onAuthStateChange
         }
     };
 
-    // --- SIGNUP HANDLER ---
     const handleSignup = async (e) => {
         e.preventDefault();
+        setAuthError('');
         
-        if (!signupName) return showToast('Please select your name from the dropdown.', 'error');
+        if (!signupName) return setAuthError('Please select your name from the dropdown.');
     
-        // 1. Create User in Auth
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                data: { full_name: signupName, phone: phone, cnic: cnic }
+            }
+        });
     
         if (error) {
-            showToast(error.message, "error");
+            setAuthError(error.message);
             return;
         }
 
-        // 2. Insert Profile directly from Frontend (Guarantees it saves)
+        // CORRECTED: Profile Insert moved safely inside the signup function
         if (data?.user) {
             const { error: profileError } = await supabase.from('teacher_profiles').insert([{
-                id: data.user.id,
+                id: data.user.id, 
                 name: signupName,
                 email: email,
                 phone: phone,
@@ -179,25 +206,26 @@ export default function TeacherLoginAndDashboard() {
             }]);
 
             if (profileError) {
-                console.error("Profile Error:", profileError);
-                showToast("Account created, but profile failed to save.", "error");
+                console.error("Profile Insert Error:", profileError);
+                setAuthError("Auth created, but profile failed: " + profileError.message);
             } else {
                 setUnverifiedEmail(email);
                 setResendTimer(60); // Start 60s cooldown
-                showToast("Verification email sent! Please check your inbox.", "success");
+                showToast("Verification email sent! Please check your inbox and click the link.", "success");
                 setIsLoginMode(true);
+                fetchUnclaimedTeachers(); // Refresh the list
             }
         }
     };
 
-    // --- RESEND EMAIL HANDLER ---
+    // --- NEW: RESEND EMAIL HANDLER ---
     const handleResendEmail = async () => {
         if (resendTimer > 0) return;
         const { error } = await supabase.auth.resend({ type: 'signup', email: unverifiedEmail });
         if (error) {
             showToast(error.message, "error");
         } else {
-            showToast("Verification email resent!", "success");
+            showToast("Verification email resent! Please check your inbox.", "success");
             setResendTimer(60);
         }
     };
@@ -209,8 +237,8 @@ export default function TeacherLoginAndDashboard() {
     };
 
     // --- DASHBOARD DATA FETCHING ---
-    const fetchProfileAndSchedule = async (profileData) => {
-        const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('teacher', profileData.name);
+    const fetchProfileAndSchedule = async (teacherName) => {
+        const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('teacher', teacherName);
         setBaseSchedule(scheduleData || []);
         
         const { data: allData } = await supabase.from('base_schedule').select('room, course, semester, section');
@@ -242,6 +270,7 @@ export default function TeacherLoginAndDashboard() {
     // --- 3-HOUR REMINDER INTERVAL ---
     useEffect(() => {
         if (!session || schedule.length === 0) return;
+
         const interval = setInterval(() => {
             const now = new Date();
             const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -256,26 +285,38 @@ export default function TeacherLoginAndDashboard() {
                         if (!alertedClasses.current.has(cls.id)) {
                             alertedClasses.current.add(cls.id);
                             if (Notification.permission === "granted") {
-                                new Notification("Lecture Action Required", { body: `${cls.course} for Sec ${cls.section} starts in 3 hours. Please Confirm or Cancel.`, icon: "/icon.png" });
+                                new Notification("Lecture Action Required", { 
+                                    body: `${cls.course} for Sec ${cls.section} starts in 3 hours. Please Confirm or Cancel.`, 
+                                    icon: "/icon.png" 
+                                });
                             }
-                            supabase.from('notifications').insert([{ message: `⚠️ Teacher Reminder: ${cls.course} (Sec ${cls.section}) is pending confirmation.` }]).then();
+                            supabase.from('notifications').insert([{ 
+                                message: `⚠️ Teacher Reminder: ${cls.course} (Sec ${cls.section}) is pending confirmation.` 
+                            }]).then();
                         }
                     }
                 }
             });
         }, 60000); 
+
         return () => clearInterval(interval);
     }, [schedule, session]);
 
     // --- REALTIME LISTENER ---
     useEffect(() => {
         if (!profile || schedule.length === 0) return;
-        const channel = supabase.channel('teacher-updates')
+
+        const channel = supabase
+            .channel('teacher-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
                 const newMsg = payload.new.message;
                 const isRelevant = schedule.some(cls => newMsg.includes(cls.course) && newMsg.includes(cls.section));
-                if (isRelevant && Notification.permission === "granted") new Notification("IUB Schedule Alert", { body: newMsg, icon: "/icon.png" });
+                
+                if (isRelevant && Notification.permission === "granted") {
+                    new Notification("IUB Schedule Alert", { body: newMsg, icon: "/icon.png" });
+                }
             }).subscribe();
+
         return () => { supabase.removeChannel(channel); };
     }, [profile, schedule]);
 
@@ -300,18 +341,30 @@ export default function TeacherLoginAndDashboard() {
     const handleConfirmClass = async (classId, courseName, section) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
         const today = new Date().toLocaleDateString('en-CA');
-        const { error } = await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id }]);
-        if (!error) await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.` }]);
-        fetchProfileAndSchedule(profile); 
+        const { error } = await supabase.from('schedule_exceptions').insert([{
+            base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
+        }]);
+
+        if (!error) {
+            await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.` }]);
+        }
+        fetchProfileAndSchedule(profile.name); 
     };
 
     const handleCancelClass = async (classId, courseName, section) => {
-        if (!window.confirm(`Are you sure you want to CANCEL ${courseName}?`)) return;
+        const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
+        if (!confirmCancel) return;
+
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
         const today = new Date().toLocaleDateString('en-CA');
-        const { error } = await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id }]);
-        if (!error) await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.` }]);
-        fetchProfileAndSchedule(profile);
+        const { error } = await supabase.from('schedule_exceptions').insert([{
+            base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
+        }]);
+
+        if (!error) {
+            await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.` }]);
+        }
+        fetchProfileAndSchedule(profile.name);
     };
 
     const handleUndoException = async (classId, actionType, courseName, section) => {
@@ -319,10 +372,14 @@ export default function TeacherLoginAndDashboard() {
         const today = new Date().toLocaleDateString('en-CA');
         await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
 
-        if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.`);
-        else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.`);
-        else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${section}%`);
-        fetchProfileAndSchedule(profile);
+        if (actionType === 'cancelled') {
+            await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.`);
+        } else if (actionType === 'confirmed') {
+            await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.`);
+        } else if (actionType === 'rescheduled') {
+            await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${section}%`);
+        }
+        fetchProfileAndSchedule(profile.name);
     };
 
     // --- MODAL FUNCTIONS (Edit / Permanent) ---
@@ -334,12 +391,16 @@ export default function TeacherLoginAndDashboard() {
 
     const submitReschedule = async (e) => {
         e.preventDefault();
-        const { error } = await supabase.from('schedule_exceptions').insert([{ base_schedule_id: editingClass.id, exception_date: new Date().toLocaleDateString('en-CA'), status: 'rescheduled', new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id }]);
+        const { error } = await supabase.from('schedule_exceptions').insert([{
+            base_schedule_id: editingClass.id, exception_date: new Date().toLocaleDateString('en-CA'), status: 'rescheduled',
+            new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
+        }]);
+
         if (!error) {
             await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
-            showToast(`Class rescheduled successfully!`);
+            showToast(`Class rescheduled successfully!`, "success");
         }
-        setIsEditModalOpen(false); fetchProfileAndSchedule(profile);
+        setIsEditModalOpen(false); fetchProfileAndSchedule(profile.name);
     };
 
     const openBaseModal = (cls = null) => {
@@ -357,17 +418,21 @@ export default function TeacherLoginAndDashboard() {
     const submitBaseSchedule = async (e) => {
         e.preventDefault();
         setIsBaseModalOpen(false); 
-        const payload = { course: baseForm.course, teacher: profile.name, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: baseForm.semester, section: baseForm.section };
+        const payload = { 
+            course: baseForm.course, teacher: profile.name, room: baseForm.room, 
+            day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, 
+            semester: baseForm.semester, section: baseForm.section 
+        };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
-        await fetchProfileAndSchedule(profile);
+        await fetchProfileAndSchedule(profile.name);
     };
 
     const deleteBaseLecture = async (id, courseName, section) => {
         if (!window.confirm(`Permanently delete ${courseName} (Sec ${section}) from your schedule? This cannot be undone.`)) return;
         setBaseSchedule(prev => prev.filter(c => c.id !== id));
         await supabase.from('base_schedule').delete().eq('id', id);
-        await fetchProfileAndSchedule(profile);
+        await fetchProfileAndSchedule(profile.name);
     };
 
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading...</div>;
@@ -386,6 +451,8 @@ export default function TeacherLoginAndDashboard() {
 
                 <div style={{ background: 'white', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
                     <h2 style={{ color: '#002147', textAlign: 'center', margin: '0 0 20px 0' }}>{isLoginMode ? 'Teacher Login' : 'Teacher Sign Up'}</h2>
+                    
+                    {authError && <div style={{ background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '5px', marginBottom: '15px', fontSize: '0.85rem' }}>{authError}</div>}
 
                     <form onSubmit={isLoginMode ? handleLogin : handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         
@@ -410,14 +477,14 @@ export default function TeacherLoginAndDashboard() {
                         </button>
                     </form>
 
-                    {/* RESEND EMAIL UI */}
+                    {/* NEW: RESEND EMAIL UI */}
                     {isLoginMode && unverifiedEmail && (
-                        <div style={{ marginTop: '15px', padding: '10px', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center', fontSize: '0.85rem' }}>
-                            <p style={{ margin: '0 0 10px 0', color: '#555' }}>Didn't receive the email?</p>
+                        <div style={{ marginTop: '15px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center', fontSize: '0.85rem' }}>
+                            <p style={{ margin: '0 0 10px 0', color: '#555', fontWeight: 'bold' }}>Didn't receive the email?</p>
                             <button 
                                 onClick={handleResendEmail} 
                                 disabled={resendTimer > 0} 
-                                style={{ background: resendTimer > 0 ? '#ccc' : '#007bff', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: resendTimer > 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
+                                style={{ width: '100%', background: resendTimer > 0 ? '#ccc' : '#002147', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: resendTimer > 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
                                 {resendTimer > 0 ? `Resend available in ${resendTimer}s` : 'Resend Verification Email'}
                             </button>
                         </div>
@@ -425,7 +492,7 @@ export default function TeacherLoginAndDashboard() {
 
                     <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem' }}>
                         {isLoginMode ? "Don't have an account? " : "Already have an account? "}
-                        <span onClick={() => { setIsLoginMode(!isLoginMode); }} style={{ color: '#007bff', cursor: 'pointer', fontWeight: 'bold' }}>
+                        <span onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(''); }} style={{ color: '#007bff', cursor: 'pointer', fontWeight: 'bold' }}>
                             {isLoginMode ? 'Sign Up' : 'Login'}
                         </span>
                     </div>
@@ -444,7 +511,7 @@ export default function TeacherLoginAndDashboard() {
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
             </Head>
 
-            {/* DASHBOARD TOAST */}
+            {/* DASHBOARD CSS TOAST */}
             <div style={{...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
                 {toast.message}
             </div>
@@ -602,4 +669,6 @@ export default function TeacherLoginAndDashboard() {
 
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' });
 const inputStyle = { width: '100%', padding: '12px', border: '2px solid #dee2e6', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', boxSizing: 'border-box' };
+
+// NEW CSS STYLES FOR TOAST
 const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.95rem' };
