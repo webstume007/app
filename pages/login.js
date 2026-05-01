@@ -81,8 +81,8 @@ export default function Auth() {
             if (error) {
                 setMessage(`Error: ${error.message}`);
             } else {
-                setMessage('Login successful! Redirecting to dashboard...');
-                window.location.href = '/dashboard'; 
+                setMessage('Login successful! Redirecting to CR Login Homepage...');
+                window.location.href = '/crlogin'; 
             }
         }
         setLoading(false);
