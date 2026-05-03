@@ -8,13 +8,14 @@ export default function Home() {
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
     const [pointsData, setPointsData] = useState([]); 
-    const [announcements, setAnnouncements] = useState([]); // NEW: Announcements State
+    const [announcements, setAnnouncements] = useState([]); 
     const [loading, setLoading] = useState(true);
 
     // Persistence States
     const [userSection, setUserSection] = useState(null);
     const [isFirstVisit, setIsFirstVisit] = useState(true);
-    const [currentTime, setCurrentTime] = useState(new Date()); // For Announcement Countdowns
+    const [currentTime, setCurrentTime] = useState(new Date()); 
+    const [readNotifIds, setReadNotifIds] = useState([]); // NEW: Browser cache state for notifications
 
     // Active View States
     const [currentTab, setCurrentTab] = useState('class'); // 'class' | 'room' | 'teacher' | 'announcements'
@@ -24,7 +25,6 @@ export default function Home() {
         return today === 'SUN' ? 'ALL' : today;
     });
     const [showAlerts, setShowAlerts] = useState(false);
-    const [alertsRead, setAlertsRead] = useState(false);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
 
     // Free Room Filters
@@ -53,10 +53,16 @@ export default function Home() {
 
     // 1. INITIAL LOAD
     useEffect(() => {
-        const saved = localStorage.getItem('iub_user_selection');
-        if (saved) {
-            setUserSection(JSON.parse(saved));
+        const savedSelection = localStorage.getItem('iub_user_selection');
+        if (savedSelection) {
+            setUserSection(JSON.parse(savedSelection));
             setIsFirstVisit(false);
+        }
+
+        // Fetch persisted read notifications
+        const savedReadNotifs = localStorage.getItem('iub_read_notifs');
+        if (savedReadNotifs) {
+            setReadNotifIds(JSON.parse(savedReadNotifs));
         }
 
         if ("Notification" in window && Notification.permission === "default") {
@@ -65,7 +71,6 @@ export default function Home() {
 
         fetchLiveSchedule();
 
-        // 1-Minute Timer for Countdown Sync
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
     }, []);
@@ -79,10 +84,9 @@ export default function Home() {
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
                 if (payload.new.message.includes(userSection.section) || payload.new.message.includes('GLOBAL')) {
                     setNotifications(prev => [payload.new, ...prev]);
-                    setAlertsRead(false);
                     
                     if (Notification.permission === "granted") {
-                        if ('serviceWorker' in navigator) {
+                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
                             navigator.serviceWorker.ready.then((registration) => {
                                 registration.showNotification("IUB Update Alert", {
                                     body: payload.new.message, icon: "/icon.png", vibrate: [200, 100, 200]
@@ -94,16 +98,10 @@ export default function Home() {
                     }
                 }
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
-                const today = new Date().toLocaleDateString('en-CA');
-                supabase.from('schedule_exceptions').select('*').eq('exception_date', today).then(res => setExceptions(res.data || []));
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'base_schedule' }, () => {
-                supabase.from('base_schedule').select('*').then(res => setRawData(res.data || []));
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'class_announcements' }, () => {
-                supabase.from('class_announcements').select('*').then(res => setAnnouncements(res.data || []));
-            })
+            // Fetch everything globally upon ANY exception or base schedule change for INSTANT updates
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => fetchLiveSchedule())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'base_schedule' }, () => fetchLiveSchedule())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'class_announcements' }, () => fetchLiveSchedule())
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -124,11 +122,9 @@ export default function Home() {
     }, []);
 
     const fetchLiveSchedule = async () => {
-        const today = new Date().toLocaleDateString('en-CA');  
-        
         const [baseRes, excRes, notifRes, pointsRes, annRes] = await Promise.all([
             supabase.from('base_schedule').select('*'),
-            supabase.from('schedule_exceptions').select('*'), // Fetch all for accurate dates
+            supabase.from('schedule_exceptions').select('*'), 
             supabase.from('notifications').select('*').order('created_at', { ascending: false }),
             supabase.from('point_schedules').select('*'),
             supabase.from('class_announcements').select('*').order('created_at', { ascending: false })
@@ -156,9 +152,13 @@ export default function Home() {
         setIsFirstVisit(false);
     };
 
+    // Robust Time Parser to fix missing spaces (e.g., "12:30PM") causing sorting/points bugs
     const parseTime = (t) => {
         if (!t) return 0;
         let clean = t.replace(/\./g, '').trim().toUpperCase();
+        if (!clean.includes(' ')) {
+            clean = clean.replace('AM', ' AM').replace('PM', ' PM');
+        }
         let [tm, ap] = clean.split(' ');
         if(!tm) return 0;
         let [h, m] = tm.split(':').map(Number);
@@ -181,27 +181,12 @@ export default function Home() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    const isClassPassed = (cls) => {
-        const now = new Date();
-        const currentDayShort = now.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-        const dayMap = { 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6, 'SUN': 7 };
-        const todayIdx = dayMap[currentDayShort] || 0;
-        const classDayIdx = dayMap[cls.day] || 0;
-
-        if (classDayIdx < todayIdx) return true;
-        if (classDayIdx === todayIdx) return parseTime(cls.end_time) <= currentMinutes;
-        return false;
-    };
-
     const availableSemesters = [...new Set(rawData.map(x => x.semester))].filter(Boolean).sort();
     const getSectionsForSem = (sem) => [...new Set(rawData.filter(x => x.semester === sem).map(x => x.section))].sort();
     const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
     const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
 
     const getStatusStyles = (cls) => {
-        // Find if there's an exception matching today or a future date
         const todayStr = new Date().toLocaleDateString('en-CA');
         const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
         
@@ -209,9 +194,7 @@ export default function Home() {
         if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
 
-        if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
-
-        return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
+        return null; // Removed "Passed / As Scheduled"
     };
 
     const getNearestPoints = (cls) => {
@@ -267,7 +250,18 @@ export default function Home() {
         }
     };
 
-    const relevantNotifs = notifications.filter(n => n.message.includes(userSection?.section) || n.message.includes('GLOBAL'));
+    // Filter relevant notifications and exclude those in browser cache
+    const relevantNotifs = notifications.filter(n => 
+        (n.message.includes(userSection?.section) || n.message.includes('GLOBAL')) &&
+        !readNotifIds.includes(n.id)
+    );
+
+    const handleMarkAsRead = () => {
+        const newReadIds = [...readNotifIds, ...relevantNotifs.map(n => n.id)];
+        setReadNotifIds(newReadIds);
+        localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
+    };
+
     const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.semester === userSection?.semester);
 
     if (loading) return <div style={centerStyle}>Loading System Data...</div>;
@@ -339,10 +333,9 @@ export default function Home() {
         const daysToRender = selectedDay === 'ALL' ? days : [selectedDay];
 
         return daysToRender.map(day => {
-            // STRICT TIME SORTING FIX HERE
             const dayClasses = scheduleList
                 .filter(c => c.day === day)
-                .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
+                .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time)); // STRICT TIME SORTING
                 
             if (dayClasses.length === 0) return null;
 
@@ -352,10 +345,12 @@ export default function Home() {
                     {dayClasses.map((cls, idx) => {
                         const status = getStatusStyles(cls);
                         const points = getNearestPoints(cls); 
+                        const bgCol = status ? status.bg : '#fff';
+                        const borderCol = status ? status.border : '#F2A900';
 
                         return (
                             <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px' }}>
-                                <div style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: status.bg, borderLeft: `5px solid ${status.border}` }}>
+                                <div style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}` }}>
                                     <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
                                     <div style={{ color: '#555', fontSize: '0.8rem' }}>
@@ -363,7 +358,13 @@ export default function Home() {
                                         {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
                                         <span>👥 {cls.section}</span>
                                     </div>
-                                    <div style={{ marginTop: '8px', fontSize: '0.75rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>● {status.label}</div>
+                                    
+                                    {/* Only Render Status if not null */}
+                                    {status && (
+                                        <div style={{ marginTop: '8px', fontSize: '0.75rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>
+                                            ● {status.label}
+                                        </div>
+                                    )}
                                 </div>
                                 
                                 <div style={pointStripStyle}>
@@ -411,7 +412,7 @@ export default function Home() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
                         🔔
-                        {!alertsRead && relevantNotifs.length > 0 && <span style={redDot}></span>}
+                        {relevantNotifs.length > 0 && <span style={redDot}></span>}
                     </div>
                     <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); }} style={changeBtn}>Change Section</button>
                 </div>
@@ -451,9 +452,9 @@ export default function Home() {
                     <div style={whiteCard}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                             <h4 style={{ margin: 0, fontSize: '1rem', color: '#002147' }}>Alerts & Notifications</h4>
-                            <button onClick={() => setAlertsRead(true)} style={markReadBtn}>Mark as Read</button>
+                            <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
                         </div>
-                        {alertsRead || relevantNotifs.length === 0 ? (
+                        {relevantNotifs.length === 0 ? (
                             <div style={emptyState}>No new notifications.</div>
                         ) : (
                             relevantNotifs.map((n, i) => (
