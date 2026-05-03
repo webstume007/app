@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react'; 
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet';
@@ -22,7 +22,7 @@ export default function Dashboard() {
     const [isManualRoom, setIsManualRoom] = useState(false); 
 
     // --- TAB & UI STATES ---
-    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly', 'permanent', 'students', 'attendance', 'announcements'
+    const [activeTab, setActiveTab] = useState('weekly'); 
     
     const [selectedDay, setSelectedDay] = useState(() => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -35,8 +35,8 @@ export default function Dashboard() {
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
     const [attendanceStats, setAttendanceStats] = useState([]); 
     const [monthlyAttendance, setMonthlyAttendance] = useState("0%"); 
-    const [allSessionsData, setAllSessionsData] = useState([]); // Stores all records globally for % calc
-    const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); // For Analytics table
+    const [allSessionsData, setAllSessionsData] = useState([]); 
+    const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); 
 
     // --- STUDENT MANAGEMENT STATE ---
     const [newStudent, setNewStudent] = useState({ name: '', roll: '' });
@@ -46,7 +46,7 @@ export default function Dashboard() {
     const [announcements, setAnnouncements] = useState([]);
     const [announcementForm, setAnnouncementForm] = useState({ type: 'assignment', subject: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
     const [currentTime, setCurrentTime] = useState(new Date());
-    const notifiedDeadlines = useRef(new Set()); // Prevents 4-hour alert spam
+    const notifiedDeadlines = useRef(new Set()); 
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -79,15 +79,38 @@ export default function Dashboard() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
+    // --- UNIVERSAL TIME PARSER (FIX FOR SORTING & MATH) ---
     const parseTime = (t) => {
         if (!t) return 0;
-        let clean = t.replace(/\./g, '').trim().toUpperCase();
-        let [tm, ap] = clean.split(' ');
-        if(!tm) return 0;
-        let [h, m] = tm.split(':').map(Number);
-        if (h === 12) h = 0;
-        if (ap === 'PM') h += 12;
-        return h * 60 + (m || 0);
+        const match12 = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match12) {
+            let h = parseInt(match12[1], 10);
+            let m = parseInt(match12[2], 10);
+            let ap = match12[3].toUpperCase();
+            if (h === 12) h = 0;
+            if (ap === 'PM') h += 12;
+            return h * 60 + m;
+        }
+        const match24 = t.match(/(\d+):(\d+)/);
+        if (match24) {
+            let h = parseInt(match24[1], 10);
+            let m = parseInt(match24[2], 10);
+            return h * 60 + m;
+        }
+        return 0;
+    };
+
+    // --- SMART TARGET DATE CALCULATOR (48-Hour Logic Fix) ---
+    const getDateForCurrentWeekDay = (dayName) => {
+        const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
+        const today = new Date();
+        const currentDay = today.getDay(); 
+        const targetDay = dayMap[dayName.toUpperCase()];
+        const diff = targetDay - currentDay;
+        
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + diff);
+        return targetDate.toLocaleDateString('en-CA');
     };
 
     useEffect(() => {
@@ -106,7 +129,6 @@ export default function Dashboard() {
             const now = new Date();
             setCurrentTime(now);
 
-            // Trigger 4-hour advance notification for assignments
             announcements.forEach(ann => {
                 if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
                     const deadlineDate = new Date(ann.deadline_date);
@@ -115,7 +137,6 @@ export default function Dashboard() {
                     
                     const diffMins = Math.floor((deadlineDate - now) / 60000);
                     
-                    // If exactly 4 hours remaining (between 239 and 241 mins to be safe on interval execution)
                     if (diffMins <= 241 && diffMins >= 239 && !notifiedDeadlines.current.has(ann.id)) {
                         notifiedDeadlines.current.add(ann.id);
                         supabase.from('notifications').insert([{ 
@@ -151,15 +172,12 @@ export default function Dashboard() {
         setProfile(profileData);
 
         if (profileData) {
-            // 1. Fetch Roster
             const { data: rosterData } = await supabase.from('class_roster').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('roll_number');
             setRoster(rosterData || []);
 
-            // 2. Fetch Base Schedule
             const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
-            // 3. Fetch Announcements
             const { data: annData } = await supabase.from('class_announcements').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('created_at', { ascending: false });
             setAnnouncements(annData || []);
 
@@ -169,11 +187,9 @@ export default function Dashboard() {
                 setAvailableTeachers([...new Set(scheduleData.map(x => x.teacher))].filter(Boolean).sort());
             }
 
-            const today = new Date().toLocaleDateString('en-CA');
-            
             const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
             const [exceptionsRes, sessionsRes, recordsRes] = await Promise.all([
-                supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
+                supabase.from('schedule_exceptions').select('*'),
                 supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds),
                 supabase.from('attendance_records').select('*')
             ]);
@@ -188,11 +204,13 @@ export default function Dashboard() {
                 records: allRecords.filter(r => r.session_id === s.id)
             }));
             
-            setAllSessionsData(sessionsWithRecords); // Store globally for individual student calculation
+            setAllSessionsData(sessionsWithRecords); 
 
             const mergedSchedule = (scheduleData || []).map(cls => {
-                const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id);
-                const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === today);
+                // Determine exact date for this lecture day in current week
+                const targetDate = getDateForCurrentWeekDay(cls.day);
+                const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id && ex.exception_date === targetDate);
+                const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === targetDate);
                 
                 return { 
                     ...cls, 
@@ -200,7 +218,7 @@ export default function Dashboard() {
                     isRescheduled: exception?.status === 'rescheduled',
                     isConfirmed: exception?.status === 'confirmed',
                     exceptionDetails: exception,
-                    attendanceSession: sessionToday
+                    attendanceSession: sessionToday 
                 };
             });
             setSchedule(mergedSchedule);
@@ -243,7 +261,6 @@ export default function Dashboard() {
         window.location.href = '/login';
     };
 
-    // --- HELPER: GET INDIVIDUAL STUDENT PERCENTAGE ---
     const getStudentAttendance = (studentId, subjectFilter) => {
         let present = 0, total = 0;
         allSessionsData.forEach(session => {
@@ -257,7 +274,6 @@ export default function Dashboard() {
         return total === 0 ? 0 : Math.round((present / total) * 100);
     };
 
-    // --- ANNOUNCEMENTS LOGIC ---
     const submitAnnouncement = async (e) => {
         e.preventDefault();
         const payload = {
@@ -274,7 +290,6 @@ export default function Dashboard() {
         const { error } = await supabase.from('class_announcements').insert([payload]);
         if (error) return alert("Failed to add announcement: " + error.message);
 
-        // Push Notification to Class
         const notifMsg = announcementForm.type === 'assignment' 
             ? `📢 NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
             : `📢 MESSAGE: ${announcementForm.topics} - Section ${profile.section}`;
@@ -286,7 +301,6 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    // --- CSV GENERATOR FOR ATTENDANCE ---
     const downloadCSV = (stat) => {
         if (stat.sessions.length === 0) return alert("No attendance recorded for this subject yet.");
 
@@ -323,7 +337,6 @@ export default function Dashboard() {
         a.click();
     };
 
-    // --- STUDENT MANAGEMENT LOGIC (WITH CSV IMPORT) ---
     const handleAddStudent = async (e) => {
         e.preventDefault();
         const { error } = await supabase.from('class_roster').insert([{ student_name: newStudent.name, roll_number: newStudent.roll, semester: profile.semester, section: profile.section }]);
@@ -369,31 +382,31 @@ export default function Dashboard() {
         reader.readAsText(file);
     };
 
-    // --- SCHEDULE LOGIC ---
-    const handleConfirmClass = async (e, classId, courseName) => {
+    // --- SCHEDULE LOGIC (WITH TARGET DATE FIX) ---
+    const handleConfirmClass = async (e, classId, courseName, clsDay) => {
         e.stopPropagation(); 
-        const today = new Date().toLocaleDateString('en-CA');
-        await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id }]);
-        await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.` }]);
+        const targetDate = getDateForCurrentWeekDay(clsDay);
+        await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: targetDate, status: 'confirmed', cancelled_by: session.user.id }]);
+        await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held on ${targetDate}.` }]);
         fetchProfileAndSchedule(session.user.id); 
     };
 
-    const handleCancelClass = async (e, classId, courseName) => {
+    const handleCancelClass = async (e, classId, courseName, clsDay) => {
         e.stopPropagation();
         if (!window.confirm(`Are you sure you want to CANCEL ${courseName}?`)) return;
-        const today = new Date().toLocaleDateString('en-CA');
-        await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id }]);
-        await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` }]);
+        const targetDate = getDateForCurrentWeekDay(clsDay);
+        await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: targetDate, status: 'cancelled', cancelled_by: session.user.id }]);
+        await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} on ${targetDate} is cancelled.` }]);
         fetchProfileAndSchedule(session.user.id);
     };
 
-    const handleUndoException = async (e, classId, actionType, courseName) => {
+    const handleUndoException = async (e, classId, actionType, courseName, clsDay) => {
         e.stopPropagation();
-        const today = new Date().toLocaleDateString('en-CA');
-        await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
+        const targetDate = getDateForCurrentWeekDay(clsDay);
+        await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: targetDate });
 
-        if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`);
-        else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.`);
+        if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section} on ${targetDate} is cancelled.`);
+        else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${profile.section} will be held on ${targetDate}.`);
         else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${profile.section}%`);
 
         fetchProfileAndSchedule(session.user.id);
@@ -407,11 +420,12 @@ export default function Dashboard() {
 
     const submitReschedule = async (e) => {
         e.preventDefault();
+        const targetDate = getDateForCurrentWeekDay(editingClass.day);
         await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: editingClass.id, exception_date: new Date().toLocaleDateString('en-CA'), status: 'rescheduled',
+            base_schedule_id: editingClass.id, exception_date: targetDate, status: 'rescheduled',
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
-        await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
+        await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}) on ${targetDate}.` }]);
         alert(`Class rescheduled!`); setIsEditModalOpen(false); fetchProfileAndSchedule(session.user.id);
     };
 
@@ -537,16 +551,16 @@ export default function Dashboard() {
                                         <div style={{ marginTop: '15px', animation: 'fadeIn 0.3s ease-in-out' }}>
                                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                                 {cls.isCancelled ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
                                                 ) : cls.isConfirmed ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
                                                 ) : cls.isRescheduled ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button>
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button>
                                                 ) : (
                                                     <>
-                                                        <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                                        <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={btnStyle('#28a745')}>✅ Will Held</button>
                                                         <button onClick={(e) => openEditModal(e, cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
-                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
+                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
                                                     </>
                                                 )}
                                             </div>
@@ -561,7 +575,6 @@ export default function Dashboard() {
                 {/* ================= ADVANCED ATTENDANCE TAB ================= */}
                 {activeTab === 'attendance' && (
                     <div>
-                        {/* Section 1: Downloads & Live Marking */}
                         <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Subject Analytics & Reports</h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px', marginBottom: '30px' }}>
                             {attendanceStats.length === 0 ? <p style={{textAlign: 'center', width: '100%'}}>No subjects found.</p> : (
@@ -743,7 +756,7 @@ export default function Dashboard() {
                                         <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#444', whiteSpace: 'pre-wrap' }}>{ann.details}</p>
                                         
                                         {ann.type === 'assignment' && (
-                                            <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
                                                 <span>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {ann.deadline_time}</span>
                                                 <span>{timeRemainingDisplay}</span>
                                             </div>
@@ -863,7 +876,6 @@ export default function Dashboard() {
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
                         <h3 style={{ marginTop: 0 }}>Reschedule Class (Temp)</h3>
                         <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                 <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                                 <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
@@ -873,7 +885,7 @@ export default function Dashboard() {
                             </select>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -900,6 +912,7 @@ export default function Dashboard() {
     );
 }
 
+// Styling Constants
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
 const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `2px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
 const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
