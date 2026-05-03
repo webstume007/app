@@ -27,6 +27,9 @@ export default function Home() {
     });
     const [showAlerts, setShowAlerts] = useState(false);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
+    
+    // NEW: Track expanded assignment details inside class cards
+    const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
 
     // Free Room Filters
     const [freeDay, setFreeDay] = useState('MON');
@@ -98,10 +101,15 @@ export default function Home() {
                     }
                 }
             })
-            // Fetch everything globally upon ANY exception or base schedule change for INSTANT updates
+            // NEW: Listen for direct INSERTS on class_announcements so they show up instantly without full refresh
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'class_announcements' }, (payload) => {
+                if (payload.new.section === userSection.section && payload.new.semester === userSection.semester) {
+                    setAnnouncements(prev => [payload.new, ...prev].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
+                }
+            })
+            // Fetch everything globally upon exception or base schedule change
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => fetchLiveSchedule())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'base_schedule' }, () => fetchLiveSchedule())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'class_announcements' }, () => fetchLiveSchedule())
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -154,40 +162,27 @@ export default function Home() {
         setIsFirstVisit(false);
     };
 
-    // --- UNIVERSAL TIME PARSER (FIX FOR SORTING & NA POINTS) ---
-    // Intelligently parses 12-hour AM/PM formats OR 24-hour SQL strings
     const parseTime = (t) => {
         if (!t) return 0;
-        
-        // 1. Try matching 12-hour format (e.g., "1:30 PM", "8:00AM")
-        const match12 = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (match12) {
-            let h = parseInt(match12[1], 10);
-            let m = parseInt(match12[2], 10);
-            let ap = match12[3].toUpperCase();
-            if (h === 12) h = 0;
-            if (ap === 'PM') h += 12;
-            return h * 60 + m;
-        }
-
-        // 2. Try matching 24-hour SQL/System format (e.g., "13:30:00" or "08:00")
-        const match24 = t.match(/(\d+):(\d+)/);
-        if (match24) {
-            let h = parseInt(match24[1], 10);
-            let m = parseInt(match24[2], 10);
-            return h * 60 + m;
-        }
-
-        return 0; // Fallback
+        const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!match) return 0;
+        let h = parseInt(match[1], 10);
+        let m = parseInt(match[2], 10);
+        let ap = match[3].toUpperCase();
+        if (h === 12) h = 0;
+        if (ap === 'PM') h += 12;
+        return h * 60 + m;
     };
 
-    const convertTo12Hour = (timeStr) => {
-        if (!timeStr) return "";
-        // If it already has AM/PM, it's formatted. Just return it.
-        if (timeStr.toUpperCase().includes('AM') || timeStr.toUpperCase().includes('PM')) return timeStr;
-        
-        // Convert 24-hour (e.g. 13:30:00) to 12-hour
-        let [h, m] = timeStr.split(':').map(Number);
+    const parseDbTime = (t) => {
+        if (!t) return 0;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    };
+
+    const convertTo12Hour = (time24) => {
+        if (!time24 || time24.includes('AM') || time24.includes('PM')) return time24;
+        let [h, m] = time24.split(':').map(Number);
         const suffix = h >= 12 ? "PM" : "AM";
         h = h % 12 || 12;
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
@@ -206,7 +201,7 @@ export default function Home() {
         if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
 
-        return null; // Ensure standard lectures show no status
+        return null;
     };
 
     const getNearestPoints = (cls) => {
@@ -218,15 +213,15 @@ export default function Home() {
 
         const targetUpMins = clsStartMins - 30;
         const validUp = pointsData
-            .filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseTime(p.departure_time) <= targetUpMins)
-            .sort((a, b) => parseTime(b.departure_time) - parseTime(a.departure_time)); 
+            .filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins)
+            .sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
         
         const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
 
         const targetDownMins = clsEndMins;
         const validDown = pointsData
-            .filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseTime(p.departure_time) >= targetDownMins)
-            .sort((a, b) => parseTime(a.departure_time) - parseTime(b.departure_time)); 
+            .filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins)
+            .sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
         
         const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
 
@@ -276,7 +271,15 @@ export default function Home() {
 
     const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.semester === userSection?.semester);
 
-    // Handle Contact Teacher Button Link Generation
+    // Filter Active Assignments to check for the Red Dot
+    const activeAssignments = relevantAnnouncements.filter(ann => {
+        if (ann.type !== 'assignment' || !ann.deadline_date || !ann.deadline_time) return false;
+        const deadlineDate = new Date(ann.deadline_date);
+        const deadlineMins = parseTime(ann.deadline_time);
+        deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
+        return (deadlineDate - currentTime) > 0;
+    });
+
     const getTeacherWhatsAppLink = (teacherName) => {
         const tInfo = teachersData.find(t => t.name === teacherName);
         if (tInfo && tInfo.phone) {
@@ -285,6 +288,22 @@ export default function Home() {
             return `https://wa.me/${p}?text=Salam%20${encodeURIComponent(teacherName)}`;
         }
         return `https://wa.me/?text=Salam%20${encodeURIComponent(teacherName)}`;
+    };
+
+    // Helper to get time remaining string for assignments
+    const getTimeRemainingStr = (ann) => {
+        if (!ann.deadline_date || !ann.deadline_time) return null;
+        const deadlineDate = new Date(ann.deadline_date);
+        const deadlineMins = parseTime(ann.deadline_time);
+        deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
+        
+        const diffMs = deadlineDate - currentTime;
+        if (diffMs <= 0) return null; // Expired
+        
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+        const mins = Math.floor((diffMs / 1000 / 60) % 60);
+        return `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
     };
 
     if (loading) return <div style={centerStyle}>Loading System Data...</div>;
@@ -356,7 +375,6 @@ export default function Home() {
         const daysToRender = selectedDay === 'ALL' ? days : [selectedDay];
 
         return daysToRender.map(day => {
-            // STRICT TIME SORTING - Using Universal Time Parser
             const dayClasses = scheduleList
                 .filter(c => c.day === day)
                 .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
@@ -372,8 +390,11 @@ export default function Home() {
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
 
+                        // NEW: Find active assignments for THIS specific course
+                        const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course);
+
                         return (
-                            <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px' }}>
+                            <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
                                 <div style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}` }}>
                                     <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
@@ -383,7 +404,6 @@ export default function Home() {
                                         <span>👥 {cls.section}</span>
                                     </div>
                                     
-                                    {/* Only Render Status if not null */}
                                     {status && (
                                         <div style={{ marginTop: '8px', fontSize: '0.75rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>
                                             ● {status.label}
@@ -391,6 +411,32 @@ export default function Home() {
                                     )}
                                 </div>
                                 
+                                {/* NEW: ASSIGNMENT PENDING BAR */}
+                                {activeSubjectAssignments.length > 0 && (
+                                    <div 
+                                        onClick={() => setExpandedAssignmentId(expandedAssignmentId === cls.id ? null : cls.id)}
+                                        style={{ background: '#dc3545', color: 'white', padding: '8px 12px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                    >
+                                        <span>⚠️ Assignment Pending</span>
+                                        <span>{getTimeRemainingStr(activeSubjectAssignments[0])} {expandedAssignmentId === cls.id ? '▲' : '▼'}</span>
+                                    </div>
+                                )}
+
+                                {/* NEW: EXPANDED ASSIGNMENT DETAILS */}
+                                {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
+                                    <div style={{ background: '#fef2f2', borderLeft: '5px solid #dc3545', padding: '12px', animation: 'fadeIn 0.2s ease' }}>
+                                        {activeSubjectAssignments.map(ann => (
+                                            <div key={ann.id} style={{ marginBottom: '10px' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#b91c1c', fontSize: '0.9rem' }}>📝 {ann.topics}</div>
+                                                <div style={{ color: '#7f1d1d', fontSize: '0.85rem', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{ann.details}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#991b1b', marginTop: '6px', fontWeight: 'bold' }}>
+                                                    Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
                                 <div style={pointStripStyle}>
                                     <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
                                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
@@ -420,11 +466,10 @@ export default function Home() {
         }
     };
 
-    // --- MAIN APP VIEW ---
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
-                <title>My Schedule | IUB AI</title>
+                <title>My Schedule | IUB Assistant</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
                 <meta name="theme-color" content="#002147" />
                 <link rel="manifest" href="/manifest.json" />
@@ -432,7 +477,7 @@ export default function Home() {
             </Head>
 
             <header style={headerStyle}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>🎓 {userSection.section}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>🎓 {userSection?.section}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
                         🔔
@@ -446,6 +491,8 @@ export default function Home() {
                 {['class', 'room', 'teacher', 'announcements'].map(tab => (
                     <button key={tab} onClick={() => { setCurrentTab(tab); setShowAlerts(false); }} style={tabBtn(currentTab === tab)}>
                         {tab === 'class' ? '📅 SCHED' : tab === 'room' ? '🚪 ROOMS' : tab === 'teacher' ? '👨‍🏫 TEACHERS' : '📢 NEWS'}
+                        {/* RED DOT ON NEWS TAB IF THERE ARE ACTIVE ASSIGNMENTS */}
+                        {tab === 'announcements' && activeAssignments.length > 0 && <span style={newsRedDot}></span>}
                     </button>
                 ))}
             </div>
@@ -658,8 +705,9 @@ const bigBtn = { width: '100%', padding: '15px', background: '#F2A900', border: 
 const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
 const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
 const redDot = { position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
+const newsRedDot = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: 'red', borderRadius: '50%' };
 const tabBar = { display: 'flex', background: '#fff', padding: '6px', gap: '4px', position: 'sticky', top: '55px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, minWidth: '75px', padding: '10px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' });
+const tabBtn = (active) => ({ flex: 1, minWidth: '75px', padding: '10px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', position: 'relative' });
 const subTabBtn = (active) => ({ flex: 1, padding: '10px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' });
 const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px', WebkitOverflowScrolling: 'touch' };
 const dayBtnStyle = (active) => ({ flex: 1, minWidth: '45px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' });
