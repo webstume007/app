@@ -443,8 +443,8 @@ export default function Dashboard() {
                                                 ) : (
                                                     <>
                                                         <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                                        <button onClick={(e) => openEditModal(e, cls)} style={btnStyle('#007bff')}>🕒 Edit</button>
-                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Lecture</button>
+                                                        <button onClick={(e) => openEditModal(e, cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
+                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
                                                     </>
                                                 )}
                                             </div>
