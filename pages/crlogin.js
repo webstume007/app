@@ -11,6 +11,9 @@ export default function Dashboard() {
     const [roster, setRoster] = useState([]); 
     const [loading, setLoading] = useState(true);
     
+    // --- NEW: GATEKEEPER STATE ---
+    const [isPendingApproval, setIsPendingApproval] = useState(false);
+
     // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
     const [availableCourses, setAvailableCourses] = useState([]);
@@ -79,7 +82,6 @@ export default function Dashboard() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    // --- UNIVERSAL TIME PARSER (FIX FOR SORTING & MATH) ---
     const parseTime = (t) => {
         if (!t) return 0;
         const match12 = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -100,7 +102,6 @@ export default function Dashboard() {
         return 0;
     };
 
-    // --- SMART TARGET DATE CALCULATOR (48-Hour Logic Fix) ---
     const getDateForCurrentWeekDay = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
@@ -124,7 +125,6 @@ export default function Dashboard() {
             else window.location.href = '/login';
         });
 
-        // 1-Minute Interval for Clock & 4-Hour Deadline Checks
         const timer = setInterval(() => {
             const now = new Date();
             setCurrentTime(now);
@@ -155,7 +155,7 @@ export default function Dashboard() {
     }, [announcements]);
 
     useEffect(() => {
-        if (!profile) return;
+        if (!profile || !profile.is_approved) return; // Only listen if approved
         const channel = supabase
             .channel('cr-realtime-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
@@ -169,9 +169,17 @@ export default function Dashboard() {
 
     const fetchProfileAndSchedule = async (userId) => {
         const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
-        setProfile(profileData);
-
+        
         if (profileData) {
+            setProfile(profileData);
+            
+            // --- GATEKEEPER CHECK ---
+            if (profileData.is_approved === false) {
+                setIsPendingApproval(true);
+                setLoading(false);
+                return; // Stop loading the dashboard data
+            }
+
             const { data: rosterData } = await supabase.from('class_roster').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('roll_number');
             setRoster(rosterData || []);
 
@@ -207,7 +215,6 @@ export default function Dashboard() {
             setAllSessionsData(sessionsWithRecords); 
 
             const mergedSchedule = (scheduleData || []).map(cls => {
-                // Determine exact date for this lecture day in current week
                 const targetDate = getDateForCurrentWeekDay(cls.day);
                 const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id && ex.exception_date === targetDate);
                 const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === targetDate);
@@ -382,7 +389,6 @@ export default function Dashboard() {
         reader.readAsText(file);
     };
 
-    // --- SCHEDULE LOGIC (WITH TARGET DATE FIX) ---
     const handleConfirmClass = async (e, classId, courseName, clsDay) => {
         e.stopPropagation(); 
         const targetDate = getDateForCurrentWeekDay(clsDay);
@@ -457,7 +463,25 @@ export default function Dashboard() {
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
     if (!session) return null;
 
-    // Ordered chronologically
+    // --- RENDER PENDING APPROVAL SCREEN ---
+    if (isPendingApproval) {
+        return (
+            <div style={{ background: '#f0f2f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif", padding: '20px' }}>
+                <Head><title>Pending Approval | IUB Assistant</title></Head>
+                <div style={{ background: 'white', padding: '40px', borderRadius: '12px', textAlign: 'center', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '15px' }}>⏳</div>
+                    <h2 style={{ color: '#002147', margin: '0 0 15px 0' }}>Approval Pending</h2>
+                    <p style={{ color: '#555', fontSize: '1rem', lineHeight: '1.5', marginBottom: '25px' }}>
+                        Your account has been successfully verified, but an administrator must manually approve your access before you can view your dashboard.
+                    </p>
+                    <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '12px 25px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}>
+                        Log Out
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     const filteredWeeklySchedule = schedule
         .filter(cls => cls.day === selectedDay)
         .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
@@ -876,6 +900,7 @@ export default function Dashboard() {
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
                         <h3 style={{ marginTop: 0 }}>Reschedule Class (Temp)</h3>
                         <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                 <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                                 <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
@@ -912,8 +937,7 @@ export default function Dashboard() {
     );
 }
 
-// Styling Constants
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
-const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `2px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
 const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
 const tabStyle = (isActive) => ({ flex: 1, padding: '12px', background: isActive ? '#002147' : '#ddd', color: isActive ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' });
+const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `2px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
