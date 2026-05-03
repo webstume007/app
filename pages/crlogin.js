@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'; // Added useRef for CSV
+import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet';
@@ -22,7 +22,7 @@ export default function Dashboard() {
     const [isManualRoom, setIsManualRoom] = useState(false); 
 
     // --- TAB & UI STATES ---
-    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly', 'permanent', 'students', 'attendance'
+    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly', 'permanent', 'students', 'attendance', 'announcements'
     
     const [selectedDay, setSelectedDay] = useState(() => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -35,10 +35,18 @@ export default function Dashboard() {
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
     const [attendanceStats, setAttendanceStats] = useState([]); 
     const [monthlyAttendance, setMonthlyAttendance] = useState("0%"); 
+    const [allSessionsData, setAllSessionsData] = useState([]); // Stores all records globally for % calc
+    const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); // For Analytics table
 
     // --- STUDENT MANAGEMENT STATE ---
     const [newStudent, setNewStudent] = useState({ name: '', roll: '' });
-    const fileInputRef = useRef(null); // Reference for hidden file input
+    const fileInputRef = useRef(null);
+
+    // --- ANNOUNCEMENT STATES ---
+    const [announcements, setAnnouncements] = useState([]);
+    const [announcementForm, setAnnouncementForm] = useState({ type: 'assignment', subject: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
+    const [currentTime, setCurrentTime] = useState(new Date());
+    const notifiedDeadlines = useRef(new Set()); // Prevents 4-hour alert spam
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -92,7 +100,38 @@ export default function Dashboard() {
             if (session) fetchProfileAndSchedule(session.user.id);
             else window.location.href = '/login';
         });
-    }, []);
+
+        // 1-Minute Interval for Clock & 4-Hour Deadline Checks
+        const timer = setInterval(() => {
+            const now = new Date();
+            setCurrentTime(now);
+
+            // Trigger 4-hour advance notification for assignments
+            announcements.forEach(ann => {
+                if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
+                    const deadlineDate = new Date(ann.deadline_date);
+                    const deadlineMins = parseTime(ann.deadline_time);
+                    deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
+                    
+                    const diffMins = Math.floor((deadlineDate - now) / 60000);
+                    
+                    // If exactly 4 hours remaining (between 239 and 241 mins to be safe on interval execution)
+                    if (diffMins <= 241 && diffMins >= 239 && !notifiedDeadlines.current.has(ann.id)) {
+                        notifiedDeadlines.current.add(ann.id);
+                        supabase.from('notifications').insert([{ 
+                            message: `⏰ DEADLINE ALERT: Only 4 hours left for ${ann.subject} Assignment (${ann.topics}).` 
+                        }]).then();
+                        
+                        if (Notification.permission === "granted") {
+                            new Notification("Assignment Deadline Approaching!", { body: `4 hours left for ${ann.subject}` });
+                        }
+                    }
+                }
+            });
+        }, 60000);
+
+        return () => clearInterval(timer);
+    }, [announcements]);
 
     useEffect(() => {
         if (!profile) return;
@@ -120,6 +159,10 @@ export default function Dashboard() {
             const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
+            // 3. Fetch Announcements
+            const { data: annData } = await supabase.from('class_announcements').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('created_at', { ascending: false });
+            setAnnouncements(annData || []);
+
             if (scheduleData) {
                 setAvailableRooms([...new Set(scheduleData.map(x => x.room))].filter(Boolean).sort());
                 setAvailableCourses([...new Set(scheduleData.map(x => x.course))].filter(Boolean).sort());
@@ -128,9 +171,7 @@ export default function Dashboard() {
 
             const today = new Date().toLocaleDateString('en-CA');
             
-            // 3. Fetch Exceptions & All Attendance Sessions/Records for Stats
             const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
-            
             const [exceptionsRes, sessionsRes, recordsRes] = await Promise.all([
                 supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
                 supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds),
@@ -141,13 +182,14 @@ export default function Dashboard() {
             const allSessions = sessionsRes.data || [];
             const allRecords = recordsRes.data || [];
 
-            // Map records into sessions for easy stat calculation
             const sessionsWithRecords = allSessions.map(s => ({
                 ...s,
+                course: scheduleData.find(b => b.id === s.base_schedule_id)?.course,
                 records: allRecords.filter(r => r.session_id === s.id)
             }));
+            
+            setAllSessionsData(sessionsWithRecords); // Store globally for individual student calculation
 
-            // Build schedule for Weekly tab
             const mergedSchedule = (scheduleData || []).map(cls => {
                 const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id);
                 const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === today);
@@ -158,12 +200,11 @@ export default function Dashboard() {
                     isRescheduled: exception?.status === 'rescheduled',
                     isConfirmed: exception?.status === 'confirmed',
                     exceptionDetails: exception,
-                    attendanceSession: sessionToday // Attach today's session if it exists
+                    attendanceSession: sessionToday
                 };
             });
             setSchedule(mergedSchedule);
 
-            // Compute Subject Attendance Stats
             const uniqueSubjects = [...new Set((scheduleData || []).map(s => s.course))];
             let globalTotalRecords = 0;
             let globalPresentRecords = 0;
@@ -187,17 +228,10 @@ export default function Dashboard() {
                 });
 
                 const percentage = totalRecords === 0 ? 0 : Math.round((presentRecords / totalRecords) * 100);
-                return { 
-                    subject, 
-                    totalConducted: subjectSessions.length, 
-                    percentage, 
-                    sessions: subjectSessions 
-                };
+                return { subject, totalConducted: subjectSessions.length, percentage, sessions: subjectSessions };
             });
 
             setAttendanceStats(stats);
-            
-            // Calculate Global Monthly/Overall Percentage
             const globalPct = globalTotalRecords === 0 ? 0 : Math.round((globalPresentRecords / globalTotalRecords) * 100);
             setMonthlyAttendance(`${globalPct}%`);
         }
@@ -209,6 +243,49 @@ export default function Dashboard() {
         window.location.href = '/login';
     };
 
+    // --- HELPER: GET INDIVIDUAL STUDENT PERCENTAGE ---
+    const getStudentAttendance = (studentId, subjectFilter) => {
+        let present = 0, total = 0;
+        allSessionsData.forEach(session => {
+            if (subjectFilter !== 'ALL' && session.course !== subjectFilter) return;
+            const record = session.records.find(r => r.student_id === studentId);
+            if (record) {
+                total++;
+                if (record.status === 'Present' || record.status === 'Leave') present++;
+            }
+        });
+        return total === 0 ? 0 : Math.round((present / total) * 100);
+    };
+
+    // --- ANNOUNCEMENTS LOGIC ---
+    const submitAnnouncement = async (e) => {
+        e.preventDefault();
+        const payload = {
+            semester: profile.semester,
+            section: profile.section,
+            type: announcementForm.type,
+            subject: announcementForm.subject,
+            deadline_date: announcementForm.type === 'assignment' ? announcementForm.deadline_date : null,
+            deadline_time: announcementForm.type === 'assignment' ? announcementForm.deadline_time : null,
+            topics: announcementForm.topics,
+            details: announcementForm.details
+        };
+
+        const { error } = await supabase.from('class_announcements').insert([payload]);
+        if (error) return alert("Failed to add announcement: " + error.message);
+
+        // Push Notification to Class
+        const notifMsg = announcementForm.type === 'assignment' 
+            ? `📢 NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
+            : `📢 MESSAGE: ${announcementForm.topics} - Section ${profile.section}`;
+            
+        await supabase.from('notifications').insert([{ message: notifMsg }]);
+
+        alert("Announcement posted and class notified!");
+        setAnnouncementForm({ type: 'assignment', subject: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
+        fetchProfileAndSchedule(session.user.id);
+    };
+
     // --- CSV GENERATOR FOR ATTENDANCE ---
     const downloadCSV = (stat) => {
         if (stat.sessions.length === 0) return alert("No attendance recorded for this subject yet.");
@@ -216,15 +293,12 @@ export default function Dashboard() {
         let csv = "Roll Number,Name";
         const sortedSessions = stat.sessions.sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
         
-        // Headers
         sortedSessions.forEach(s => { csv += `,${s.session_date}`; });
         csv += ",Overall %\n";
 
-        // Student Rows
         roster.forEach(student => {
             let row = `${student.roll_number},${student.student_name}`;
-            let presentCount = 0;
-            let totalCount = 0;
+            let presentCount = 0, totalCount = 0;
             
             sortedSessions.forEach(s => {
                 const rec = s.records.find(r => r.student_id === student.id);
@@ -233,9 +307,7 @@ export default function Dashboard() {
                     const isPresent = (rec.status === 'Present' || rec.status === 'Leave') ? 1 : 0;
                     row += `,${isPresent}`;
                     if (isPresent === 1) presentCount++;
-                } else {
-                    row += `,N/A`;
-                }
+                } else { row += `,N/A`; }
             });
             
             const pct = totalCount === 0 ? 0 : Math.round((presentCount / totalCount) * 100);
@@ -243,7 +315,6 @@ export default function Dashboard() {
             csv += row;
         });
 
-        // Trigger Download
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -255,14 +326,9 @@ export default function Dashboard() {
     // --- STUDENT MANAGEMENT LOGIC (WITH CSV IMPORT) ---
     const handleAddStudent = async (e) => {
         e.preventDefault();
-        const { error } = await supabase.from('class_roster').insert([{
-            student_name: newStudent.name, roll_number: newStudent.roll, semester: profile.semester, section: profile.section
-        }]);
+        const { error } = await supabase.from('class_roster').insert([{ student_name: newStudent.name, roll_number: newStudent.roll, semester: profile.semester, section: profile.section }]);
         if (error) alert("Error: " + error.message);
-        else {
-            setNewStudent({ name: '', roll: '' });
-            fetchProfileAndSchedule(session.user.id);
-        }
+        else { setNewStudent({ name: '', roll: '' }); fetchProfileAndSchedule(session.user.id); }
     };
 
     const handleDeleteStudent = async (id) => {
@@ -271,7 +337,6 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    // NEW: Handle CSV Upload for Students
     const handleCSVUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -283,35 +348,23 @@ export default function Dashboard() {
                 const rows = text.split('\n').map(r => r.split(','));
                 const payloads = [];
                 
-                // Assuming CSV is "Roll Number, Name"
-                // Skip header row if it contains text like "roll"
                 let startIndex = rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
-
                 for(let i = startIndex; i < rows.length; i++) {
                     const row = rows[i];
                     if (row.length >= 2) {
                         const roll = row[0].trim();
                         const name = row[1].trim();
-                        if (roll && name) {
-                            payloads.push({ student_name: name, roll_number: roll, semester: profile.semester, section: profile.section });
-                        }
+                        if (roll && name) { payloads.push({ student_name: name, roll_number: roll, semester: profile.semester, section: profile.section }); }
                     }
                 }
 
                 if (payloads.length > 0) {
                     const { error } = await supabase.from('class_roster').insert(payloads);
                     if (error) alert("Error importing: " + error.message);
-                    else {
-                        alert(`Successfully imported ${payloads.length} students!`);
-                        fetchProfileAndSchedule(session.user.id);
-                    }
-                } else {
-                    alert("No valid data found in CSV.");
-                }
-            } catch (err) {
-                alert("Failed to parse CSV.");
-            }
-            e.target.value = null; // reset input
+                    else { alert(`Successfully imported ${payloads.length} students!`); fetchProfileAndSchedule(session.user.id); }
+                } else { alert("No valid data found in CSV."); }
+            } catch (err) { alert("Failed to parse CSV."); }
+            e.target.value = null; 
         };
         reader.readAsText(file);
     };
@@ -347,13 +400,9 @@ export default function Dashboard() {
     };
 
     const openEditModal = (e, cls) => {
-        e.stopPropagation();
-        setEditingClass(cls);
-        setNewDate(new Date().toLocaleDateString('en-CA'));
-        setNewStartTime(convertTo12Hour(cls.start_time));
-        setNewEndTime(convertTo12Hour(cls.end_time));
-        setNewRoom(cls.room);
-        setIsEditModalOpen(true);
+        e.stopPropagation(); setEditingClass(cls); setNewDate(new Date().toLocaleDateString('en-CA'));
+        setNewStartTime(convertTo12Hour(cls.start_time)); setNewEndTime(convertTo12Hour(cls.end_time));
+        setNewRoom(cls.room); setIsEditModalOpen(true);
     };
 
     const submitReschedule = async (e) => {
@@ -363,9 +412,7 @@ export default function Dashboard() {
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
         await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
-        alert(`Class rescheduled!`);
-        setIsEditModalOpen(false);
-        fetchProfileAndSchedule(session.user.id);
+        alert(`Class rescheduled!`); setIsEditModalOpen(false); fetchProfileAndSchedule(session.user.id);
     };
 
     const openBaseModal = (cls = null) => {
@@ -380,8 +427,7 @@ export default function Dashboard() {
     };
 
     const submitBaseSchedule = async (e) => {
-        e.preventDefault();
-        setIsBaseModalOpen(false); 
+        e.preventDefault(); setIsBaseModalOpen(false); 
         const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.semester, section: profile.section };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
@@ -397,9 +443,11 @@ export default function Dashboard() {
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
     if (!session) return null;
 
-    const filteredWeeklySchedule = schedule.filter(cls => cls.day === selectedDay);
+    // Ordered chronologically
+    const filteredWeeklySchedule = schedule
+        .filter(cls => cls.day === selectedDay)
+        .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
     
-    // Compute current real-time details for ongoing class detection
     const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
     const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
@@ -437,6 +485,7 @@ export default function Dashboard() {
                     <button onClick={() => setActiveTab('permanent')} style={tabStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>
                     <button onClick={() => setActiveTab('students')} style={tabStyle(activeTab === 'students')}>👥 Manage Students</button>
                     <button onClick={() => setActiveTab('attendance')} style={tabStyle(activeTab === 'attendance')}>📝 Attendance</button>
+                    <button onClick={() => setActiveTab('announcements')} style={tabStyle(activeTab === 'announcements')}>📢 Announcements</button>
                 </div>
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
@@ -470,7 +519,6 @@ export default function Dashboard() {
                                             </div>
                                             <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
                                             
-                                            {/* ATTENDANCE BADGE */}
                                             {cls.attendanceSession && (
                                                 <div style={{ display: 'inline-block', marginTop: '5px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', 
                                                     background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
@@ -485,7 +533,6 @@ export default function Dashboard() {
                                         </div>
                                     </div>
 
-                                    {/* EXPANDED CONTENT (No Attendance Here) */}
                                     {expandedLectureId === cls.id && (
                                         <div style={{ marginTop: '15px', animation: 'fadeIn 0.3s ease-in-out' }}>
                                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -511,69 +558,205 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* ================= ATTENDANCE TAB ================= */}
+                {/* ================= ADVANCED ATTENDANCE TAB ================= */}
                 {activeTab === 'attendance' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
-                        {attendanceStats.length === 0 ? <p style={{textAlign: 'center', width: '100%'}}>No subjects found.</p> : (
-                            attendanceStats.map(stat => {
-                                // Real-Time Ongoing Class Check
-                                const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
-                                let isOngoing = false;
-                                let canEdit = false;
-                                let todaySession = null;
+                    <div>
+                        {/* Section 1: Downloads & Live Marking */}
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Subject Analytics & Reports</h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+                            {attendanceStats.length === 0 ? <p style={{textAlign: 'center', width: '100%'}}>No subjects found.</p> : (
+                                attendanceStats.map(stat => {
+                                    const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
+                                    let isOngoing = false;
+                                    let canEdit = false;
+                                    let todaySession = null;
 
-                                if (todayClass) {
-                                    const startMins = parseTime(todayClass.start_time);
-                                    const endMins = parseTime(todayClass.end_time);
-                                    isOngoing = currentMins >= startMins && currentMins <= endMins;
-                                    todaySession = todayClass.attendanceSession;
-                                    
-                                    if (todaySession) {
-                                        const sessionTime = new Date(todaySession.created_at).getTime();
-                                        const now = new Date().getTime();
-                                        const diffMins = (now - sessionTime) / 60000;
-                                        // Editable within 30 mins and not yet approved by teacher
-                                        if (diffMins <= 30 && todaySession.status === 'pending') {
-                                            canEdit = true;
+                                    if (todayClass) {
+                                        const startMins = parseTime(todayClass.start_time);
+                                        const endMins = parseTime(todayClass.end_time);
+                                        isOngoing = currentMins >= startMins && currentMins <= endMins;
+                                        todaySession = todayClass.attendanceSession;
+                                        
+                                        if (todaySession) {
+                                            const sessionTime = new Date(todaySession.created_at).getTime();
+                                            const now = new Date().getTime();
+                                            const diffMins = (now - sessionTime) / 60000;
+                                            if (diffMins <= 30 && todaySession.status === 'pending') {
+                                                canEdit = true;
+                                            }
                                         }
+                                    }
+
+                                    return (
+                                        <div key={stat.subject} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #002147' }}>
+                                            <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                                                <div>
+                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Lectures</p>
+                                                    <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>{stat.totalConducted}</p>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Avg Attendance</p>
+                                                    <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem', color: stat.percentage > 75 ? '#28a745' : '#dc3545' }}>{stat.percentage}%</p>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
+                                                📥 Download CSV Report
+                                            </button>
+
+                                            {todayClass && isOngoing && !todaySession && (
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' }}>
+                                                    📝 Mark Attendance (Ongoing)
+                                                </button>
+                                            )}
+                                            {todaySession && canEdit && (
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                    ✏️ Edit Attendance (Time Remaining)
+                                                </button>
+                                            )}
+                                            {todaySession && !canEdit && (
+                                                <button disabled style={{ width: '100%', padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'not-allowed', opacity: 0.8 }}>
+                                                    🔒 Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending Teacher'})
+                                                </button>
+                                            )}
+                                        </div>
+                                    )
+                                })
+                            )}
+                        </div>
+
+                        {/* Section 2: Student Class Viewer */}
+                        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                                <h3 style={{ margin: 0, color: '#002147' }}>Student Attendance Overview</h3>
+                                <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold' }}>
+                                    <option value="ALL">All Subjects (Overall)</option>
+                                    {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                                            <th style={{ padding: '12px' }}>Roll Number</th>
+                                            <th style={{ padding: '12px' }}>Name</th>
+                                            <th style={{ padding: '12px', textAlign: 'right' }}>Attendance %</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {roster.map(student => {
+                                            const pct = getStudentAttendance(student.id, attendanceSubjectFilter);
+                                            return (
+                                                <tr key={student.id} style={{ borderBottom: '1px solid #eee' }}>
+                                                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.roll_number}</td>
+                                                    <td style={{ padding: '12px' }}>{student.student_name}</td>
+                                                    <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>
+                                                        {pct}%
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ================= ANNOUNCEMENTS TAB ================= */}
+                {activeTab === 'announcements' && (
+                    <div>
+                        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
+                            <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Publish Announcement</h3>
+                            <form onSubmit={submitAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({...announcementForm, type: e.target.value})} style={{...inputStyle, flex: 1, fontWeight: 'bold'}}>
+                                        <option value="assignment">📝 Assignment</option>
+                                        <option value="message">📢 Simple Message</option>
+                                    </select>
+                                    <select required value={announcementForm.subject} onChange={(e) => setAnnouncementForm({...announcementForm, subject: e.target.value})} style={{...inputStyle, flex: 2}}>
+                                        <option value="" disabled>-- Select Subject --</option>
+                                        <option value="General">General / Off-Topic</option>
+                                        {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+
+                                {announcementForm.type === 'assignment' && (
+                                    <div style={{ display: 'flex', gap: '10px', background: '#f8f9fa', padding: '10px', borderRadius: '5px', border: '1px solid #dee2e6' }}>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#666', marginBottom: '5px'}}>Deadline Date</label>
+                                            <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_date: e.target.value})} style={inputStyle} />
+                                        </div>
+                                        <div style={{flex: 1}}>
+                                            <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#666', marginBottom: '5px'}}>Deadline Time</label>
+                                            <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_time: e.target.value})} style={inputStyle}>
+                                                {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                                <option value="11:59 PM">11:59 PM (Midnight)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4 Exercises)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({...announcementForm, topics: e.target.value})} style={inputStyle} />
+                                <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({...announcementForm, details: e.target.value})} style={{...inputStyle, minHeight: '100px', resize: 'vertical'}} />
+                                
+                                <button type="submit" style={{ padding: '15px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>
+                                    🚀 Push to Entire Class
+                                </button>
+                            </form>
+                        </div>
+
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Active Announcements</h3>
+                        {announcements.length === 0 ? <p style={{textAlign: 'center', background: 'white', padding: '20px', borderRadius: '8px'}}>No announcements yet.</p> : (
+                            announcements.map(ann => {
+                                let timeRemainingDisplay = null;
+                                let isExpired = false;
+
+                                if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
+                                    const deadlineDate = new Date(ann.deadline_date);
+                                    const deadlineMins = parseTime(ann.deadline_time);
+                                    deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
+                                    
+                                    const diffMs = deadlineDate - currentTime;
+                                    
+                                    if (diffMs > 0) {
+                                        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                        const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+                                        const mins = Math.floor((diffMs / 1000 / 60) % 60);
+                                        timeRemainingDisplay = `⏳ ${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m remaining`;
+                                    } else {
+                                        isExpired = true;
+                                        timeRemainingDisplay = `❌ Deadline Passed`;
                                     }
                                 }
 
                                 return (
-                                    <div key={stat.subject} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #002147' }}>
-                                        <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
-                                        
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                            <div>
-                                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Lectures</p>
-                                                <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>{stat.totalConducted}</p>
-                                            </div>
-                                            <div style={{ textAlign: 'right' }}>
-                                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Attendance</p>
-                                                <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem', color: stat.percentage > 75 ? '#28a745' : '#dc3545' }}>{stat.percentage}%</p>
-                                            </div>
+                                    <div key={ann.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: ann.type === 'assignment' ? '5px solid #F2A900' : '5px solid #007bff', opacity: isExpired ? 0.6 : 1 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', background: '#eee', padding: '3px 8px', borderRadius: '12px', color: '#555', textTransform: 'uppercase' }}>
+                                                {ann.subject} • {ann.type}
+                                            </span>
+                                            <span style={{ fontSize: '0.75rem', color: '#999' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
                                         </div>
-
-                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
-                                            📥 Download CSV
+                                        <h4 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#000' }}>{ann.topics}</h4>
+                                        <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#444', whiteSpace: 'pre-wrap' }}>{ann.details}</p>
+                                        
+                                        {ann.type === 'assignment' && (
+                                            <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {ann.deadline_time}</span>
+                                                <span>{timeRemainingDisplay}</span>
+                                            </div>
+                                        )}
+                                        
+                                        <button onClick={async () => {
+                                            if(window.confirm('Delete this announcement globally?')) {
+                                                await supabase.from('class_announcements').delete().eq('id', ann.id);
+                                                fetchProfileAndSchedule(session.user.id);
+                                            }
+                                        }} style={{ ...btnStyle('#dc3545'), padding: '5px 10px', fontSize: '0.75rem', marginTop: '10px', width: 'auto', flex: 'none' }}>
+                                            Delete Post
                                         </button>
-
-                                        {/* DYNAMIC ATTENDANCE BUTTON */}
-                                        {todayClass && isOngoing && !todaySession && (
-                                            <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' }}>
-                                                📝 Mark Attendance (Ongoing)
-                                            </button>
-                                        )}
-                                        {todaySession && canEdit && (
-                                            <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                ✏️ Edit Attendance (Time Remaining)
-                                            </button>
-                                        )}
-                                        {todaySession && !canEdit && (
-                                            <button disabled style={{ width: '100%', padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'not-allowed', opacity: 0.8 }}>
-                                                🔒 Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending Teacher'})
-                                            </button>
-                                        )}
                                     </div>
                                 )
                             })
@@ -613,15 +796,8 @@ export default function Dashboard() {
                     <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                             <h3 style={{ margin: 0, color: '#002147' }}>Add New Student</h3>
-                            {/* CSV UPLOAD BUTTON */}
                             <div>
-                                <input 
-                                    type="file" 
-                                    accept=".csv" 
-                                    ref={fileInputRef} 
-                                    onChange={handleCSVUpload} 
-                                    style={{ display: 'none' }} 
-                                />
+                                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
                                 <button onClick={() => fileInputRef.current.click()} style={{ padding: '8px 15px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
                                     📥 Import CSV
                                 </button>
@@ -642,19 +818,24 @@ export default function Dashboard() {
                                         <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
                                             <th style={{ padding: '12px' }}>Roll Number</th>
                                             <th style={{ padding: '12px' }}>Name</th>
+                                            <th style={{ padding: '12px', textAlign: 'center' }}>Att %</th>
                                             <th style={{ padding: '12px', textAlign: 'right' }}>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {roster.map(student => (
-                                            <tr key={student.id} style={{ borderBottom: '1px solid #eee' }}>
-                                                <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.roll_number}</td>
-                                                <td style={{ padding: '12px' }}>{student.student_name}</td>
-                                                <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                    <button onClick={() => handleDeleteStudent(student.id)} style={{ padding: '5px 10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {roster.map(student => {
+                                            const pct = getStudentAttendance(student.id, 'ALL');
+                                            return (
+                                                <tr key={student.id} style={{ borderBottom: '1px solid #eee' }}>
+                                                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.roll_number}</td>
+                                                    <td style={{ padding: '12px' }}>{student.student_name}</td>
+                                                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>{pct}%</td>
+                                                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                        <button onClick={() => handleDeleteStudent(student.id)} style={{ padding: '5px 10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -692,7 +873,7 @@ export default function Dashboard() {
                             </select>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -719,7 +900,6 @@ export default function Dashboard() {
     );
 }
 
-// Styling Constants
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
 const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `2px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
 const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
