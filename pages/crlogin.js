@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
+import AttendanceSheet from '../components/AttendanceSheet'; // <-- NEW IMPORT
 
 export default function Dashboard() {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
-    const [schedule, setSchedule] = useState([]); // For Weekly view with exceptions
-    const [baseSchedule, setBaseSchedule] = useState([]); // For Permanent Base Schedule
+    const [schedule, setSchedule] = useState([]); 
+    const [baseSchedule, setBaseSchedule] = useState([]); 
     const [loading, setLoading] = useState(true);
     
     // --- DROPDOWN STATES ---
@@ -17,10 +18,23 @@ export default function Dashboard() {
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
     const [isManualTeacher, setIsManualTeacher] = useState(false);
-    const [isManualRoom, setIsManualRoom] = useState(false); // Room Manual Toggle
+    const [isManualRoom, setIsManualRoom] = useState(false); 
 
-    // --- TAB STATE ---
-    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly' or 'permanent'
+    // --- TAB & UI STATES ---
+    const [activeTab, setActiveTab] = useState('weekly'); 
+    
+    // NEW: Days filter state (Defaults to current day or MON)
+    const [selectedDay, setSelectedDay] = useState(() => {
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+        return ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].includes(today) ? today : "MON";
+    });
+    
+    // NEW: Expandable lecture cards state
+    const [expandedLectureId, setExpandedLectureId] = useState(null);
+
+    // NEW: Attendance States
+    const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
+    const [monthlyAttendance, setMonthlyAttendance] = useState("85%"); // Placeholder for DB calculation
 
     // --- MODAL STATES FOR TEMP RESCHEDULE ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -34,10 +48,8 @@ export default function Dashboard() {
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
     const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
 
-    // Updated days to match index.js exactly
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
-    // Generate time slots for the dropdowns
     const timeSlots = [];
     let ts = 8 * 60; 
     while (ts < 18 * 60) {
@@ -47,7 +59,6 @@ export default function Dashboard() {
         ts += 30;
     }
 
-    // Convert any 24h DB time to 12h AM/PM for display
     const convertTo12Hour = (timeStr) => {
         if (!timeStr) return "";
         if (timeStr.toUpperCase().includes('AM') || timeStr.toUpperCase().includes('PM')) return timeStr;
@@ -58,7 +69,6 @@ export default function Dashboard() {
     };
 
     useEffect(() => {
-        // Request Notification Permissions on load
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
         }
@@ -70,7 +80,6 @@ export default function Dashboard() {
         });
     }, []);
 
-    // REALTIME LISTENER: CR gets notifications for their section
     useEffect(() => {
         if (!profile) return;
         const channel = supabase
@@ -95,11 +104,9 @@ export default function Dashboard() {
         setProfile(profileData);
 
         if (profileData) {
-            // Fetch Base Schedule
             const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
-            // Fetch all rooms, courses, and teachers for the dropdowns
             const { data: allData } = await supabase.from('base_schedule').select('room, course, teacher');
             if (allData) {
                 setAvailableRooms([...new Set(allData.map(x => x.room))].filter(Boolean).sort());
@@ -107,14 +114,11 @@ export default function Dashboard() {
                 setAvailableTeachers([...new Set(allData.map(x => x.teacher))].filter(Boolean).sort());
             }
 
-            // Fetch Exceptions (Cancellations, Reschedules, & Confirmations)
             const today = new Date().toLocaleDateString('en-CA');
             const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
 
-            // Merge data to determine the current status of each class for the week
             const mergedSchedule = (scheduleData || []).map(cls => {
                 const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
-                
                 return { 
                     ...cls, 
                     isCancelled: exception?.status === 'cancelled',
@@ -134,8 +138,8 @@ export default function Dashboard() {
         window.location.href = '/login';
     };
 
-    // --- ACTION: WILL HELD (CONFIRM CLASS) ---
-    const handleConfirmClass = async (classId, courseName) => {
+    const handleConfirmClass = async (e, classId, courseName) => {
+        e.stopPropagation(); // Prevent card expansion
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
         
         const today = new Date().toLocaleDateString('en-CA');
@@ -143,20 +147,14 @@ export default function Dashboard() {
             base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
         }]);
 
-        if (error) {
-            alert("Error: " + error.message);
-        } else {
-            // Send notification to index.js
-            await supabase.from('notifications').insert([{ 
-                message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.` 
-            }]);
-        }
+        if (error) alert("Error: " + error.message);
+        else await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.` }]);
         
         fetchProfileAndSchedule(session.user.id); 
     };
 
-    // --- ACTION: CANCEL CLASS ---
-    const handleCancelClass = async (classId, courseName) => {
+    const handleCancelClass = async (e, classId, courseName) => {
+        e.stopPropagation();
         const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
         if (!confirmCancel) return;
 
@@ -167,34 +165,21 @@ export default function Dashboard() {
             base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
         }]);
 
-        if (error) {
-            alert("Error: " + error.message);
-        } else {
-            // Send notification to index.js
-            await supabase.from('notifications').insert([{ 
-                message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` 
-            }]);
-        }
+        if (error) alert("Error: " + error.message);
+        else await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` }]);
         
         fetchProfileAndSchedule(session.user.id);
     };
 
-    // --- ACTION: UNDO EXCEPTION (CANCEL/CONFIRM/RESCHEDULE) ---
-    const handleUndoException = async (classId, actionType, courseName) => {
+    const handleUndoException = async (e, classId, actionType, courseName) => {
+        e.stopPropagation();
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
 
         const today = new Date().toLocaleDateString('en-CA');
-        const { error } = await supabase.from('schedule_exceptions')
-            .delete()
-            .match({ base_schedule_id: classId, exception_date: today });
+        const { error } = await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
 
-        if (error) {
-            console.error("Delete Error:", error);
-            alert("Error undoing action in DB.");
-            return;
-        }
+        if (error) return alert("Error undoing action in DB.");
 
-        // Remove the specific notification so students don't see false alerts
         if (actionType === 'cancelled') {
             await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`);
         } else if (actionType === 'confirmed') {
@@ -206,8 +191,8 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    // --- ACTION: OPEN TEMP EDIT MODAL ---
-    const openEditModal = (cls) => {
+    const openEditModal = (e, cls) => {
+        e.stopPropagation();
         setEditingClass(cls);
         setNewDate(new Date().toLocaleDateString('en-CA'));
         setNewStartTime(convertTo12Hour(cls.start_time));
@@ -216,7 +201,6 @@ export default function Dashboard() {
         setIsEditModalOpen(true);
     };
 
-    // --- ACTION: SUBMIT RESCHEDULE ---
     const submitReschedule = async (e) => {
         e.preventDefault();
         const { error } = await supabase.from('schedule_exceptions').insert([{
@@ -226,36 +210,29 @@ export default function Dashboard() {
 
         if (error) return alert("Error: " + error.message);
 
-        // Send notification to index.js
-        await supabase.from('notifications').insert([{ 
-            message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` 
-        }]);
+        await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
 
         alert(`Class rescheduled successfully!`);
         setIsEditModalOpen(false);
         fetchProfileAndSchedule(session.user.id);
     };
 
-    // --- PERMANENT SCHEDULE ACTIONS ---
     const openBaseModal = (cls = null) => {
         if (cls) {
             setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
-            // Check if existing course/teacher/room is in our lists, if not, toggle manual entry
             setIsManualCourse(!availableCourses.includes(cls.course));
             setIsManualTeacher(!availableTeachers.includes(cls.teacher));
             setIsManualRoom(!availableRooms.includes(cls.room));
         } else {
             setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
-            setIsManualCourse(false);
-            setIsManualTeacher(false);
-            setIsManualRoom(false);
+            setIsManualCourse(false); setIsManualTeacher(false); setIsManualRoom(false);
         }
         setIsBaseModalOpen(true);
     };
 
     const submitBaseSchedule = async (e) => {
         e.preventDefault();
-        setIsBaseModalOpen(false); // Close modal instantly for smooth UI
+        setIsBaseModalOpen(false); 
         
         const payload = { 
             course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, 
@@ -263,28 +240,24 @@ export default function Dashboard() {
             semester: profile.semester, section: profile.section 
         };
 
-        if (baseForm.id) {
-            await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
-        } else {
-            await supabase.from('base_schedule').insert([payload]);
-        }
+        if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
+        else await supabase.from('base_schedule').insert([payload]);
         
-        // Await the fetch to ensure DB is fully updated before UI refresh
         await fetchProfileAndSchedule(session.user.id);
     };
 
     const deleteBaseLecture = async (id, courseName) => {
         if (!window.confirm(`Permanently delete ${courseName} from the base schedule? This cannot be undone.`)) return;
-        
-        // Optimistic UI Delete
         setBaseSchedule(prev => prev.filter(c => c.id !== id));
-        
         await supabase.from('base_schedule').delete().eq('id', id);
         await fetchProfileAndSchedule(session.user.id);
     };
 
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
     if (!session) return null;
+
+    // Filter weekly schedule based on selected day
+    const filteredWeeklySchedule = schedule.filter(cls => cls.day === selectedDay);
 
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
@@ -302,23 +275,27 @@ export default function Dashboard() {
             </header>
 
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
-                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900' }}>
-                    <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                    <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
+                
+                {/* Profile Widget */}
+                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                        <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
+                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
+                    </div>
+                    
+                    {/* NEW: ATTENDANCE WIDGET */}
+                    <div style={{ background: '#f8f9fa', padding: '10px 20px', borderRadius: '8px', textAlign: 'center', marginTop: '10px' }}>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Last Month Attendance</p>
+                        <h3 style={{ margin: '5px 0 0 0', color: '#28a745', fontSize: '1.8rem' }}>{monthlyAttendance}</h3>
+                    </div>
                 </div>
 
-                {/* --- NAVIGATION TABS --- */}
+                {/* NAVIGATION TABS */}
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                    <button 
-                        onClick={() => setActiveTab('weekly')} 
-                        style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}
-                    >
+                    <button onClick={() => setActiveTab('weekly')} style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
                         📅 Weekly Timetable
                     </button>
-                    <button 
-                        onClick={() => setActiveTab('permanent')} 
-                        style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}
-                    >
+                    <button onClick={() => setActiveTab('permanent')} style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
                         🏛️ Base Schedule
                     </button>
                 </div>
@@ -326,18 +303,37 @@ export default function Dashboard() {
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
                     <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Weekly Timetable (Temp Exceptions)</h3>
+                        {/* NEW: DAYS FILTER */}
+                        <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '20px', paddingBottom: '10px', scrollbarWidth: 'none' }}>
+                            {days.map(day => (
+                                <button
+                                    key={day}
+                                    onClick={() => setSelectedDay(day)}
+                                    style={{ 
+                                        padding: '10px 20px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
+                                        background: selectedDay === day ? '#002147' : '#e9ecef', 
+                                        color: selectedDay === day ? '#F2A900' : '#495057',
+                                        boxShadow: selectedDay === day ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
+                                    }}
+                                >
+                                    {day}
+                                </button>
+                            ))}
+                        </div>
                         
-                        {schedule.length === 0 ? (
-                            <p>No classes found.</p>
+                        {filteredWeeklySchedule.length === 0 ? (
+                            <p style={{ textAlign: 'center', padding: '20px', background: 'white', borderRadius: '8px' }}>No classes scheduled for {selectedDay}.</p>
                         ) : (
-                            schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                                <div key={cls.id} style={{ 
-                                    background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', 
-                                    borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none',
-                                    opacity: cls.isCancelled ? 0.6 : 1 
+                            filteredWeeklySchedule.map((cls) => (
+                                // EXPANDABLE LECTURE CARD
+                                <div key={cls.id} 
+                                     onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
+                                     style={{ 
+                                        background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', transition: '0.2s',
+                                        borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid transparent',
+                                        opacity: cls.isCancelled ? 0.6 : 1 
                                 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
                                                 {cls.course}
@@ -351,32 +347,52 @@ export default function Dashboard() {
                                     </div>
 
                                     {cls.isRescheduled && (
-                                        <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                        <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginTop: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
                                             🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})
                                         </div>
                                     )}
 
                                     {cls.isConfirmed && (
-                                        <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                        <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginTop: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
                                             ✅ Confirmed for Today
                                         </div>
                                     )}
-                                    
-                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        {cls.isCancelled ? (
-                                            <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
-                                        ) : cls.isConfirmed ? (
-                                            <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
-                                        ) : cls.isRescheduled ? (
-                                            <button onClick={() => handleUndoException(cls.id, 'rescheduled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button>
-                                        ) : (
-                                            <>
-                                                <button onClick={() => handleConfirmClass(cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                                <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
-                                                <button onClick={() => handleCancelClass(cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
-                                            </>
-                                        )}
-                                    </div>
+
+                                    {/* EXPANDED CONTENT: Contacts, Attendance, and Actions */}
+                                    {expandedLectureId === cls.id && (
+                                        <div style={{ marginTop: '15px', animation: 'fadeIn 0.3s ease-in-out' }}>
+                                            
+                                            {/* NEW: Contact & Attendance Buttons */}
+                                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '15px', background: '#f8f9fa', padding: '10px', borderRadius: '5px' }}>
+                                                <button onClick={(e) => { e.stopPropagation(); window.location.href=`mailto:teacher@example.com`; }} style={contactBtnStyle('#002147')}>
+                                                    ✉️ Contact {cls.teacher}
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); window.location.href=`mailto:cr@example.com`; }} style={contactBtnStyle('#6c757d')}>
+                                                    ✉️ Contact {profile?.first_name}
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); setActiveAttendanceLecture(cls); }} style={{...contactBtnStyle('#28a745'), flex: '1 1 100%'}}>
+                                                    📝 Mark Attendance
+                                                </button>
+                                            </div>
+
+                                            {/* EXISTING ACTIONS */}
+                                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                                {cls.isCancelled ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
+                                                ) : cls.isConfirmed ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
+                                                ) : cls.isRescheduled ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button>
+                                                ) : (
+                                                    <>
+                                                        <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                                        <button onClick={(e) => openEditModal(e, cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
+                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}
@@ -386,8 +402,6 @@ export default function Dashboard() {
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
                 {activeTab === 'permanent' && (
                     <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Permanent / Base Schedule</h3>
-                        
                         {baseSchedule.length === 0 ? (
                             <p>No base schedule found.</p>
                         ) : (
@@ -417,6 +431,15 @@ export default function Dashboard() {
                     </div>
                 )}
             </div>
+
+            {/* ATTENDANCE MODAL RENDERING */}
+            {activeAttendanceLecture && (
+                <AttendanceSheet 
+                    lecture={activeAttendanceLecture} 
+                    profile={profile}
+                    onClose={() => setActiveAttendanceLecture(null)} 
+                />
+            )}
 
             {/* TEMP EXCEPTION EDIT MODAL */}
             {isEditModalOpen && (
@@ -448,7 +471,6 @@ export default function Dashboard() {
                         <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             
-                            {/* COURSE / SUBJECT DROPDOWN */}
                             {isManualCourse ? (
                                 <input type="text" placeholder="Type Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} />
                             ) : (
@@ -462,7 +484,6 @@ export default function Dashboard() {
                                 </select>
                             )}
 
-                            {/* TEACHER DROPDOWN */}
                             {isManualTeacher ? (
                                 <input type="text" placeholder="Type Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} />
                             ) : (
@@ -476,7 +497,6 @@ export default function Dashboard() {
                                 </select>
                             )}
                             
-                            {/* ROOM DROPDOWN */}
                             {isManualRoom ? (
                                 <input type="text" placeholder="Type Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} />
                             ) : (
@@ -490,7 +510,6 @@ export default function Dashboard() {
                                 </select>
                             )}
                             
-                            {/* DAYS DROPDOWN (Matches index.js formatting) */}
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>
                                 {days.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
@@ -512,6 +531,8 @@ export default function Dashboard() {
     );
 }
 
+// Styling Constants
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
+const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `1px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
 const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', marginBottom: '5px' };
 const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
