@@ -9,16 +9,17 @@ export default function Home() {
     const [notifications, setNotifications] = useState([]);
     const [pointsData, setPointsData] = useState([]); 
     const [announcements, setAnnouncements] = useState([]); 
+    const [teachersData, setTeachersData] = useState([]); // NEW: Store teacher contacts
     const [loading, setLoading] = useState(true);
 
     // Persistence States
     const [userSection, setUserSection] = useState(null);
     const [isFirstVisit, setIsFirstVisit] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date()); 
-    const [readNotifIds, setReadNotifIds] = useState([]); // NEW: Browser cache state for notifications
+    const [readNotifIds, setReadNotifIds] = useState([]);
 
     // Active View States
-    const [currentTab, setCurrentTab] = useState('class'); // 'class' | 'room' | 'teacher' | 'announcements'
+    const [currentTab, setCurrentTab] = useState('class'); 
     const [roomSubTab, setRoomSubTab] = useState('schedule'); 
     const [selectedDay, setSelectedDay] = useState(() => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -59,7 +60,6 @@ export default function Home() {
             setIsFirstVisit(false);
         }
 
-        // Fetch persisted read notifications
         const savedReadNotifs = localStorage.getItem('iub_read_notifs');
         if (savedReadNotifs) {
             setReadNotifIds(JSON.parse(savedReadNotifs));
@@ -75,7 +75,7 @@ export default function Home() {
         return () => clearInterval(timer);
     }, []);
 
-    // 2. SUPABASE REALTIME LISTENER
+    // 2. SUPABASE REALTIME LISTENER (Instant Updates)
     useEffect(() => {
         if (!userSection || userSection.section === 'GUEST') return;
 
@@ -122,12 +122,13 @@ export default function Home() {
     }, []);
 
     const fetchLiveSchedule = async () => {
-        const [baseRes, excRes, notifRes, pointsRes, annRes] = await Promise.all([
+        const [baseRes, excRes, notifRes, pointsRes, annRes, teachersRes] = await Promise.all([
             supabase.from('base_schedule').select('*'),
             supabase.from('schedule_exceptions').select('*'), 
             supabase.from('notifications').select('*').order('created_at', { ascending: false }),
             supabase.from('point_schedules').select('*'),
-            supabase.from('class_announcements').select('*').order('created_at', { ascending: false })
+            supabase.from('class_announcements').select('*').order('created_at', { ascending: false }),
+            supabase.from('teacher_profiles').select('name, phone') // Fetch Teacher Contacts
         ]);
     
         setRawData(baseRes.data || []);
@@ -135,6 +136,7 @@ export default function Home() {
         setNotifications(notifRes.data || []);
         setPointsData(pointsRes.data || []); 
         setAnnouncements(annRes.data || []);
+        setTeachersData(teachersRes.data || []);
         setLoading(false);
     };
 
@@ -152,19 +154,21 @@ export default function Home() {
         setIsFirstVisit(false);
     };
 
-    // Robust Time Parser to fix missing spaces (e.g., "12:30PM") causing sorting/points bugs
+    // --- BULLETPROOF TIME PARSER ---
+    // Fixes the 12:00 PM vs 9:00 AM sorting bug by strictly isolating hours, mins, and AM/PM
     const parseTime = (t) => {
         if (!t) return 0;
-        let clean = t.replace(/\./g, '').trim().toUpperCase();
-        if (!clean.includes(' ')) {
-            clean = clean.replace('AM', ' AM').replace('PM', ' PM');
-        }
-        let [tm, ap] = clean.split(' ');
-        if(!tm) return 0;
-        let [h, m] = tm.split(':').map(Number);
+        const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!match) return 0;
+        
+        let h = parseInt(match[1], 10);
+        let m = parseInt(match[2], 10);
+        let ap = match[3].toUpperCase();
+        
         if (h === 12) h = 0;
         if (ap === 'PM') h += 12;
-        return h * 60 + (m || 0);
+        
+        return h * 60 + m;
     };
 
     const parseDbTime = (t) => {
@@ -194,7 +198,7 @@ export default function Home() {
         if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
 
-        return null; // Removed "Passed / As Scheduled"
+        return null; // Ensure standard lectures show no status
     };
 
     const getNearestPoints = (cls) => {
@@ -263,6 +267,18 @@ export default function Home() {
     };
 
     const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.semester === userSection?.semester);
+
+    // Handle Contact Teacher Button Link Generation
+    const getTeacherWhatsAppLink = (teacherName) => {
+        const tInfo = teachersData.find(t => t.name === teacherName);
+        if (tInfo && tInfo.phone) {
+            // Remove non-numeric characters, replace leading 0 with 92 for standard intl format
+            let p = tInfo.phone.replace(/\D/g, '');
+            if(p.startsWith('0')) p = '92' + p.substring(1);
+            return `https://wa.me/${p}?text=Salam%20${encodeURIComponent(teacherName)}`;
+        }
+        return `https://wa.me/?text=Salam%20${encodeURIComponent(teacherName)}`;
+    };
 
     if (loading) return <div style={centerStyle}>Loading System Data...</div>;
 
@@ -333,9 +349,10 @@ export default function Home() {
         const daysToRender = selectedDay === 'ALL' ? days : [selectedDay];
 
         return daysToRender.map(day => {
+            // STRICT TIME SORTING - Using new Regex Parser
             const dayClasses = scheduleList
                 .filter(c => c.day === day)
-                .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time)); // STRICT TIME SORTING
+                .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
                 
             if (dayClasses.length === 0) return null;
 
@@ -551,7 +568,7 @@ export default function Home() {
 
                                 {selectedTeacher && (
                                     <>
-                                        <a href={`https://wa.me/?text=Hello%20${selectedTeacher}`} target="_blank" rel="noreferrer" style={whatsappBtn}>
+                                        <a href={getTeacherWhatsAppLink(selectedTeacher)} target="_blank" rel="noreferrer" style={whatsappBtn}>
                                             <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>
                                             Contact {selectedTeacher}
                                         </a>
