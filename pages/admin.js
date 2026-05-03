@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
@@ -14,7 +14,7 @@ export default function AdminDashboard() {
     const [authError, setAuthError] = useState('');
 
     // Global UI State
-    const [activeTab, setActiveTab] = useState('overview'); // overview, users, schedule, records, infrastructure
+    const [activeTab, setActiveTab] = useState('overview'); 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
@@ -29,8 +29,8 @@ export default function AdminDashboard() {
     const [pointSchedules, setPointSchedules] = useState([]);
 
     // Module Specific States
-    const [userSubTab, setUserSubTab] = useState('crs'); // crs, teachers
-    const [scheduleSubTab, setScheduleSubTab] = useState('base'); // base, exceptions
+    const [userSubTab, setUserSubTab] = useState('crs'); 
+    const [scheduleSubTab, setScheduleSubTab] = useState('base'); 
     
     // Filters for Modules
     const [filterSem, setFilterSem] = useState('');
@@ -44,7 +44,14 @@ export default function AdminDashboard() {
     const [isPointModalOpen, setIsPointModalOpen] = useState(false);
     const [pointForm, setPointForm] = useState({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
 
+    const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+    const [studentForm, setStudentForm] = useState({ id: null, student_name: '', roll_number: '', semester: '', section: '' });
+
+    const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+    const [attendanceEditData, setAttendanceEditData] = useState({ session: null, recordsMap: {}, students: [] });
+
     const [globalAlertMsg, setGlobalAlertMsg] = useState('');
+    const fileInputRef = useRef(null);
 
     // Extracted Dropdown Data
     const availableSemesters = [...new Set(baseSchedule.map(x => x.semester))].filter(Boolean).sort();
@@ -92,8 +99,8 @@ export default function AdminDashboard() {
                 supabase.from('teacher_profiles').select('*'),
                 supabase.from('base_schedule').select('*'),
                 supabase.from('schedule_exceptions').select('*'),
-                supabase.from('class_roster').select('*'),
-                supabase.from('attendance_sessions').select('*, teacher_profiles(name), auth_users:submitted_by(email)'), // Linking metadata
+                supabase.from('class_roster').select('*').order('roll_number', { ascending: true }),
+                supabase.from('attendance_sessions').select('*, teacher_profiles(name), auth_users:submitted_by(email)'),
                 supabase.from('point_schedules').select('*')
             ]);
 
@@ -111,7 +118,6 @@ export default function AdminDashboard() {
         setLoading(false);
     };
 
-    // Helper: Format 24h to 12h
     const convertTo12Hour = (timeStr) => {
         if (!timeStr) return "";
         if (timeStr.toUpperCase().includes('AM') || timeStr.toUpperCase().includes('PM')) return timeStr;
@@ -125,7 +131,7 @@ export default function AdminDashboard() {
     // 3. MODULE FUNCTIONS: USERS
     // ==========================================
     const deleteUser = async (table, id, name) => {
-        if(!window.confirm(`Are you sure you want to delete ${name}? This will remove their profile and detach them from schedules.`)) return;
+        if(!window.confirm(`Are you sure you want to delete ${name}? This removes their profile.`)) return;
         setActionLoading(true);
         await supabase.from(table).delete().eq('id', id);
         await fetchAllData();
@@ -166,7 +172,142 @@ export default function AdminDashboard() {
     };
 
     // ==========================================
-    // 5. MODULE FUNCTIONS: INFRASTRUCTURE
+    // 5. MODULE FUNCTIONS: ACADEMIC RECORDS (ROSTER + ATTENDANCE)
+    // ==========================================
+    
+    // -- Roster Logic --
+    const saveStudent = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+        const payload = { ...studentForm };
+        delete payload.id;
+
+        if (studentForm.id) await supabase.from('class_roster').update(payload).eq('id', studentForm.id);
+        else await supabase.from('class_roster').insert([payload]);
+        
+        setIsStudentModalOpen(false);
+        await fetchAllData();
+        setActionLoading(false);
+    };
+
+    const handleCSVUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!filterSem || !filterSec) {
+            alert("Please select a Semester and Section from the dropdowns first before importing CSV.");
+            e.target.value = null;
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            setActionLoading(true);
+            try {
+                const text = event.target.result;
+                const rows = text.split('\n').map(r => r.split(','));
+                const payloads = [];
+                
+                // Assuming CSV is "Roll Number, Name"
+                // Skip header row if it contains text like "roll"
+                let startIndex = rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
+
+                for(let i = startIndex; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length >= 2) {
+                        const roll = row[0].trim();
+                        const name = row[1].trim();
+                        if (roll && name) {
+                            payloads.push({ student_name: name, roll_number: roll, semester: filterSem, section: filterSec });
+                        }
+                    }
+                }
+
+                if (payloads.length > 0) {
+                    const { error } = await supabase.from('class_roster').insert(payloads);
+                    if (error) alert("Error importing: " + error.message);
+                    else {
+                        alert(`Successfully imported ${payloads.length} students!`);
+                        await fetchAllData();
+                    }
+                } else {
+                    alert("No valid data found in CSV.");
+                }
+            } catch (err) {
+                alert("Failed to parse CSV.");
+            }
+            setActionLoading(false);
+            e.target.value = null; // reset input
+        };
+        reader.readAsText(file);
+    };
+
+    // -- Attendance Logic --
+    const openAttendanceEditor = async (session) => {
+        setActionLoading(true);
+        const base = baseSchedule.find(b => b.id === session.base_schedule_id);
+        
+        // Fetch existing records for this session
+        const { data: records } = await supabase.from('attendance_records').select('*').eq('session_id', session.id);
+        
+        // Fetch all students currently in that section
+        const { data: students } = await supabase.from('class_roster')
+            .select('*')
+            .eq('semester', base.semester)
+            .eq('section', base.section)
+            .order('roll_number', { ascending: true });
+
+        // Map existing records
+        const recordsMap = {};
+        if (records) {
+            records.forEach(r => recordsMap[r.student_id] = r.status);
+        }
+        
+        // Assign default 'Absent' if student is in roster but has no record yet
+        if (students) {
+            students.forEach(s => {
+                if (!recordsMap[s.id]) recordsMap[s.id] = 'Absent';
+            });
+        }
+
+        setAttendanceEditData({ session, recordsMap, students: students || [] });
+        setIsAttendanceModalOpen(true);
+        setActionLoading(false);
+    };
+
+    const handleAttendanceStatusChange = (studentId, status) => {
+        setAttendanceEditData(prev => ({
+            ...prev,
+            recordsMap: { ...prev.recordsMap, [studentId]: status }
+        }));
+    };
+
+    const saveAttendanceEdits = async () => {
+        setActionLoading(true);
+        const { session, recordsMap, students } = attendanceEditData;
+        
+        // Wipe old records for safety, then bulk insert
+        await supabase.from('attendance_records').delete().eq('session_id', session.id);
+        
+        const payloads = students.map(s => ({
+            session_id: session.id,
+            student_id: s.id,
+            status: recordsMap[s.id]
+        }));
+
+        const { error } = await supabase.from('attendance_records').insert(payloads);
+        
+        if (error) alert("Error saving attendance: " + error.message);
+        else {
+            alert("Attendance successfully updated!");
+            setIsAttendanceModalOpen(false);
+            await fetchAllData();
+        }
+        setActionLoading(false);
+    };
+
+
+    // ==========================================
+    // 6. MODULE FUNCTIONS: INFRASTRUCTURE
     // ==========================================
     const savePointSchedule = async (e) => {
         e.preventDefault();
@@ -193,8 +334,6 @@ export default function AdminDashboard() {
         if(!window.confirm('Push this alert to ALL active devices?')) return;
         setActionLoading(true);
         
-        // We broadcast to all sections by inserting multiple rows, or relying on index.js to read wildcard if implemented.
-        // For standard setup, we map all active sections:
         const sectionsToAlert = [...new Set(baseSchedule.map(s => s.section))];
         const payloads = sectionsToAlert.map(sec => ({
             message: `🔴 ADMIN BROADCAST [${sec}]: ${globalAlertMsg}`
@@ -208,7 +347,7 @@ export default function AdminDashboard() {
 
 
     // ==========================================
-    // 6. RENDERERS
+    // 7. RENDERERS
     // ==========================================
 
     if (!isAuthenticated) {
@@ -239,7 +378,6 @@ export default function AdminDashboard() {
 
     if (loading) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: '#475569', fontWeight: 'bold' }}>Initializing Global Database...</div>;
 
-    // Derived Data for Overview
     const today = new Date().toLocaleDateString('en-CA');
     const todaysExceptions = exceptions.filter(e => e.exception_date === today);
     const classesCancelledToday = todaysExceptions.filter(e => e.status === 'cancelled').length;
@@ -355,17 +493,17 @@ export default function AdminDashboard() {
                                 <thead>
                                     <tr>
                                         <th style={thStyle}>Name</th>
-                                        <th style={thStyle}>Contact</th>
-                                        <th style={thStyle}>{userSubTab === 'crs' ? 'Sem / Sec' : 'CNIC'}</th>
+                                        <th style={thStyle}>Contact / Phone</th>
+                                        <th style={thStyle}>{userSubTab === 'crs' ? 'Dept / Sem / Sec' : 'CNIC'}</th>
                                         <th style={thStyle}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {userSubTab === 'crs' ? crs.map(cr => (
                                         <tr key={cr.id} style={trStyle}>
-                                            <td style={tdStyle}><strong>{cr.first_name} {cr.last_name}</strong></td>
-                                            <td style={tdStyle}>{cr.phone}</td>
-                                            <td style={tdStyle}>{cr.semester} | Sec {cr.section}</td>
+                                            <td style={tdStyle}><strong>{cr.first_name || 'N/A'} {cr.last_name || ''}</strong></td>
+                                            <td style={tdStyle}>{cr.phone || 'No Phone'}</td>
+                                            <td style={tdStyle}>{cr.department} | {cr.semester} | Sec {cr.section}</td>
                                             <td style={tdStyle}><button onClick={() => deleteUser('cr_profiles', cr.id, cr.first_name)} style={btnDangerSmall}>Revoke Access</button></td>
                                         </tr>
                                     )) : teachers.map(teacher => (
@@ -481,11 +619,21 @@ export default function AdminDashboard() {
                 {activeTab === 'records' && (
                     <div className="animate-fade-in">
                         <h2 style={sectionHeader}>Academic Records Sandbox</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
                             
                             {/* ROSTER VIEWER */}
                             <div style={contentCard}>
-                                <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>Global Roster Index</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                                    <h3 style={{ margin: 0 }}>Global Roster Index</h3>
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <button onClick={() => {
+                                            setStudentForm({ id: null, student_name: '', roll_number: '', semester: filterSem || '', section: filterSec || '' });
+                                            setIsStudentModalOpen(true);
+                                        }} style={btnPrimarySmall}>+ Add</button>
+                                        <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
+                                        <button onClick={() => fileInputRef.current.click()} style={{...btnPrimarySmall, background: '#10b981'}}>CSV Import</button>
+                                    </div>
+                                </div>
                                 <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                                     <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...filterSelect, flex:1}}>
                                         <option value="">Select Sem</option>
@@ -504,13 +652,14 @@ export default function AdminDashboard() {
                                                     <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
                                                         <td style={{padding:'8px 0'}}><strong>{s.roll_number}</strong></td>
                                                         <td style={{padding:'8px 0'}}>{s.student_name}</td>
-                                                        <td style={{padding:'8px 0', textAlign:'right'}}>
+                                                        <td style={{padding:'8px 0', textAlign:'right', display:'flex', gap:'5px', justifyContent:'flex-end'}}>
+                                                            <button onClick={() => { setStudentForm(s); setIsStudentModalOpen(true); }} style={btnEditSmall}>Edit</button>
                                                             <button onClick={async ()=>{
                                                                 if(window.confirm('Delete student?')) {
                                                                     await supabase.from('class_roster').delete().eq('id', s.id);
                                                                     fetchAllData();
                                                                 }
-                                                            }} style={{color:'red', border:'none', background:'none', cursor:'pointer'}}>X</button>
+                                                            }} style={btnDangerSmall}>X</button>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -534,20 +683,23 @@ export default function AdminDashboard() {
                                                         <span style={{fontSize:'0.8rem', color:'#64748b'}}>{session.session_date}</span>
                                                     </div>
                                                     <div style={{fontSize:'0.8rem', color:'#64748b', marginTop:'5px'}}>
-                                                        Sec: {base?.section} | By: {session.auth_users?.email}
+                                                        Sec: {base?.section} ({base?.semester}) | By: {session.auth_users?.email || 'Unknown'}
                                                     </div>
-                                                    <div style={{marginTop:'10px', display:'flex', gap:'10px'}}>
+                                                    <div style={{marginTop:'10px', display:'flex', gap:'5px', flexWrap:'wrap'}}>
                                                         <button onClick={async () => {
                                                             const status = session.status === 'approved' ? 'pending' : 'approved';
                                                             await supabase.from('attendance_sessions').update({status}).eq('id', session.id);
                                                             fetchAllData();
-                                                        }} style={btnEditSmall}>{session.status === 'approved' ? 'Unapprove' : 'Force Approve'}</button>
+                                                        }} style={{...btnEditSmall, flex: 1}}>{session.status === 'approved' ? 'Unapprove' : 'Force Approve'}</button>
+                                                        
+                                                        <button onClick={() => openAttendanceEditor(session)} style={{...btnPrimarySmall, background:'#3b82f6', flex: 1}}>Edit Records</button>
+                                                        
                                                         <button onClick={async () => {
                                                             if(window.confirm('Wipe this attendance record entirely?')) {
                                                                 await supabase.from('attendance_sessions').delete().eq('id', session.id);
                                                                 fetchAllData();
                                                             }
-                                                        }} style={btnDangerSmall}>Wipe Data</button>
+                                                        }} style={{...btnDangerSmall, flex: 1}}>Wipe Data</button>
                                                     </div>
                                                 </div>
                                             )
@@ -689,7 +841,76 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            {/* Basic CSS injection for animations and resets */}
+            {/* STUDENT FORM MODAL */}
+            {isStudentModalOpen && (
+                <div style={modalBackdrop}>
+                    <div style={{...modalContent, maxWidth: '400px'}}>
+                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>{studentForm.id ? 'Edit Student' : 'Add Student'}</h3>
+                        <form onSubmit={saveStudent} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <div style={{display:'flex', gap:'10px'}}>
+                                <input type="text" placeholder="Sem (e.g. 3RD)" required value={studentForm.semester} onChange={e=>setStudentForm({...studentForm, semester:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
+                                <input type="text" placeholder="Sec (e.g. A)" required value={studentForm.section} onChange={e=>setStudentForm({...studentForm, section:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
+                            </div>
+                            <input type="text" placeholder="Roll Number (e.g. FA23-BSE-001)" required value={studentForm.roll_number} onChange={e=>setStudentForm({...studentForm, roll_number:e.target.value})} style={inputStyle} />
+                            <input type="text" placeholder="Student Full Name" required value={studentForm.student_name} onChange={e=>setStudentForm({...studentForm, student_name:e.target.value})} style={inputStyle} />
+                            
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={()=>setIsStudentModalOpen(false)} style={{...btnPrimary, background:'#94a3b8', flex:1}}>Cancel</button>
+                                <button type="submit" style={{...btnPrimary, flex:1}}>Save Student</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ATTENDANCE EDITOR MODAL */}
+            {isAttendanceModalOpen && (
+                <div style={modalBackdrop}>
+                    <div style={{...modalContent, maxWidth: '600px', display: 'flex', flexDirection: 'column', height: '85vh'}}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
+                            <h3 style={{ margin: 0, color: '#0f172a' }}>Admin Override: Attendance</h3>
+                            <button onClick={() => setIsAttendanceModalOpen(false)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }}>X</button>
+                        </div>
+                        
+                        <div style={{ overflowY: 'auto', flexGrow: 1, paddingRight: '5px' }}>
+                            {attendanceEditData.students.length === 0 ? <p style={{color:'#94a3b8'}}>No students in roster for this section.</p> : (
+                                attendanceEditData.students.map((student) => {
+                                    const currentStatus = attendanceEditData.recordsMap[student.id];
+                                    return (
+                                        <div key={student.id} style={{ border: '1px solid #e2e8f0', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f8fafc' }}>
+                                            <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#334155' }}>{student.roll_number} - {student.student_name}</div>
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                {['Present', 'Absent', 'Leave'].map(status => (
+                                                    <button
+                                                        key={status}
+                                                        onClick={() => handleAttendanceStatusChange(student.id, status)}
+                                                        style={{
+                                                            flex: 1, padding: '8px', borderRadius: '5px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                                                            background: currentStatus === status 
+                                                                ? (status === 'Present' ? '#10b981' : status === 'Absent' ? '#ef4444' : '#f59e0b') 
+                                                                : '#e2e8f0',
+                                                            color: currentStatus === status ? 'white' : '#475569'
+                                                        }}
+                                                    >
+                                                        {status}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            )}
+                        </div>
+
+                        <div style={{ paddingTop: '15px', borderTop: '2px solid #e2e8f0', marginTop: 'auto' }}>
+                            <button onClick={saveAttendanceEdits} style={{ width: '100%', padding: '15px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+                                Save & Override Attendance
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <style jsx global>{`
                 body { margin: 0; background: #f8fafc; }
                 .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
@@ -700,7 +921,7 @@ export default function AdminDashboard() {
 }
 
 // ==========================================
-// 7. STYLES (Modern SaaS Palette)
+// 8. STYLES (Modern SaaS Palette)
 // ==========================================
 
 const sidebarStyle = {
@@ -710,24 +931,18 @@ const sidebarStyle = {
     display: 'flex',
     flexDirection: 'column',
     position: 'fixed',
-    top: 0,
-    bottom: 0,
-    left: 0,
+    top: 0, bottom: 0, left: 0,
     zIndex: 40,
     transition: 'transform 0.3s ease',
 };
 
 const mainContentResponsive = {
     marginLeft: '260px',
-    '@media (max-width: 768px)': {
-        marginLeft: '0',
-    }
+    '@media (max-width: 768px)': { marginLeft: '0' }
 };
 
 const mobileOnlyShow = {
-    '@media (min-width: 769px)': {
-        display: 'none',
-    }
+    '@media (min-width: 769px)': { display: 'none' }
 };
 
 const navItemStyle = (isActive) => ({
@@ -744,202 +959,51 @@ const navItemStyle = (isActive) => ({
     borderLeft: isActive ? '4px solid #38bdf8' : '4px solid transparent'
 });
 
-const sectionHeader = {
-    margin: '0 0 25px 0',
-    fontSize: '1.8rem',
-    color: '#0f172a',
-    fontWeight: 900
-};
+const sectionHeader = { margin: '0 0 25px 0', fontSize: '1.8rem', color: '#0f172a', fontWeight: 900 };
 
-const kpiGrid = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-    gap: '20px'
-};
+const kpiGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' };
 
-const kpiCard = {
-    background: 'white',
-    padding: '20px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-    borderBottom: '4px solid #38bdf8'
-};
+const kpiCard = { background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderBottom: '4px solid #38bdf8' };
 
-const kpiTitle = {
-    color: '#64748b',
-    fontSize: '0.85rem',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px'
-};
+const kpiTitle = { color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' };
 
-const kpiValue = {
-    color: '#0f172a',
-    fontSize: '2.5rem',
-    fontWeight: 900,
-    marginTop: '5px'
-};
+const kpiValue = { color: '#0f172a', fontSize: '2.5rem', fontWeight: 900, marginTop: '5px' };
 
-const contentCard = {
-    background: 'white',
-    padding: '25px',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-};
+const contentCard = { background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
 
 const toggleBtn = (isActive) => ({
-    padding: '8px 16px',
-    border: 'none',
-    background: isActive ? 'white' : 'transparent',
-    color: isActive ? '#0f172a' : '#64748b',
-    borderRadius: '6px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-    transition: '0.2s'
+    padding: '8px 16px', border: 'none', background: isActive ? 'white' : 'transparent', color: isActive ? '#0f172a' : '#64748b',
+    borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: '0.2s'
 });
 
-const filterSelect = {
-    padding: '10px 15px',
-    border: '1px solid #cbd5e1',
-    borderRadius: '8px',
-    outline: 'none',
-    background: 'white',
-    color: '#334155',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    minWidth: '150px'
-};
+const filterSelect = { padding: '10px 15px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none', background: 'white', color: '#334155', fontWeight: 'bold', cursor: 'pointer', minWidth: '150px' };
 
-const tableStyle = {
-    width: '100%',
-    borderCollapse: 'collapse',
-    textAlign: 'left',
-    fontSize: '0.9rem'
-};
+const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' };
 
-const thStyle = {
-    padding: '12px 15px',
-    borderBottom: '2px solid #e2e8f0',
-    color: '#64748b',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    fontSize: '0.75rem',
-    letterSpacing: '0.5px'
-};
+const thStyle = { padding: '12px 15px', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' };
 
-const tdStyle = {
-    padding: '15px',
-    borderBottom: '1px solid #f1f5f9',
-    color: '#334155'
-};
+const tdStyle = { padding: '15px', borderBottom: '1px solid #f1f5f9', color: '#334155' };
 
-const trStyle = {
-    transition: 'background 0.2s',
-    ':hover': { background: '#f8fafc' }
-};
+const trStyle = { transition: 'background 0.2s', ':hover': { background: '#f8fafc' } };
 
-const badgeStyle = {
-    background: '#e0e7ff',
-    color: '#4338ca',
-    padding: '4px 8px',
-    borderRadius: '12px',
-    fontSize: '0.75rem',
-    fontWeight: 'bold'
-};
+const badgeStyle = { background: '#e0e7ff', color: '#4338ca', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' };
 
-const statusBadge = {
-    padding: '4px 8px',
-    borderRadius: '6px',
-    fontSize: '0.7rem',
-    fontWeight: 'bold',
-    display: 'inline-block'
-};
+const statusBadge = { padding: '4px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block' };
 
-const btnPrimary = {
-    background: '#3b82f6',
-    color: 'white',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '8px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    transition: '0.2s'
-};
+const btnPrimary = { background: '#3b82f6', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' };
 
 const btnPrimarySmall = { ...btnPrimary, padding: '6px 12px', fontSize: '0.8rem' };
 
-const btnEditSmall = {
-    background: '#f1f5f9',
-    color: '#3b82f6',
-    border: '1px solid #cbd5e1',
-    padding: '6px 12px',
-    borderRadius: '6px',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    fontSize: '0.75rem'
-};
+const btnEditSmall = { background: '#f1f5f9', color: '#3b82f6', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' };
 
-const btnDangerSmall = {
-    ...btnEditSmall,
-    color: '#ef4444',
-    background: '#fef2f2',
-    border: '1px solid #fecaca'
-};
+const btnDangerSmall = { ...btnEditSmall, color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca' };
 
-const labelStyle = {
-    display: 'block',
-    fontSize: '0.85rem',
-    fontWeight: 'bold',
-    color: '#475569',
-    marginBottom: '6px'
-};
+const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#475569', marginBottom: '6px' };
 
-const inputStyle = {
-    width: '100%',
-    padding: '12px',
-    border: '1px solid #cbd5e1',
-    borderRadius: '8px',
-    outline: 'none',
-    fontSize: '0.95rem',
-    color: '#0f172a',
-    boxSizing: 'border-box'
-};
+const inputStyle = { width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none', fontSize: '0.95rem', color: '#0f172a', boxSizing: 'border-box' };
 
-const loaderOverlay = {
-    position: 'fixed',
-    top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(255,255,255,0.8)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 9999,
-    fontSize: '1.2rem',
-    fontWeight: 900,
-    color: '#0f172a',
-    backdropFilter: 'blur(4px)'
-};
+const loaderOverlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', backdropFilter: 'blur(4px)' };
 
-const modalBackdrop = {
-    position: 'fixed',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.75)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2000,
-    padding: '20px',
-    boxSizing: 'border-box',
-    backdropFilter: 'blur(4px)'
-};
+const modalBackdrop = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.75)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '20px', boxSizing: 'border-box', backdropFilter: 'blur(4px)' };
 
-const modalContent = {
-    background: 'white',
-    padding: '30px',
-    borderRadius: '16px',
-    width: '100%',
-    maxWidth: '500px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    maxHeight: '90vh',
-    overflowY: 'auto'
-};
+const modalContent = { background: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', maxHeight: '90vh', overflowY: 'auto' };
