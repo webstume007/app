@@ -50,6 +50,10 @@ export default function AdminDashboard() {
     const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
     const [attendanceEditData, setAttendanceEditData] = useState({ session: null, recordsMap: {}, students: [] });
 
+    // NEW: User Edit & Approve Modal State
+    const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
+    const [userEditForm, setUserEditForm] = useState({ id: null, type: 'cr', first_name: '', last_name: '', name: '', department: '', semester: '', section: '', phone: '', cnic: '' });
+
     const [globalAlertMsg, setGlobalAlertMsg] = useState('');
     const fileInputRef = useRef(null);
 
@@ -128,10 +132,66 @@ export default function AdminDashboard() {
     };
 
     // ==========================================
-    // 3. MODULE FUNCTIONS: USERS
+    // 3. MODULE FUNCTIONS: USERS (WITH APPROVAL LOGIC)
     // ==========================================
-    const deleteUser = async (table, id, name) => {
-        if(!window.confirm(`Are you sure you want to delete ${name}? This removes their profile.`)) return;
+    
+    const approveUser = async (table, id) => {
+        setActionLoading(true);
+        await supabase.from(table).update({ is_approved: true }).eq('id', id);
+        await fetchAllData();
+        setActionLoading(false);
+    };
+
+    const openEditUserModal = (user, type) => {
+        setUserEditForm({
+            id: user.id,
+            type: type, // 'cr' or 'teacher'
+            first_name: user.first_name || '',
+            last_name: user.last_name || '',
+            name: user.name || '',
+            department: user.department || '',
+            semester: user.semester || '',
+            section: user.section || '',
+            phone: user.phone || '',
+            cnic: user.cnic || ''
+        });
+        setIsUserEditModalOpen(true);
+    };
+
+    const saveEditedUser = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+        
+        const table = userEditForm.type === 'cr' ? 'cr_profiles' : 'teacher_profiles';
+        let payload = {};
+        
+        if (userEditForm.type === 'cr') {
+            payload = { 
+                first_name: userEditForm.first_name, 
+                last_name: userEditForm.last_name, 
+                department: userEditForm.department, 
+                semester: userEditForm.semester, 
+                section: userEditForm.section, 
+                phone: userEditForm.phone, 
+                is_approved: true // Automatically approves upon edit
+            };
+        } else {
+            payload = { 
+                name: userEditForm.name, 
+                phone: userEditForm.phone, 
+                cnic: userEditForm.cnic, 
+                is_approved: true 
+            };
+        }
+
+        await supabase.from(table).update(payload).eq('id', userEditForm.id);
+        setIsUserEditModalOpen(false);
+        await fetchAllData();
+        setActionLoading(false);
+    };
+
+    const rejectUser = async (table, id, name) => {
+        if(!window.confirm(`Are you sure you want to reject and delete ${name}? This removes their profile completely.`)) return;
         setActionLoading(true);
         await supabase.from(table).delete().eq('id', id);
         await fetchAllData();
@@ -172,10 +232,8 @@ export default function AdminDashboard() {
     };
 
     // ==========================================
-    // 5. MODULE FUNCTIONS: ACADEMIC RECORDS (ROSTER + ATTENDANCE)
+    // 5. MODULE FUNCTIONS: ACADEMIC RECORDS 
     // ==========================================
-    
-    // -- Roster Logic --
     const saveStudent = async (e) => {
         e.preventDefault();
         setActionLoading(true);
@@ -207,8 +265,6 @@ export default function AdminDashboard() {
                 const rows = text.split('\n').map(r => r.split(','));
                 const payloads = [];
                 
-                // Assuming CSV is "Roll Number, Name"
-                // Skip header row if it contains text like "roll"
                 let startIndex = rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
 
                 for(let i = startIndex; i < rows.length; i++) {
@@ -236,7 +292,7 @@ export default function AdminDashboard() {
                 alert("Failed to parse CSV.");
             }
             setActionLoading(false);
-            e.target.value = null; // reset input
+            e.target.value = null;
         };
         reader.readAsText(file);
     };
@@ -246,23 +302,19 @@ export default function AdminDashboard() {
         setActionLoading(true);
         const base = baseSchedule.find(b => b.id === session.base_schedule_id);
         
-        // Fetch existing records for this session
         const { data: records } = await supabase.from('attendance_records').select('*').eq('session_id', session.id);
         
-        // Fetch all students currently in that section
         const { data: students } = await supabase.from('class_roster')
             .select('*')
             .eq('semester', base.semester)
             .eq('section', base.section)
             .order('roll_number', { ascending: true });
 
-        // Map existing records
         const recordsMap = {};
         if (records) {
             records.forEach(r => recordsMap[r.student_id] = r.status);
         }
         
-        // Assign default 'Absent' if student is in roster but has no record yet
         if (students) {
             students.forEach(s => {
                 if (!recordsMap[s.id]) recordsMap[s.id] = 'Absent';
@@ -285,7 +337,6 @@ export default function AdminDashboard() {
         setActionLoading(true);
         const { session, recordsMap, students } = attendanceEditData;
         
-        // Wipe old records for safety, then bulk insert
         await supabase.from('attendance_records').delete().eq('session_id', session.id);
         
         const payloads = students.map(s => ({
@@ -304,7 +355,6 @@ export default function AdminDashboard() {
         }
         setActionLoading(false);
     };
-
 
     // ==========================================
     // 6. MODULE FUNCTIONS: INFRASTRUCTURE
@@ -381,6 +431,10 @@ export default function AdminDashboard() {
     const today = new Date().toLocaleDateString('en-CA');
     const todaysExceptions = exceptions.filter(e => e.exception_date === today);
     const classesCancelledToday = todaysExceptions.filter(e => e.status === 'cancelled').length;
+    
+    // Count pending users for KPI
+    const pendingCrsCount = crs.filter(c => !c.is_approved).length;
+    const pendingTeachersCount = teachers.filter(t => !t.is_approved).length;
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
@@ -403,7 +457,7 @@ export default function AdminDashboard() {
 
                 <nav style={{ padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     <button onClick={() => {setActiveTab('overview'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'overview')}>📊 System Overview</button>
-                    <button onClick={() => {setActiveTab('users'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'users')}>👥 User Management</button>
+                    <button onClick={() => {setActiveTab('users'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'users')}>👥 User Management {(pendingCrsCount + pendingTeachersCount) > 0 && <span style={{background:'red', color:'white', padding:'2px 6px', borderRadius:'10px', fontSize:'0.7rem', marginLeft:'5px'}}>{pendingCrsCount + pendingTeachersCount}</span>}</button>
                     <button onClick={() => {setActiveTab('schedule'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'schedule')}>📅 Schedule Master</button>
                     <button onClick={() => {setActiveTab('records'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'records')}>📝 Academic Records</button>
                     <button onClick={() => {setActiveTab('infrastructure'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'infrastructure')}>🚌 Infrastructure & Alerts</button>
@@ -476,15 +530,15 @@ export default function AdminDashboard() {
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 2: USERS */}
+                {/* MODULE 2: USERS (WITH APPROVAL SYSTEM) */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'users' && (
                     <div className="animate-fade-in">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                             <h2 style={{...sectionHeader, margin: 0}}>User Management</h2>
                             <div style={{ display: 'flex', background: '#e2e8f0', padding: '4px', borderRadius: '8px' }}>
-                                <button onClick={() => setUserSubTab('crs')} style={toggleBtn(userSubTab === 'crs')}>Class Reps</button>
-                                <button onClick={() => setUserSubTab('teachers')} style={toggleBtn(userSubTab === 'teachers')}>Teachers</button>
+                                <button onClick={() => setUserSubTab('crs')} style={toggleBtn(userSubTab === 'crs')}>Class Reps {pendingCrsCount > 0 && <span style={{color:'red'}}>({pendingCrsCount})</span>}</button>
+                                <button onClick={() => setUserSubTab('teachers')} style={toggleBtn(userSubTab === 'teachers')}>Teachers {pendingTeachersCount > 0 && <span style={{color:'red'}}>({pendingTeachersCount})</span>}</button>
                             </div>
                         </div>
 
@@ -492,8 +546,9 @@ export default function AdminDashboard() {
                             <table style={tableStyle}>
                                 <thead>
                                     <tr>
+                                        <th style={thStyle}>Status</th>
                                         <th style={thStyle}>Name</th>
-                                        <th style={thStyle}>Contact / Phone</th>
+                                        <th style={thStyle}>Contact</th>
                                         <th style={thStyle}>{userSubTab === 'crs' ? 'Dept / Sem / Sec' : 'CNIC'}</th>
                                         <th style={thStyle}>Actions</th>
                                     </tr>
@@ -501,17 +556,57 @@ export default function AdminDashboard() {
                                 <tbody>
                                     {userSubTab === 'crs' ? crs.map(cr => (
                                         <tr key={cr.id} style={trStyle}>
+                                            <td style={tdStyle}>
+                                                {cr.is_approved ? (
+                                                    <span style={{...statusBadge, background:'#dcfce7', color:'#16a34a'}}>Active</span>
+                                                ) : (
+                                                    <span style={{...statusBadge, background:'#fef9c3', color:'#eab308'}}>Pending</span>
+                                                )}
+                                            </td>
                                             <td style={tdStyle}><strong>{cr.first_name || 'N/A'} {cr.last_name || ''}</strong></td>
                                             <td style={tdStyle}>{cr.phone || 'No Phone'}</td>
                                             <td style={tdStyle}>{cr.department} | {cr.semester} | Sec {cr.section}</td>
-                                            <td style={tdStyle}><button onClick={() => deleteUser('cr_profiles', cr.id, cr.first_name)} style={btnDangerSmall}>Revoke Access</button></td>
+                                            <td style={tdStyle}>
+                                                {!cr.is_approved ? (
+                                                    <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
+                                                        <button onClick={() => approveUser('cr_profiles', cr.id)} style={btnSuccessSmall}>Approve</button>
+                                                        <button onClick={() => openEditUserModal(cr, 'cr')} style={btnEditSmall}>Edit & Approve</button>
+                                                        <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={btnDangerSmall}>Reject</button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
+                                                        <button onClick={() => openEditUserModal(cr, 'cr')} style={btnEditSmall}>Edit</button>
+                                                        <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={btnDangerSmall}>Revoke Access</button>
+                                                    </div>
+                                                )}
+                                            </td>
                                         </tr>
                                     )) : teachers.map(teacher => (
                                         <tr key={teacher.id} style={trStyle}>
+                                            <td style={tdStyle}>
+                                                {teacher.is_approved ? (
+                                                    <span style={{...statusBadge, background:'#dcfce7', color:'#16a34a'}}>Active</span>
+                                                ) : (
+                                                    <span style={{...statusBadge, background:'#fef9c3', color:'#eab308'}}>Pending</span>
+                                                )}
+                                            </td>
                                             <td style={tdStyle}><strong>{teacher.name}</strong></td>
                                             <td style={tdStyle}>{teacher.email}<br/><span style={{fontSize:'0.8rem', color:'#64748b'}}>{teacher.phone}</span></td>
                                             <td style={tdStyle}>{teacher.cnic}</td>
-                                            <td style={tdStyle}><button onClick={() => deleteUser('teacher_profiles', teacher.id, teacher.name)} style={btnDangerSmall}>Revoke Access</button></td>
+                                            <td style={tdStyle}>
+                                                {!teacher.is_approved ? (
+                                                    <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
+                                                        <button onClick={() => approveUser('teacher_profiles', teacher.id)} style={btnSuccessSmall}>Approve</button>
+                                                        <button onClick={() => openEditUserModal(teacher, 'teacher')} style={btnEditSmall}>Edit & Approve</button>
+                                                        <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={btnDangerSmall}>Reject</button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
+                                                        <button onClick={() => openEditUserModal(teacher, 'teacher')} style={btnEditSmall}>Edit</button>
+                                                        <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={btnDangerSmall}>Revoke Access</button>
+                                                    </div>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -713,7 +808,7 @@ export default function AdminDashboard() {
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 5: INFRASTRUCTURE */}
+                {/* MODULE 6: INFRASTRUCTURE */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'infrastructure' && (
                     <div className="animate-fade-in">
@@ -782,6 +877,44 @@ export default function AdminDashboard() {
             {/* MODALS */}
             {/* ========================================== */}
             
+            {/* USER EDIT & APPROVE MODAL */}
+            {isUserEditModalOpen && (
+                <div style={modalBackdrop}>
+                    <div style={modalContent}>
+                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                            {userEditForm.type === 'cr' ? 'Edit & Approve Class Rep' : 'Edit & Approve Teacher'}
+                        </h3>
+                        <form onSubmit={saveEditedUser} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            {userEditForm.type === 'cr' ? (
+                                <>
+                                    <div style={{display:'flex', gap:'10px'}}>
+                                        <input type="text" placeholder="First Name" required value={userEditForm.first_name} onChange={e=>setUserEditForm({...userEditForm, first_name:e.target.value})} style={{...inputStyle, flex:1}} />
+                                        <input type="text" placeholder="Last Name" required value={userEditForm.last_name} onChange={e=>setUserEditForm({...userEditForm, last_name:e.target.value})} style={{...inputStyle, flex:1}} />
+                                    </div>
+                                    <input type="text" placeholder="Department" required value={userEditForm.department} onChange={e=>setUserEditForm({...userEditForm, department:e.target.value})} style={inputStyle} />
+                                    <div style={{display:'flex', gap:'10px'}}>
+                                        <input type="text" placeholder="Semester (e.g. 3RD)" required value={userEditForm.semester} onChange={e=>setUserEditForm({...userEditForm, semester:e.target.value})} style={{...inputStyle, flex:1}} />
+                                        <input type="text" placeholder="Section (e.g. A)" required value={userEditForm.section} onChange={e=>setUserEditForm({...userEditForm, section:e.target.value})} style={{...inputStyle, flex:1}} />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <input type="text" placeholder="Full Name" required value={userEditForm.name} onChange={e=>setUserEditForm({...userEditForm, name:e.target.value})} style={inputStyle} />
+                                    <input type="text" placeholder="CNIC" value={userEditForm.cnic} onChange={e=>setUserEditForm({...userEditForm, cnic:e.target.value})} style={inputStyle} />
+                                </>
+                            )}
+                            
+                            <input type="text" placeholder="Phone Number" required value={userEditForm.phone} onChange={e=>setUserEditForm({...userEditForm, phone:e.target.value})} style={inputStyle} />
+                            
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={()=>setIsUserEditModalOpen(false)} style={{...btnPrimary, background:'#94a3b8', flex:1}}>Cancel</button>
+                                <button type="submit" style={{...btnPrimary, background: '#10b981', flex:1}}>Save & Approve</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* BASE LECTURE MODAL */}
             {isBaseModalOpen && (
                 <div style={modalBackdrop}>
@@ -993,6 +1126,8 @@ const statusBadge = { padding: '4px 8px', borderRadius: '6px', fontSize: '0.7rem
 const btnPrimary = { background: '#3b82f6', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' };
 
 const btnPrimarySmall = { ...btnPrimary, padding: '6px 12px', fontSize: '0.8rem' };
+
+const btnSuccessSmall = { background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' };
 
 const btnEditSmall = { background: '#f1f5f9', color: '#3b82f6', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' };
 
