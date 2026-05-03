@@ -1,55 +1,44 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react'; // Added useRef for CSV
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
-import AttendanceSheet from '../components/AttendanceSheet'; // NEW IMPORT
+import AttendanceSheet from '../components/AttendanceSheet';
 
-export default function TeacherLoginAndDashboard() {
-    // --- AUTH STATES ---
+export default function Dashboard() {
     const [session, setSession] = useState(null);
-    const [isLoginMode, setIsLoginMode] = useState(true);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    
-    // --- SIGNUP SPECIFIC STATES ---
-    const [signupName, setSignupName] = useState('');
-    const [cnic, setCnic] = useState('');
-    const [phone, setPhone] = useState('');
-    const [availableTeacherNames, setAvailableTeacherNames] = useState([]);
-    const [authError, setAuthError] = useState('');
-
-    // --- NEW: TOAST & TIMER STATES ---
-    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-    const [resendTimer, setResendTimer] = useState(0);
-    const [unverifiedEmail, setUnverifiedEmail] = useState('');
-
-    // --- DASHBOARD STATES ---
     const [profile, setProfile] = useState(null);
-    const [schedule, setSchedule] = useState([]);
-    const [baseSchedule, setBaseSchedule] = useState([]);
+    const [schedule, setSchedule] = useState([]); 
+    const [baseSchedule, setBaseSchedule] = useState([]); 
+    const [roster, setRoster] = useState([]); 
     const [loading, setLoading] = useState(true);
-    const alertedClasses = useRef(new Set()); 
-
-    // --- PWA & NOTIFICATION STATES (From index.js) ---
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [showNotifBanner, setShowNotifBanner] = useState(false);
-
+    
     // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
     const [availableCourses, setAvailableCourses] = useState([]);
-    const [availableSemesters, setAvailableSemesters] = useState([]);
-    const [availableSections, setAvailableSections] = useState([]);
+    const [availableTeachers, setAvailableTeachers] = useState([]);
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
-    const [isManualRoom, setIsManualRoom] = useState(false);
-    const [isManualSemester, setIsManualSemester] = useState(false);
-    const [isManualSection, setIsManualSection] = useState(false);
+    const [isManualTeacher, setIsManualTeacher] = useState(false);
+    const [isManualRoom, setIsManualRoom] = useState(false); 
 
-    const [activeTab, setActiveTab] = useState('weekly');
+    // --- TAB & UI STATES ---
+    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly', 'permanent', 'students', 'attendance'
+    
+    const [selectedDay, setSelectedDay] = useState(() => {
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+        return ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].includes(today) ? today : "MON";
+    });
+    
+    const [expandedLectureId, setExpandedLectureId] = useState(null);
 
-    // --- ATTENDANCE APPROVAL STATES ---
-    const [pendingAttendances, setPendingAttendances] = useState([]);
+    // --- ATTENDANCE STATES ---
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
+    const [attendanceStats, setAttendanceStats] = useState([]); 
+    const [monthlyAttendance, setMonthlyAttendance] = useState("0%"); 
+
+    // --- STUDENT MANAGEMENT STATE ---
+    const [newStudent, setNewStudent] = useState({ name: '', roll: '' });
+    const fileInputRef = useRef(null); // Reference for hidden file input
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -58,10 +47,12 @@ export default function TeacherLoginAndDashboard() {
     const [newStartTime, setNewStartTime] = useState('8:00 AM');
     const [newEndTime, setNewEndTime] = useState('9:30 AM');
     const [newRoom, setNewRoom] = useState('');
+
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
-    const [baseForm, setBaseForm] = useState({ id: null, semester: '', section: '', course: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
+    const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
     const timeSlots = [];
     let ts = 8 * 60; 
     while (ts < 18 * 60) {
@@ -84,421 +75,306 @@ export default function TeacherLoginAndDashboard() {
         if (!t) return 0;
         let clean = t.replace(/\./g, '').trim().toUpperCase();
         let [tm, ap] = clean.split(' ');
+        if(!tm) return 0;
         let [h, m] = tm.split(':').map(Number);
         if (h === 12) h = 0;
         if (ap === 'PM') h += 12;
         return h * 60 + (m || 0);
     };
 
-    // --- CSS TOAST FUNCTION ---
-    const showToast = (message, type = 'success') => {
-        setToast({ show: true, message, type });
-        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
-    };
-
-    // --- RESEND TIMER EFFECT ---
     useEffect(() => {
-        let interval;
-        if (resendTimer > 0) {
-            interval = setInterval(() => setResendTimer((prev) => prev - 1), 1000);
-        }
-        return () => clearInterval(interval);
-    }, [resendTimer]);
-
-    // --- 1. INITIAL LOAD & AUTH CHECK ---
-    useEffect(() => {
-        // A. REGISTER SERVICE WORKER
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('SW Registered'))
-                .catch((err) => console.error('SW Registration Failed', err));
+        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
         }
 
-        // B. CAPTURE INSTALL PROMPT
-        const handleInstall = (e) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        };
-        window.addEventListener('beforeinstallprompt', handleInstall);
-
-        // C. AUTH & SESSION CHECK
         supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) {
-                verifyTeacherAndLoad(session.user.id, session);
-            } else {
-                fetchUnclaimedTeachers();
-                setLoading(false);
-            }
+            setSession(session);
+            if (session) fetchProfileAndSchedule(session.user.id);
+            else window.location.href = '/login';
         });
-
-        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (session) {
-                verifyTeacherAndLoad(session.user.id, session);
-            } else { 
-                setSession(null); setProfile(null); setLoading(false); 
-            }
-        });
-
-        // D. NOTIFICATION CHECK
-        if ("Notification" in window && Notification.permission === "default") {
-            setShowNotifBanner(true);
-        }
-
-        return () => {
-            authListener.subscription.unsubscribe();
-            window.removeEventListener('beforeinstallprompt', handleInstall);
-        };
     }, []);
 
-    // --- STRICT TEACHER VERIFICATION (BLOCKS CRs) ---
-    const verifyTeacherAndLoad = async (userId, activeSession) => {
-        const { data: profileData, error } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
-        if (error || !profileData) {
-            // It's a CR or invalid user, sign them out immediately
-            await supabase.auth.signOut();
-            setSession(null);
-            setLoading(false);
-            setAuthError("Unauthorized: This email is not registered as a Teacher.");
-        } else {
-            // Valid Teacher
-            setSession(activeSession);
-            setProfile(profileData);
-            fetchProfileAndSchedule(profileData.name);
-        }
-    };
-
-    // --- FETCH UNCLAIMED TEACHERS FOR SIGNUP ---
-    const fetchUnclaimedTeachers = async () => {
-        const { data: allLectures } = await supabase.from('base_schedule').select('teacher');
-        const { data: claimedProfiles } = await supabase.from('teacher_profiles').select('name');
-        
-        if (allLectures) {
-            const allTeacherNames = [...new Set(allLectures.map(x => x.teacher))].filter(Boolean);
-            const claimedNames = claimedProfiles ? claimedProfiles.map(p => p.name) : [];
-            
-            // Only show teachers who haven't created an account yet
-            const unclaimed = allTeacherNames.filter(name => !claimedNames.includes(name));
-            setAvailableTeacherNames(unclaimed.sort());
-        }
-    };
-
-    // --- AUTHENTICATION HANDLERS ---
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setAuthError('');
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            setAuthError(error.message);
-        } else if (data?.user) {
-            // Verification is handled by verifyTeacherAndLoad via onAuthStateChange
-        }
-    };
-
-    const handleSignup = async (e) => {
-        e.preventDefault();
-        
-        if (!signupName) {
-            return showToast('Please select your name from the dropdown.', 'error');
-        }
-    
-        // 1. Sign up the user in Supabase Auth
-        const { data, error } = await supabase.auth.signUp({ 
-            email, 
-            password,
-            options: {
-                // This forces the email button to redirect to your success page
-                emailRedirectTo: 'https://mohsinakhtar.me/verify-success',
-                data: { 
-                    full_name: signupName, 
-                    phone: phone, 
-                    cnic: cnic 
+    useEffect(() => {
+        if (!profile) return;
+        const channel = supabase
+            .channel('cr-realtime-updates')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+                const newMsg = payload.new.message;
+                if (newMsg.includes(profile.section) && Notification.permission === "granted") {
+                    new Notification("IUB Update Alert", { body: newMsg, icon: "/icon.png" });
                 }
+            }).subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [profile]);
+
+    const fetchProfileAndSchedule = async (userId) => {
+        const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
+        setProfile(profileData);
+
+        if (profileData) {
+            // 1. Fetch Roster
+            const { data: rosterData } = await supabase.from('class_roster').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('roll_number');
+            setRoster(rosterData || []);
+
+            // 2. Fetch Base Schedule
+            const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
+            setBaseSchedule(scheduleData || []);
+            
+            if (scheduleData) {
+                setAvailableRooms([...new Set(scheduleData.map(x => x.room))].filter(Boolean).sort());
+                setAvailableCourses([...new Set(scheduleData.map(x => x.course))].filter(Boolean).sort());
+                setAvailableTeachers([...new Set(scheduleData.map(x => x.teacher))].filter(Boolean).sort());
             }
-        });
-    
-        // 2. Handle Auth Errors
-        if (error) {
-            showToast(error.message, "error");
-            return;
-        }
 
-        // 3. Insert Profile Data into teacher_profiles
-        if (data?.user) {
-            const { error: profileError } = await supabase.from('teacher_profiles').insert([{
-                id: data.user.id, 
-                name: signupName,
-                email: email,
-                phone: phone,
-                cnic: cnic
-            }]);
+            const today = new Date().toLocaleDateString('en-CA');
+            
+            // 3. Fetch Exceptions & All Attendance Sessions/Records for Stats
+            const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
+            
+            const [exceptionsRes, sessionsRes, recordsRes] = await Promise.all([
+                supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
+                supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds),
+                supabase.from('attendance_records').select('*')
+            ]);
 
-            if (profileError) {
-                console.error("Profile Insert Error:", profileError);
-                showToast("Auth created, but profile failed: " + profileError.message, "error");
-            } else {
-                // Success! Set timers, show toast, and switch to Login screen
-                setUnverifiedEmail(email);
-                setResendTimer(60); // Start 60s cooldown timer
-                showToast("Verification email sent! Please check your inbox and click the link.", "success");
-                setIsLoginMode(true);
-                fetchUnclaimedTeachers(); // Remove the teacher's name from the dropdown
-            }
-        }
-    };
+            const exceptionsData = exceptionsRes.data || [];
+            const allSessions = sessionsRes.data || [];
+            const allRecords = recordsRes.data || [];
 
-    // --- RESEND EMAIL HANDLER ---
-    const handleResendEmail = async () => {
-        if (resendTimer > 0) return;
-        const { error } = await supabase.auth.resend({ type: 'signup', email: unverifiedEmail });
-        if (error) {
-            showToast(error.message, "error");
-        } else {
-            showToast("Verification email resent! Please check your inbox.", "success");
-            setResendTimer(60);
+            // Map records into sessions for easy stat calculation
+            const sessionsWithRecords = allSessions.map(s => ({
+                ...s,
+                records: allRecords.filter(r => r.session_id === s.id)
+            }));
+
+            // Build schedule for Weekly tab
+            const mergedSchedule = (scheduleData || []).map(cls => {
+                const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id);
+                const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === today);
+                
+                return { 
+                    ...cls, 
+                    isCancelled: exception?.status === 'cancelled',
+                    isRescheduled: exception?.status === 'rescheduled',
+                    isConfirmed: exception?.status === 'confirmed',
+                    exceptionDetails: exception,
+                    attendanceSession: sessionToday // Attach today's session if it exists
+                };
+            });
+            setSchedule(mergedSchedule);
+
+            // Compute Subject Attendance Stats
+            const uniqueSubjects = [...new Set((scheduleData || []).map(s => s.course))];
+            let globalTotalRecords = 0;
+            let globalPresentRecords = 0;
+
+            const stats = uniqueSubjects.map(subject => {
+                const subjectBaseIds = scheduleData.filter(s => s.course === subject).map(s => s.id);
+                const subjectSessions = sessionsWithRecords.filter(s => subjectBaseIds.includes(s.base_schedule_id));
+                
+                let totalRecords = 0;
+                let presentRecords = 0;
+                
+                subjectSessions.forEach(sess => {
+                    sess.records.forEach(rec => {
+                        totalRecords++;
+                        globalTotalRecords++;
+                        if (rec.status === 'Present' || rec.status === 'Leave') {
+                            presentRecords++;
+                            globalPresentRecords++;
+                        }
+                    });
+                });
+
+                const percentage = totalRecords === 0 ? 0 : Math.round((presentRecords / totalRecords) * 100);
+                return { 
+                    subject, 
+                    totalConducted: subjectSessions.length, 
+                    percentage, 
+                    sessions: subjectSessions 
+                };
+            });
+
+            setAttendanceStats(stats);
+            
+            // Calculate Global Monthly/Overall Percentage
+            const globalPct = globalTotalRecords === 0 ? 0 : Math.round((globalPresentRecords / globalTotalRecords) * 100);
+            setMonthlyAttendance(`${globalPct}%`);
         }
+        setLoading(false);
     };
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        setSession(null);
-        setProfile(null);
+        window.location.href = '/login';
     };
 
-    // --- DASHBOARD DATA FETCHING ---
-    const fetchProfileAndSchedule = async (teacherName) => {
-        const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('teacher', teacherName);
-        setBaseSchedule(scheduleData || []);
+    // --- CSV GENERATOR FOR ATTENDANCE ---
+    const downloadCSV = (stat) => {
+        if (stat.sessions.length === 0) return alert("No attendance recorded for this subject yet.");
+
+        let csv = "Roll Number,Name";
+        const sortedSessions = stat.sessions.sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
         
-        const { data: allData } = await supabase.from('base_schedule').select('room, course, semester, section');
-        if (allData) {
-            setAvailableRooms([...new Set(allData.map(x => x.room))].filter(Boolean).sort());
-            setAvailableCourses([...new Set(allData.map(x => x.course))].filter(Boolean).sort());
-            setAvailableSemesters([...new Set(allData.map(x => x.semester))].filter(Boolean).sort());
-            setAvailableSections([...new Set(allData.map(x => x.section))].filter(Boolean).sort());
-        }
+        // Headers
+        sortedSessions.forEach(s => { csv += `,${s.session_date}`; });
+        csv += ",Overall %\n";
 
-        const today = new Date().toLocaleDateString('en-CA');
-        const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
-
-        const mergedSchedule = (scheduleData || []).map(cls => {
-            const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
-            return { 
-                ...cls, 
-                isCancelled: exception?.status === 'cancelled',
-                isRescheduled: exception?.status === 'rescheduled',
-                isConfirmed: exception?.status === 'confirmed',
-                exceptionDetails: exception
-            };
+        // Student Rows
+        roster.forEach(student => {
+            let row = `${student.roll_number},${student.student_name}`;
+            let presentCount = 0;
+            let totalCount = 0;
+            
+            sortedSessions.forEach(s => {
+                const rec = s.records.find(r => r.student_id === student.id);
+                if (rec) {
+                    totalCount++;
+                    const isPresent = (rec.status === 'Present' || rec.status === 'Leave') ? 1 : 0;
+                    row += `,${isPresent}`;
+                    if (isPresent === 1) presentCount++;
+                } else {
+                    row += `,N/A`;
+                }
+            });
+            
+            const pct = totalCount === 0 ? 0 : Math.round((presentCount / totalCount) * 100);
+            row += `,${pct}%\n`;
+            csv += row;
         });
 
-        setSchedule(mergedSchedule);
+        // Trigger Download
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${stat.subject}_Attendance.csv`;
+        a.click();
+    };
 
-        // --- NEW: FETCH PENDING ATTENDANCES ---
-        const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
-        if (baseIds.length > 0) {
-            const { data: sessionsData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds);
-            
-            if (sessionsData && sessionsData.length > 0) {
-                const sessionIds = sessionsData.map(s => s.id);
-                const { data: recordsData } = await supabase.from('attendance_records').select('*').in('session_id', sessionIds);
+    // --- STUDENT MANAGEMENT LOGIC (WITH CSV IMPORT) ---
+    const handleAddStudent = async (e) => {
+        e.preventDefault();
+        const { error } = await supabase.from('class_roster').insert([{
+            student_name: newStudent.name, roll_number: newStudent.roll, semester: profile.semester, section: profile.section
+        }]);
+        if (error) alert("Error: " + error.message);
+        else {
+            setNewStudent({ name: '', roll: '' });
+            fetchProfileAndSchedule(session.user.id);
+        }
+    };
+
+    const handleDeleteStudent = async (id) => {
+        if (!window.confirm("Remove this student?")) return;
+        await supabase.from('class_roster').delete().eq('id', id);
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    // NEW: Handle CSV Upload for Students
+    const handleCSVUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const text = event.target.result;
+                const rows = text.split('\n').map(r => r.split(','));
+                const payloads = [];
                 
-                const pending = sessionsData.filter(s => s.status === 'pending').map(session => {
-                    const base = scheduleData.find(b => b.id === session.base_schedule_id);
-                    const sessionRecords = recordsData ? recordsData.filter(r => r.session_id === session.id) : [];
-                    const presentCount = sessionRecords.filter(r => r.status === 'Present' || r.status === 'Leave').length;
-                    
-                    return {
-                        ...session,
-                        course: base?.course,
-                        section: base?.section,
-                        semester: base?.semester,
-                        day: base?.day,
-                        presentCount,
-                        totalCount: sessionRecords.length,
-                        baseLecture: base
-                    };
-                });
-                setPendingAttendances(pending);
-            }
-        }
+                // Assuming CSV is "Roll Number, Name"
+                // Skip header row if it contains text like "roll"
+                let startIndex = rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
 
-        setLoading(false);
-    };
-
-    // --- ATTENDANCE ACTIONS ---
-    const handleApproveAttendance = async (sessionId) => {
-        const { error } = await supabase.from('attendance_sessions').update({ status: 'approved' }).eq('id', sessionId);
-        if (error) {
-            showToast("Failed to approve: " + error.message, "error");
-        } else {
-            showToast("Attendance approved successfully!", "success");
-            fetchProfileAndSchedule(profile.name);
-        }
-    };
-
-    // --- 3-HOUR REMINDER INTERVAL ---
-    useEffect(() => {
-        if (!session || schedule.length === 0) return;
-
-        const interval = setInterval(() => {
-            const now = new Date();
-            const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-            const currentMins = now.getHours() * 60 + now.getMinutes();
-
-            schedule.forEach(cls => {
-                if (cls.day === currentDay) {
-                    const startMins = parseTime(cls.start_time);
-                    const diff = startMins - currentMins;
-
-                    if (diff <= 180 && diff > 178 && !cls.isConfirmed && !cls.isCancelled && !cls.isRescheduled) {
-                        if (!alertedClasses.current.has(cls.id)) {
-                            alertedClasses.current.add(cls.id);
-                            if (Notification.permission === "granted") {
-                                new Notification("Lecture Action Required", { 
-                                    body: `${cls.course} for Sec ${cls.section} starts in 3 hours. Please Confirm or Cancel.`, 
-                                    icon: "/icon.png" 
-                                });
-                            }
-                            supabase.from('notifications').insert([{ 
-                                message: `⚠️ Teacher Reminder: ${cls.course} (Sec ${cls.section}) is pending confirmation.` 
-                            }]).then();
+                for(let i = startIndex; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length >= 2) {
+                        const roll = row[0].trim();
+                        const name = row[1].trim();
+                        if (roll && name) {
+                            payloads.push({ student_name: name, roll_number: roll, semester: profile.semester, section: profile.section });
                         }
                     }
                 }
-            });
-        }, 60000); 
 
-        return () => clearInterval(interval);
-    }, [schedule, session]);
-
-    // --- REALTIME LISTENER ---
-    useEffect(() => {
-        if (!profile || schedule.length === 0) return;
-
-        const channel = supabase
-            .channel('teacher-updates')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-                const newMsg = payload.new.message;
-                const isRelevant = schedule.some(cls => newMsg.includes(cls.course) && newMsg.includes(cls.section));
-                
-                if (isRelevant && Notification.permission === "granted") {
-                    new Notification("IUB Schedule Alert", { body: newMsg, icon: "/icon.png" });
+                if (payloads.length > 0) {
+                    const { error } = await supabase.from('class_roster').insert(payloads);
+                    if (error) alert("Error importing: " + error.message);
+                    else {
+                        alert(`Successfully imported ${payloads.length} students!`);
+                        fetchProfileAndSchedule(session.user.id);
+                    }
+                } else {
+                    alert("No valid data found in CSV.");
                 }
-            }).subscribe();
-
-        return () => { supabase.removeChannel(channel); };
-    }, [profile, schedule]);
-
-    // --- PWA PERMISSION ACTIONS ---
-    const handleInstallClick = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') setDeferredPrompt(null);
-        }
+            } catch (err) {
+                alert("Failed to parse CSV.");
+            }
+            e.target.value = null; // reset input
+        };
+        reader.readAsText(file);
     };
 
-    const forceNotificationPermission = async () => {
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
-            setShowNotifBanner(false);
-            new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
-        }
-    };
-
-    // ==========================================
-    // --- LECTURE ACTIONS (WITH ERROR HANDLING) ---
-    // ==========================================
-    const handleConfirmClass = async (classId, courseName, section) => {
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false, isRescheduled: false } : c));
-        
+    // --- SCHEDULE LOGIC ---
+    const handleConfirmClass = async (e, classId, courseName) => {
+        e.stopPropagation(); 
         const today = new Date().toLocaleDateString('en-CA');
-        const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
-        }]);
-
-        if (error) {
-            showToast("Failed to update: " + error.message, "error");
-        } else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.` }]);
-            if(notifError) showToast("Updated, but notification failed: " + notifError.message, "error");
-            else showToast("Class confirmed & students notified!", "success");
-        }
-        fetchProfileAndSchedule(profile.name); 
+        await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id }]);
+        await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.` }]);
+        fetchProfileAndSchedule(session.user.id); 
     };
 
-    const handleCancelClass = async (classId, courseName, section) => {
-        const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
-        if (!confirmCancel) return;
-
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false, isRescheduled: false } : c));
-        
+    const handleCancelClass = async (e, classId, courseName) => {
+        e.stopPropagation();
+        if (!window.confirm(`Are you sure you want to CANCEL ${courseName}?`)) return;
         const today = new Date().toLocaleDateString('en-CA');
-        const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
-        }]);
-
-        if (error) {
-            showToast("Failed to cancel: " + error.message, "error");
-        } else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.` }]);
-            if(notifError) showToast("Cancelled, but notification failed: " + notifError.message, "error");
-            else showToast("Class cancelled & students notified!", "success");
-        }
-        fetchProfileAndSchedule(profile.name);
+        await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id }]);
+        await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` }]);
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    const handleUndoException = async (classId, actionType, courseName, section) => {
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
+    const handleUndoException = async (e, classId, actionType, courseName) => {
+        e.stopPropagation();
         const today = new Date().toLocaleDateString('en-CA');
-        
-        const { error } = await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
+        await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
 
-        if (error) {
-            showToast("Failed to undo: " + error.message, "error");
-        } else {
-            if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.`);
-            else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.`);
-            else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${section}%`);
-            
-            showToast("Action reversed successfully.", "success");
-        }
-        fetchProfileAndSchedule(profile.name);
+        if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`);
+        else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.`);
+        else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${profile.section}%`);
+
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    const openEditModal = (e, cls) => {
+        e.stopPropagation();
+        setEditingClass(cls);
+        setNewDate(new Date().toLocaleDateString('en-CA'));
+        setNewStartTime(convertTo12Hour(cls.start_time));
+        setNewEndTime(convertTo12Hour(cls.end_time));
+        setNewRoom(cls.room);
+        setIsEditModalOpen(true);
     };
 
     const submitReschedule = async (e) => {
         e.preventDefault();
-        const { error } = await supabase.from('schedule_exceptions').insert([{
+        await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: editingClass.id, exception_date: new Date().toLocaleDateString('en-CA'), status: 'rescheduled',
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
-
-        if (error) {
-            showToast("Failed to reschedule: " + error.message, "error");
-        } else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
-            if(notifError) showToast("Rescheduled, but notification failed.", "error");
-            else showToast(`Class rescheduled & students notified!`, "success");
-        }
-        setIsEditModalOpen(false); 
-        fetchProfileAndSchedule(profile.name);
-    };
-
-    // --- PERMANENT MODAL FUNCTIONS ---
-    const openEditModal = (cls) => {
-        setEditingClass(cls); setNewDate(new Date().toLocaleDateString('en-CA'));
-        setNewStartTime(convertTo12Hour(cls.start_time)); setNewEndTime(convertTo12Hour(cls.end_time));
-        setNewRoom(cls.room); setIsEditModalOpen(true);
+        await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
+        alert(`Class rescheduled!`);
+        setIsEditModalOpen(false);
+        fetchProfileAndSchedule(session.user.id);
     };
 
     const openBaseModal = (cls = null) => {
         if (cls) {
             setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
-            setIsManualCourse(!availableCourses.includes(cls.course)); setIsManualRoom(!availableRooms.includes(cls.room));
-            setIsManualSemester(!availableSemesters.includes(cls.semester)); setIsManualSection(!availableSections.includes(cls.section));
+            setIsManualCourse(!availableCourses.includes(cls.course)); setIsManualTeacher(!availableTeachers.includes(cls.teacher)); setIsManualRoom(!availableRooms.includes(cls.room));
         } else {
-            setBaseForm({ id: null, semester: '', section: '', course: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
-            setIsManualCourse(false); setIsManualRoom(false); setIsManualSemester(false); setIsManualSection(false);
+            setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
+            setIsManualCourse(false); setIsManualTeacher(false); setIsManualRoom(false);
         }
         setIsBaseModalOpen(true);
     };
@@ -506,181 +382,201 @@ export default function TeacherLoginAndDashboard() {
     const submitBaseSchedule = async (e) => {
         e.preventDefault();
         setIsBaseModalOpen(false); 
-        const payload = { 
-            course: baseForm.course, teacher: profile.name, room: baseForm.room, 
-            day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, 
-            semester: baseForm.semester, section: baseForm.section 
-        };
+        const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.semester, section: profile.section };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
-        await fetchProfileAndSchedule(profile.name);
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    const deleteBaseLecture = async (id, courseName, section) => {
-        if (!window.confirm(`Permanently delete ${courseName} (Sec ${section}) from your schedule? This cannot be undone.`)) return;
-        setBaseSchedule(prev => prev.filter(c => c.id !== id));
+    const deleteBaseLecture = async (id, courseName) => {
+        if (!window.confirm(`Permanently delete ${courseName}? This cannot be undone.`)) return;
         await supabase.from('base_schedule').delete().eq('id', id);
-        await fetchProfileAndSchedule(profile.name);
+        fetchProfileAndSchedule(session.user.id);
     };
 
-    if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading...</div>;
+    if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
+    if (!session) return null;
 
-    // ==========================================
-    // RENDER: AUTHENTICATION SCREEN
-    // ==========================================
-    if (!session) {
-        return (
-            <div style={{ background: '#002147', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif" }}>
-                
-                {/* CSS TOAST NOTIFICATION */}
-                <div style={{...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
-                    {toast.message}
-                </div>
+    const filteredWeeklySchedule = schedule.filter(cls => cls.day === selectedDay);
+    
+    // Compute current real-time details for ongoing class detection
+    const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
-                <div style={{ background: 'white', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-                    <h2 style={{ color: '#002147', textAlign: 'center', margin: '0 0 20px 0' }}>{isLoginMode ? 'Teacher Login' : 'Teacher Sign Up'}</h2>
-                    
-                    {authError && <div style={{ background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '5px', marginBottom: '15px', fontSize: '0.85rem' }}>{authError}</div>}
-
-                    <form onSubmit={isLoginMode ? handleLogin : handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        
-                        {!isLoginMode && (
-                            <>
-                                <select required value={signupName} onChange={(e) => setSignupName(e.target.value)} style={inputStyle}>
-                                    <option value="" disabled>-- Select Your Name --</option>
-                                    {availableTeacherNames.map(name => <option key={name} value={name}>{name}</option>)}
-                                </select>
-                                {availableTeacherNames.length === 0 && <span style={{ fontSize: '0.75rem', color: 'red' }}>All teachers currently in the record already have accounts.</span>}
-                                
-                                <input type="text" placeholder="CNIC Number" required value={cnic} onChange={(e) => setCnic(e.target.value)} style={inputStyle} />
-                                <input type="text" placeholder="Phone Number" required value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
-                            </>
-                        )}
-                        
-                        <input type="email" placeholder="Email Address" required value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
-                        <input type="password" placeholder="Password" required value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-                        
-                        <button type="submit" disabled={!isLoginMode && availableTeacherNames.length === 0} style={{ width: '100%', padding: '15px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', opacity: (!isLoginMode && availableTeacherNames.length === 0) ? 0.5 : 1 }}>
-                            {isLoginMode ? 'Login' : 'Sign Up'}
-                        </button>
-                    </form>
-
-                    {/* NEW: RESEND EMAIL UI */}
-                    {isLoginMode && unverifiedEmail && (
-                        <div style={{ marginTop: '15px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center', fontSize: '0.85rem' }}>
-                            <p style={{ margin: '0 0 10px 0', color: '#555', fontWeight: 'bold' }}>Didn't receive the email?</p>
-                            <button 
-                                onClick={handleResendEmail} 
-                                disabled={resendTimer > 0} 
-                                style={{ width: '100%', background: resendTimer > 0 ? '#ccc' : '#002147', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: resendTimer > 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-                                {resendTimer > 0 ? `Resend available in ${resendTimer}s` : 'Resend Verification Email'}
-                            </button>
-                        </div>
-                    )}
-
-                    <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem' }}>
-                        {isLoginMode ? "Don't have an account? " : "Already have an account? "}
-                        <span onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(''); }} style={{ color: '#007bff', cursor: 'pointer', fontWeight: 'bold' }}>
-                            {isLoginMode ? 'Sign Up' : 'Login'}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // ==========================================
-    // RENDER: TEACHER DASHBOARD
-    // ==========================================
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
-          <Head>
-            <title>Teacher Dashboard | IUB</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
-            {/* ADD THESE TWO LINES */}
-            <link rel="manifest" href="/manifest.json" />
-            <meta name="theme-color" content="#002147" />
-        </Head>
-
-            {/* DASHBOARD CSS TOAST */}
-            <div style={{...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
-                {toast.message}
-            </div>
+            <Head>
+                <title>CR Dashboard | IUB</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+            </Head>
 
             <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>👨‍🏫 Teacher Portal</div>
+                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>🔔 Notifications</a>
                     <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
                 </div>
             </header>
 
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
                 
-                {/* --- PWA & NOTIF BANNERS --- */}
-                {deferredPrompt && (
-                    <div style={{ background: '#17a2b8', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                        <div><b>Install App 📱</b><br/><span style={{ opacity: 0.9 }}>Add IUB Assistant to your home screen for better performance.</span></div>
-                        <button onClick={handleInstallClick} style={{ background: '#fff', color: '#17a2b8', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Install</button>
+                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                        <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
+                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                     </div>
-                )}
-                {showNotifBanner && (
-                    <div style={{ background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900' }}>
-                        <div><b>Stay Updated! 🔔</b><br/><span style={{ opacity: 0.9 }}>Allow notifications to get instant lecture reminders.</span></div>
-                        <button onClick={forceNotificationPermission} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Enable</button>
+                    <div style={{ background: '#f8f9fa', padding: '10px 20px', borderRadius: '8px', textAlign: 'center', marginTop: '10px' }}>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Overall Attendance</p>
+                        <h3 style={{ margin: '5px 0 0 0', color: '#28a745', fontSize: '1.8rem' }}>{monthlyAttendance}</h3>
                     </div>
-                )}
-
-                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900' }}>
-                    <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.name}</h2>
-                    <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Manage your daily lectures and notify your classes instantly.</p>
                 </div>
 
+                {/* TABS */}
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                    <button onClick={() => setActiveTab('weekly')} style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
-                        📅 Today / Weekly
-                    </button>
-                    <button onClick={() => setActiveTab('permanent')} style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
-                        🏛️ Base Schedule
-                    </button>
-                    <button onClick={() => setActiveTab('attendance')} style={{ flex: 1, padding: '12px', background: activeTab === 'attendance' ? '#002147' : '#ddd', color: activeTab === 'attendance' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s', position: 'relative' }}>
-                        📝 Approvals
-                        {pendingAttendances.length > 0 && (
-                            <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem' }}>{pendingAttendances.length}</span>
-                        )}
-                    </button>
+                    <button onClick={() => setActiveTab('weekly')} style={tabStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>
+                    <button onClick={() => setActiveTab('permanent')} style={tabStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>
+                    <button onClick={() => setActiveTab('students')} style={tabStyle(activeTab === 'students')}>👥 Manage Students</button>
+                    <button onClick={() => setActiveTab('attendance')} style={tabStyle(activeTab === 'attendance')}>📝 Attendance</button>
                 </div>
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
                     <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Classes (Temp Actions)</h3>
-                        {schedule.length === 0 ? <p>No classes found assigned to you.</p> : (
-                            schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                                <div key={cls.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none', opacity: cls.isCancelled ? 0.6 : 1 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '20px', paddingBottom: '10px', scrollbarWidth: 'none' }}>
+                            {days.map(day => (
+                                <button key={day} onClick={() => setSelectedDay(day)}
+                                    style={{ 
+                                        padding: '10px 20px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
+                                        background: selectedDay === day ? '#002147' : '#e9ecef', color: selectedDay === day ? '#F2A900' : '#495057', boxShadow: selectedDay === day ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
+                                    }}>
+                                    {day}
+                                </button>
+                            ))}
+                        </div>
+                        
+                        {filteredWeeklySchedule.length === 0 ? (
+                            <p style={{ textAlign: 'center', padding: '20px', background: 'white', borderRadius: '8px' }}>No classes scheduled for {selectedDay}.</p>
+                        ) : (
+                            filteredWeeklySchedule.map((cls) => (
+                                <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
+                                     style={{ 
+                                        background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', transition: '0.2s',
+                                        borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid transparent', opacity: cls.isCancelled ? 0.6 : 1 
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {cls.section} ({cls.semester}) | Room {cls.room}</div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
+                                                {cls.course}
+                                            </div>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                            
+                                            {/* ATTENDANCE BADGE */}
+                                            {cls.attendanceSession && (
+                                                <div style={{ display: 'inline-block', marginTop: '5px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', 
+                                                    background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
+                                                    color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
+                                                    {cls.attendanceSession.status === 'approved' ? '✓ Attendance Approved' : '⏳ Attendance Pending'}
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
                                             <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
-                                    {cls.isRescheduled && <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})</div>}
-                                    {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>✅ Confirmed to be Held</div>}
-                                    
-                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        {cls.isCancelled ? <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course, cls.section)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button> : cls.isConfirmed ? <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course, cls.section)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={() => handleUndoException(cls.id, 'rescheduled', cls.course, cls.section)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button> : (
-                                            <>
-                                                <button onClick={() => handleConfirmClass(cls.id, cls.course, cls.section)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                                <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Modify Time/Room</button>
-                                                <button onClick={() => handleCancelClass(cls.id, cls.course, cls.section)} style={btnStyle('#dc3545')}>❌ Cancel Lecture</button>
-                                            </>
-                                        )}
-                                    </div>
+
+                                    {/* EXPANDED CONTENT (No Attendance Here) */}
+                                    {expandedLectureId === cls.id && (
+                                        <div style={{ marginTop: '15px', animation: 'fadeIn 0.3s ease-in-out' }}>
+                                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                                {cls.isCancelled ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
+                                                ) : cls.isConfirmed ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
+                                                ) : cls.isRescheduled ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button>
+                                                ) : (
+                                                    <>
+                                                        <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                                        <button onClick={(e) => openEditModal(e, cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
+                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))
+                        )}
+                    </div>
+                )}
+
+                {/* ================= ATTENDANCE TAB ================= */}
+                {activeTab === 'attendance' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                        {attendanceStats.length === 0 ? <p style={{textAlign: 'center', width: '100%'}}>No subjects found.</p> : (
+                            attendanceStats.map(stat => {
+                                // Real-Time Ongoing Class Check
+                                const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
+                                let isOngoing = false;
+                                let canEdit = false;
+                                let todaySession = null;
+
+                                if (todayClass) {
+                                    const startMins = parseTime(todayClass.start_time);
+                                    const endMins = parseTime(todayClass.end_time);
+                                    isOngoing = currentMins >= startMins && currentMins <= endMins;
+                                    todaySession = todayClass.attendanceSession;
+                                    
+                                    if (todaySession) {
+                                        const sessionTime = new Date(todaySession.created_at).getTime();
+                                        const now = new Date().getTime();
+                                        const diffMins = (now - sessionTime) / 60000;
+                                        // Editable within 30 mins and not yet approved by teacher
+                                        if (diffMins <= 30 && todaySession.status === 'pending') {
+                                            canEdit = true;
+                                        }
+                                    }
+                                }
+
+                                return (
+                                    <div key={stat.subject} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #002147' }}>
+                                        <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
+                                        
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                                            <div>
+                                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Lectures</p>
+                                                <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>{stat.totalConducted}</p>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Attendance</p>
+                                                <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem', color: stat.percentage > 75 ? '#28a745' : '#dc3545' }}>{stat.percentage}%</p>
+                                            </div>
+                                        </div>
+
+                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
+                                            📥 Download CSV
+                                        </button>
+
+                                        {/* DYNAMIC ATTENDANCE BUTTON */}
+                                        {todayClass && isOngoing && !todaySession && (
+                                            <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' }}>
+                                                📝 Mark Attendance (Ongoing)
+                                            </button>
+                                        )}
+                                        {todaySession && canEdit && (
+                                            <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                ✏️ Edit Attendance (Time Remaining)
+                                            </button>
+                                        )}
+                                        {todaySession && !canEdit && (
+                                            <button disabled style={{ width: '100%', padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'not-allowed', opacity: 0.8 }}>
+                                                🔒 Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending Teacher'})
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })
                         )}
                     </div>
                 )}
@@ -688,14 +584,13 @@ export default function TeacherLoginAndDashboard() {
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
                 {activeTab === 'permanent' && (
                     <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Permanent Schedule</h3>
                         {baseSchedule.length === 0 ? <p>No base schedule found.</p> : (
                             baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
                                 <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Sec: {cls.section} | Sem: {cls.semester} | Room: {cls.room}</div>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
@@ -704,66 +599,88 @@ export default function TeacherLoginAndDashboard() {
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                         <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8')}>✏️ Edit Lecture</button>
-                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course, cls.section)} style={btnStyle('#dc3545')}>🗑️ Delete Lecture</button>
+                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course)} style={btnStyle('#dc3545')}>🗑️ Delete Lecture</button>
                                     </div>
                                 </div>
                             ))
                         )}
-                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>➕ Add New Lecture</button>
+                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>➕ Add New Lecture</button>
                     </div>
                 )}
 
-                {/* ================= ATTENDANCE APPROVALS TAB ================= */}
-                {activeTab === 'attendance' && (
-                    <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Pending Attendance Approvals</h3>
-                        {pendingAttendances.length === 0 ? <p style={{ background: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>No pending attendance to approve.</p> : (
-                            pendingAttendances.map(session => (
-                                <div key={session.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: '5px solid #f59e0b' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
-                                        <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{session.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {session.section} ({session.semester})</div>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900' }}>{session.session_date}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{session.presentCount} / {session.totalCount} Present</div>
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        <button onClick={() => handleApproveAttendance(session.id)} style={btnStyle('#28a745')}>✅ Approve</button>
-                                        <button onClick={() => {
-                                            // Format the lecture object for the AttendanceSheet component
-                                            const formattedLecture = { ...session.baseLecture, attendanceSession: session };
-                                            setActiveAttendanceLecture(formattedLecture);
-                                        }} style={btnStyle('#007bff')}>✏️ Edit</button>
-                                    </div>
-                                </div>
-                            ))
+                {/* ================= MANAGE STUDENTS TAB ================= */}
+                {activeTab === 'students' && (
+                    <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0, color: '#002147' }}>Add New Student</h3>
+                            {/* CSV UPLOAD BUTTON */}
+                            <div>
+                                <input 
+                                    type="file" 
+                                    accept=".csv" 
+                                    ref={fileInputRef} 
+                                    onChange={handleCSVUpload} 
+                                    style={{ display: 'none' }} 
+                                />
+                                <button onClick={() => fileInputRef.current.click()} style={{ padding: '8px 15px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                    📥 Import CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '25px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
+                            <input type="text" placeholder="Roll Number (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...inputStyle, flex: 1, minWidth: '150px'}} />
+                            <input type="text" placeholder="Student Full Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...inputStyle, flex: 2, minWidth: '200px'}} />
+                            <button type="submit" style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>➕ Add</button>
+                        </form>
+
+                        <h3 style={{ color: '#002147' }}>Class Roster ({roster.length} Students)</h3>
+                        {roster.length === 0 ? <p>No students added yet.</p> : (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                                            <th style={{ padding: '12px' }}>Roll Number</th>
+                                            <th style={{ padding: '12px' }}>Name</th>
+                                            <th style={{ padding: '12px', textAlign: 'right' }}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {roster.map(student => (
+                                            <tr key={student.id} style={{ borderBottom: '1px solid #eee' }}>
+                                                <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.roll_number}</td>
+                                                <td style={{ padding: '12px' }}>{student.student_name}</td>
+                                                <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                    <button onClick={() => handleDeleteStudent(student.id)} style={{ padding: '5px 10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* ATTENDANCE SHEET MODAL */}
+            {/* MODALS */}
             {activeAttendanceLecture && (
                 <AttendanceSheet 
                     lecture={activeAttendanceLecture} 
-                    // Mock profile to ensure AttendanceSheet fetches the right class roster based on semester/section
-                    profile={{ id: profile.id, semester: activeAttendanceLecture.semester, section: activeAttendanceLecture.section }}
+                    profile={profile}
                     existingSession={activeAttendanceLecture.attendanceSession}
                     onClose={(didUpdate) => {
                         setActiveAttendanceLecture(null);
-                        if (didUpdate) fetchProfileAndSchedule(profile.name);
+                        if (didUpdate) fetchProfileAndSchedule(session.user.id);
                     }} 
                 />
             )}
 
-            {/* TEMP EXCEPTION EDIT MODAL */}
+            {/* TEMP EXCEPTION MODAL */}
             {isEditModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
-                        <h3 style={{ marginTop: 0 }}>Modify Lecture Time</h3>
+                        <h3 style={{ marginTop: 0 }}>Reschedule Class (Temp)</h3>
                         <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -775,32 +692,25 @@ export default function TeacherLoginAndDashboard() {
                             </select>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* PERMANENT BASE SCHEDULE MODAL */}
+            {/* BASE MODAL */}
             {isBaseModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box', overflowY: 'auto' }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
+                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
                         <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {isManualSemester ? <input type="text" placeholder="Semester (e.g. 1st)..." required value={baseForm.semester} onChange={(e) => setBaseForm({...baseForm, semester: e.target.value})} style={inputStyle} /> : <select required value={baseForm.semester} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSemester(true); setBaseForm({...baseForm, semester: ''}); } else setBaseForm({...baseForm, semester: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Semester --</option>{availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            {isManualSection ? <input type="text" placeholder="Section (e.g. A)..." required value={baseForm.section} onChange={(e) => setBaseForm({...baseForm, section: e.target.value})} style={inputStyle} /> : <select required value={baseForm.section} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSection(true); setBaseForm({...baseForm, section: ''}); } else setBaseForm({...baseForm, section: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Section --</option>{availableSections.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} /> : <select required value={baseForm.course} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } else setBaseForm({...baseForm, course: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Subject --</option>{availableCourses.map(c => <option key={c} value={c}>{c}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            {isManualRoom ? <input type="text" placeholder="Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } else setBaseForm({...baseForm, room: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualTeacher ? <input type="text" placeholder="Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} /> : <select required value={baseForm.teacher} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); } else setBaseForm({...baseForm, teacher: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Teacher --</option>{availableTeachers.map(t => <option key={t} value={t}>{t}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } else setBaseForm({...baseForm, room: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
-                            </div>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}><select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select><select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                            <div style={{ display: 'flex', gap: '10px' }}><button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button><button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button></div>
                         </form>
                     </div>
                 </div>
@@ -809,6 +719,8 @@ export default function TeacherLoginAndDashboard() {
     );
 }
 
-const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' });
-const inputStyle = { width: '100%', padding: '12px', border: '2px solid #dee2e6', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', boxSizing: 'border-box' };
-const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.95rem' };
+// Styling Constants
+const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
+const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `2px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
+const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
+const tabStyle = (isActive) => ({ flex: 1, padding: '12px', background: isActive ? '#002147' : '#ddd', color: isActive ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' });
