@@ -1,30 +1,45 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function AttendanceSheet({ lecture, onClose, profile }) {
+export default function AttendanceSheet({ lecture, onClose, profile, existingSession }) {
     const [students, setStudents] = useState([]);
     const [attendance, setAttendance] = useState({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchStudents();
+        fetchStudentsAndRecords();
     }, []);
 
-    const fetchStudents = async () => {
-        // Fetch students matching the CR's semester and section
-        const { data, error } = await supabase
+    const fetchStudentsAndRecords = async () => {
+        // 1. Fetch Students
+        const { data: rosterData } = await supabase
             .from('class_roster')
             .select('*')
             .eq('semester', profile.semester)
             .eq('section', profile.section)
             .order('roll_number', { ascending: true });
 
-        if (data) {
-            setStudents(data);
-            // Default everyone to 'Present'
-            const defaultAtt = {};
-            data.forEach(s => defaultAtt[s.id] = 'Present');
-            setAttendance(defaultAtt);
+        if (rosterData) {
+            setStudents(rosterData);
+            const initialAtt = {};
+
+            // 2. If editing, fetch existing records
+            if (existingSession) {
+                const { data: recordsData } = await supabase
+                    .from('attendance_records')
+                    .select('*')
+                    .eq('session_id', existingSession.id);
+                
+                if (recordsData) {
+                    recordsData.forEach(record => {
+                        initialAtt[record.student_id] = record.status;
+                    });
+                }
+            } else {
+                // Default to Present if new
+                rosterData.forEach(s => initialAtt[s.id] = 'Present');
+            }
+            setAttendance(initialAtt);
         }
         setLoading(false);
     };
@@ -35,27 +50,33 @@ export default function AttendanceSheet({ lecture, onClose, profile }) {
 
     const handleSubmit = async () => {
         const today = new Date().toLocaleDateString('en-CA');
-        
-        // 1. Create the session
-        const { data: sessionData, error: sessionError } = await supabase
-            .from('attendance_sessions')
-            .insert([{ 
-                base_schedule_id: lecture.id, 
-                session_date: today,
-                submitted_by: profile.id, // CR's ID
-                status: 'pending'
-            }])
-            .select()
-            .single();
+        let sessionId = existingSession?.id;
 
-        if (sessionError) {
-            alert('Error creating session: ' + sessionError.message);
-            return;
+        // 1. Create or Update Session
+        if (!sessionId) {
+            const { data: sessionData, error: sessionError } = await supabase
+                .from('attendance_sessions')
+                .insert([{ 
+                    base_schedule_id: lecture.id, 
+                    session_date: today,
+                    submitted_by: profile.id,
+                    status: 'pending'
+                }])
+                .select()
+                .single();
+
+            if (sessionError) return alert('Error creating session: ' + sessionError.message);
+            sessionId = sessionData.id;
         }
 
-        // 2. Insert records
+        // 2. Clear old records if editing (cleanest way to update bulk)
+        if (existingSession) {
+            await supabase.from('attendance_records').delete().eq('session_id', sessionId);
+        }
+
+        // 3. Insert new records
         const records = students.map(student => ({
-            session_id: sessionData.id,
+            session_id: sessionId,
             student_id: student.id,
             status: attendance[student.id]
         }));
@@ -63,8 +84,8 @@ export default function AttendanceSheet({ lecture, onClose, profile }) {
         const { error: recordsError } = await supabase.from('attendance_records').insert(records);
 
         if (!recordsError) {
-            alert('Attendance submitted for Teacher approval!');
-            onClose();
+            alert(existingSession ? 'Attendance Updated!' : 'Attendance submitted for Teacher approval!');
+            onClose(true); // pass true to trigger a UI refresh in parent
         } else {
             alert('Error submitting records.');
         }
@@ -74,12 +95,14 @@ export default function AttendanceSheet({ lecture, onClose, profile }) {
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '15px', boxSizing: 'border-box' }}>
             <div style={{ background: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '500px', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
-                    <h3 style={{ margin: 0, color: '#002147' }}>Mark Attendance: {lecture.course}</h3>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'red', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }}>X</button>
+                    <h3 style={{ margin: 0, color: '#002147' }}>
+                        {existingSession ? 'Edit Attendance' : 'Mark Attendance'}: {lecture.course}
+                    </h3>
+                    <button onClick={() => onClose(false)} style={{ background: 'none', border: 'none', color: 'red', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }}>X</button>
                 </div>
 
                 <div style={{ overflowY: 'auto', flexGrow: 1, paddingRight: '5px' }}>
-                    {loading ? <p>Loading roster...</p> : students.length === 0 ? <p>No students found in roster for this section.</p> : (
+                    {loading ? <p>Loading roster...</p> : students.length === 0 ? <p>No students found. Add them in the Manage Students tab.</p> : (
                         students.map((student) => (
                             <div key={student.id} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f9f9f9' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>{student.roll_number} - {student.student_name}</div>
@@ -106,7 +129,7 @@ export default function AttendanceSheet({ lecture, onClose, profile }) {
                 </div>
 
                 <button onClick={handleSubmit} style={{ width: '100%', padding: '15px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', marginTop: '15px' }}>
-                    Submit to Teacher
+                    {existingSession ? 'Update Attendance' : 'Submit to Teacher'}
                 </button>
             </div>
         </div>
