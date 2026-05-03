@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
-import AttendanceSheet from '../components/AttendanceSheet'; // <-- NEW IMPORT
+import AttendanceSheet from '../components/AttendanceSheet';
 
 export default function Dashboard() {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
     const [schedule, setSchedule] = useState([]); 
     const [baseSchedule, setBaseSchedule] = useState([]); 
+    const [roster, setRoster] = useState([]); // NEW: State for students
     const [loading, setLoading] = useState(true);
     
     // --- DROPDOWN STATES ---
@@ -21,22 +22,23 @@ export default function Dashboard() {
     const [isManualRoom, setIsManualRoom] = useState(false); 
 
     // --- TAB & UI STATES ---
-    const [activeTab, setActiveTab] = useState('weekly'); 
+    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly', 'permanent', 'students'
     
-    // NEW: Days filter state (Defaults to current day or MON)
     const [selectedDay, setSelectedDay] = useState(() => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
         return ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].includes(today) ? today : "MON";
     });
     
-    // NEW: Expandable lecture cards state
     const [expandedLectureId, setExpandedLectureId] = useState(null);
 
-    // NEW: Attendance States
+    // --- ATTENDANCE STATES ---
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
-    const [monthlyAttendance, setMonthlyAttendance] = useState("85%"); // Placeholder for DB calculation
+    const [monthlyAttendance, setMonthlyAttendance] = useState("85%"); 
 
-    // --- MODAL STATES FOR TEMP RESCHEDULE ---
+    // --- STUDENT MANAGEMENT STATE ---
+    const [newStudent, setNewStudent] = useState({ name: '', roll: '' });
+
+    // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
     const [newDate, setNewDate] = useState('');
@@ -44,7 +46,6 @@ export default function Dashboard() {
     const [newEndTime, setNewEndTime] = useState('9:30 AM');
     const [newRoom, setNewRoom] = useState('');
 
-    // --- MODAL STATES FOR PERMANENT SCHEDULE ---
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
     const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
 
@@ -68,6 +69,20 @@ export default function Dashboard() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
+    // Helper: Check if current time is within Class End Time + 30 Mins
+    const isAttendanceEditable = (endTimeStr) => {
+        if (!endTimeStr) return false;
+        const now = new Date();
+        const [hours, minutes] = endTimeStr.split(':').map(Number);
+        
+        const classEndTime = new Date();
+        classEndTime.setHours(hours, minutes, 0, 0);
+        
+        // Add 30 minutes
+        const lockoutTime = new Date(classEndTime.getTime() + 30 * 60000);
+        return now <= lockoutTime;
+    };
+
     useEffect(() => {
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
@@ -84,18 +99,12 @@ export default function Dashboard() {
         if (!profile) return;
         const channel = supabase
             .channel('cr-realtime-updates')
-            .on('postgres_changes', 
-                { event: 'INSERT', schema: 'public', table: 'notifications' }, 
-                (payload) => {
-                    const newMsg = payload.new.message;
-                    if (newMsg.includes(profile.section)) {
-                        if (Notification.permission === "granted") {
-                            new Notification("IUB Update Alert", { body: newMsg, icon: "/icon.png" });
-                        }
-                    }
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
+                const newMsg = payload.new.message;
+                if (newMsg.includes(profile.section) && Notification.permission === "granted") {
+                    new Notification("IUB Update Alert", { body: newMsg, icon: "/icon.png" });
                 }
-            ).subscribe();
-
+            }).subscribe();
         return () => { supabase.removeChannel(channel); };
     }, [profile]);
 
@@ -104,27 +113,42 @@ export default function Dashboard() {
         setProfile(profileData);
 
         if (profileData) {
+            // 1. Fetch Roster
+            const { data: rosterData } = await supabase.from('class_roster').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('roll_number');
+            setRoster(rosterData || []);
+
+            // 2. Fetch Base Schedule
             const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
-            const { data: allData } = await supabase.from('base_schedule').select('room, course, teacher');
-            if (allData) {
-                setAvailableRooms([...new Set(allData.map(x => x.room))].filter(Boolean).sort());
-                setAvailableCourses([...new Set(allData.map(x => x.course))].filter(Boolean).sort());
-                setAvailableTeachers([...new Set(allData.map(x => x.teacher))].filter(Boolean).sort());
+            if (scheduleData) {
+                setAvailableRooms([...new Set(scheduleData.map(x => x.room))].filter(Boolean).sort());
+                setAvailableCourses([...new Set(scheduleData.map(x => x.course))].filter(Boolean).sort());
+                setAvailableTeachers([...new Set(scheduleData.map(x => x.teacher))].filter(Boolean).sort());
             }
 
             const today = new Date().toLocaleDateString('en-CA');
-            const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
+            
+            // 3. Fetch Exceptions & Attendance Sessions for TODAY
+            const [exceptionsRes, sessionsRes] = await Promise.all([
+                supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
+                supabase.from('attendance_sessions').select('*').eq('session_date', today)
+            ]);
+
+            const exceptionsData = exceptionsRes.data || [];
+            const sessionsData = sessionsRes.data || [];
 
             const mergedSchedule = (scheduleData || []).map(cls => {
-                const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
+                const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id);
+                const session = sessionsData.find(s => s.base_schedule_id === cls.id);
+                
                 return { 
                     ...cls, 
                     isCancelled: exception?.status === 'cancelled',
                     isRescheduled: exception?.status === 'rescheduled',
                     isConfirmed: exception?.status === 'confirmed',
-                    exceptionDetails: exception
+                    exceptionDetails: exception,
+                    attendanceSession: session // Attach today's session if it exists
                 };
             });
 
@@ -138,55 +162,51 @@ export default function Dashboard() {
         window.location.href = '/login';
     };
 
-    const handleConfirmClass = async (e, classId, courseName) => {
-        e.stopPropagation(); // Prevent card expansion
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false } : c));
-        
-        const today = new Date().toLocaleDateString('en-CA');
-        const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
+    // --- STUDENT MANAGEMENT LOGIC ---
+    const handleAddStudent = async (e) => {
+        e.preventDefault();
+        const { error } = await supabase.from('class_roster').insert([{
+            student_name: newStudent.name, roll_number: newStudent.roll, semester: profile.semester, section: profile.section
         }]);
-
         if (error) alert("Error: " + error.message);
-        else await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.` }]);
-        
+        else {
+            setNewStudent({ name: '', roll: '' });
+            fetchProfileAndSchedule(session.user.id);
+        }
+    };
+
+    const handleDeleteStudent = async (id) => {
+        if (!window.confirm("Remove this student?")) return;
+        await supabase.from('class_roster').delete().eq('id', id);
+        fetchProfileAndSchedule(session.user.id);
+    };
+
+    // --- SCHEDULE LOGIC ---
+    const handleConfirmClass = async (e, classId, courseName) => {
+        e.stopPropagation(); 
+        const today = new Date().toLocaleDateString('en-CA');
+        await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id }]);
+        await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.` }]);
         fetchProfileAndSchedule(session.user.id); 
     };
 
     const handleCancelClass = async (e, classId, courseName) => {
         e.stopPropagation();
-        const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
-        if (!confirmCancel) return;
-
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false } : c));
-
+        if (!window.confirm(`Are you sure you want to CANCEL ${courseName}?`)) return;
         const today = new Date().toLocaleDateString('en-CA');
-        const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
-        }]);
-
-        if (error) alert("Error: " + error.message);
-        else await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` }]);
-        
+        await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id }]);
+        await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.` }]);
         fetchProfileAndSchedule(session.user.id);
     };
 
     const handleUndoException = async (e, classId, actionType, courseName) => {
         e.stopPropagation();
-        setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
-
         const today = new Date().toLocaleDateString('en-CA');
-        const { error } = await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
+        await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
 
-        if (error) return alert("Error undoing action in DB.");
-
-        if (actionType === 'cancelled') {
-            await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`);
-        } else if (actionType === 'confirmed') {
-            await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.`);
-        } else if (actionType === 'rescheduled') {
-            await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${profile.section}%`);
-        }
+        if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section} is cancelled.`);
+        else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${profile.section} will be held as scheduled today.`);
+        else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${profile.section}%`);
 
         fetchProfileAndSchedule(session.user.id);
     };
@@ -203,16 +223,12 @@ export default function Dashboard() {
 
     const submitReschedule = async (e) => {
         e.preventDefault();
-        const { error } = await supabase.from('schedule_exceptions').insert([{
+        await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: editingClass.id, exception_date: new Date().toLocaleDateString('en-CA'), status: 'rescheduled',
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
-
-        if (error) return alert("Error: " + error.message);
-
         await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
-
-        alert(`Class rescheduled successfully!`);
+        alert(`Class rescheduled!`);
         setIsEditModalOpen(false);
         fetchProfileAndSchedule(session.user.id);
     };
@@ -220,9 +236,7 @@ export default function Dashboard() {
     const openBaseModal = (cls = null) => {
         if (cls) {
             setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
-            setIsManualCourse(!availableCourses.includes(cls.course));
-            setIsManualTeacher(!availableTeachers.includes(cls.teacher));
-            setIsManualRoom(!availableRooms.includes(cls.room));
+            setIsManualCourse(!availableCourses.includes(cls.course)); setIsManualTeacher(!availableTeachers.includes(cls.teacher)); setIsManualRoom(!availableRooms.includes(cls.room));
         } else {
             setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
             setIsManualCourse(false); setIsManualTeacher(false); setIsManualRoom(false);
@@ -233,22 +247,14 @@ export default function Dashboard() {
     const submitBaseSchedule = async (e) => {
         e.preventDefault();
         setIsBaseModalOpen(false); 
-        
-        const payload = { 
-            course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, 
-            day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, 
-            semester: profile.semester, section: profile.section 
-        };
-
+        const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.semester, section: profile.section };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
-        
         await fetchProfileAndSchedule(session.user.id);
     };
 
     const deleteBaseLecture = async (id, courseName) => {
-        if (!window.confirm(`Permanently delete ${courseName} from the base schedule? This cannot be undone.`)) return;
-        setBaseSchedule(prev => prev.filter(c => c.id !== id));
+        if (!window.confirm(`Permanently delete ${courseName}? This cannot be undone.`)) return;
         await supabase.from('base_schedule').delete().eq('id', id);
         await fetchProfileAndSchedule(session.user.id);
     };
@@ -256,7 +262,6 @@ export default function Dashboard() {
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
     if (!session) return null;
 
-    // Filter weekly schedule based on selected day
     const filteredWeeklySchedule = schedule.filter(cls => cls.day === selectedDay);
 
     return (
@@ -276,46 +281,34 @@ export default function Dashboard() {
 
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
                 
-                {/* Profile Widget */}
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                         <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
                         <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                     </div>
-                    
-                    {/* NEW: ATTENDANCE WIDGET */}
                     <div style={{ background: '#f8f9fa', padding: '10px 20px', borderRadius: '8px', textAlign: 'center', marginTop: '10px' }}>
                         <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Last Month Attendance</p>
                         <h3 style={{ margin: '5px 0 0 0', color: '#28a745', fontSize: '1.8rem' }}>{monthlyAttendance}</h3>
                     </div>
                 </div>
 
-                {/* NAVIGATION TABS */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                    <button onClick={() => setActiveTab('weekly')} style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
-                        📅 Weekly Timetable
-                    </button>
-                    <button onClick={() => setActiveTab('permanent')} style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
-                        🏛️ Base Schedule
-                    </button>
+                {/* TABS */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                    <button onClick={() => setActiveTab('weekly')} style={tabStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>
+                    <button onClick={() => setActiveTab('permanent')} style={tabStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>
+                    <button onClick={() => setActiveTab('students')} style={tabStyle(activeTab === 'students')}>👥 Manage Students</button>
                 </div>
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
                     <div>
-                        {/* NEW: DAYS FILTER */}
                         <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '20px', paddingBottom: '10px', scrollbarWidth: 'none' }}>
                             {days.map(day => (
-                                <button
-                                    key={day}
-                                    onClick={() => setSelectedDay(day)}
+                                <button key={day} onClick={() => setSelectedDay(day)}
                                     style={{ 
                                         padding: '10px 20px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
-                                        background: selectedDay === day ? '#002147' : '#e9ecef', 
-                                        color: selectedDay === day ? '#F2A900' : '#495057',
-                                        boxShadow: selectedDay === day ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
-                                    }}
-                                >
+                                        background: selectedDay === day ? '#002147' : '#e9ecef', color: selectedDay === day ? '#F2A900' : '#495057', boxShadow: selectedDay === day ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
+                                    }}>
                                     {day}
                                 </button>
                             ))}
@@ -325,13 +318,10 @@ export default function Dashboard() {
                             <p style={{ textAlign: 'center', padding: '20px', background: 'white', borderRadius: '8px' }}>No classes scheduled for {selectedDay}.</p>
                         ) : (
                             filteredWeeklySchedule.map((cls) => (
-                                // EXPANDABLE LECTURE CARD
-                                <div key={cls.id} 
-                                     onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
+                                <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
                                      style={{ 
                                         background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', transition: '0.2s',
-                                        borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid transparent',
-                                        opacity: cls.isCancelled ? 0.6 : 1 
+                                        borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid transparent', opacity: cls.isCancelled ? 0.6 : 1 
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
@@ -339,6 +329,15 @@ export default function Dashboard() {
                                                 {cls.course}
                                             </div>
                                             <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                            
+                                            {/* ATTENDANCE BADGE */}
+                                            {cls.attendanceSession && (
+                                                <div style={{ display: 'inline-block', marginTop: '5px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', 
+                                                    background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
+                                                    color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
+                                                    {cls.attendanceSession.status === 'approved' ? '✓ Attendance Approved' : '⏳ Attendance Pending'}
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
@@ -346,36 +345,31 @@ export default function Dashboard() {
                                         </div>
                                     </div>
 
-                                    {cls.isRescheduled && (
-                                        <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginTop: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                                            🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})
-                                        </div>
-                                    )}
-
-                                    {cls.isConfirmed && (
-                                        <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginTop: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                                            ✅ Confirmed for Today
-                                        </div>
-                                    )}
-
-                                    {/* EXPANDED CONTENT: Contacts, Attendance, and Actions */}
+                                    {/* EXPANDED CONTENT */}
                                     {expandedLectureId === cls.id && (
                                         <div style={{ marginTop: '15px', animation: 'fadeIn 0.3s ease-in-out' }}>
                                             
-                                            {/* NEW: Contact & Attendance Buttons */}
-                                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '15px', background: '#f8f9fa', padding: '10px', borderRadius: '5px' }}>
-                                                <button onClick={(e) => { e.stopPropagation(); window.location.href=`mailto:teacher@example.com`; }} style={contactBtnStyle('#002147')}>
-                                                    ✉️ Contact {cls.teacher}
-                                                </button>
-                                                <button onClick={(e) => { e.stopPropagation(); window.location.href=`mailto:cr@example.com`; }} style={contactBtnStyle('#6c757d')}>
-                                                    ✉️ Contact {profile?.first_name}
-                                                </button>
-                                                <button onClick={(e) => { e.stopPropagation(); setActiveAttendanceLecture(cls); }} style={{...contactBtnStyle('#28a745'), flex: '1 1 100%'}}>
-                                                    📝 Mark Attendance
-                                                </button>
+                                            {/* ATTENDANCE BUTTONS */}
+                                            <div style={{ marginBottom: '15px', background: '#f8f9fa', padding: '10px', borderRadius: '5px' }}>
+                                                {!cls.attendanceSession ? (
+                                                    <button onClick={(e) => { e.stopPropagation(); setActiveAttendanceLecture(cls); }} style={{...contactBtnStyle('#28a745'), width: '100%'}}>
+                                                        📝 Mark Attendance
+                                                    </button>
+                                                ) : (
+                                                    // Time-Lock Logic check
+                                                    isAttendanceEditable(cls.end_time) && cls.attendanceSession.status === 'pending' ? (
+                                                        <button onClick={(e) => { e.stopPropagation(); setActiveAttendanceLecture(cls); }} style={{...contactBtnStyle('#007bff'), width: '100%'}}>
+                                                            ✏️ Edit Attendance (Time Remaining)
+                                                        </button>
+                                                    ) : (
+                                                        <button disabled style={{...contactBtnStyle('#6c757d'), width: '100%', cursor: 'not-allowed', opacity: 0.7}}>
+                                                            🔒 Edit Window Closed / Approved
+                                                        </button>
+                                                    )
+                                                )}
                                             </div>
 
-                                            {/* EXISTING ACTIONS */}
+                                            {/* ACTIONS */}
                                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                                 {cls.isCancelled ? (
                                                     <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
@@ -402,9 +396,7 @@ export default function Dashboard() {
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
                 {activeTab === 'permanent' && (
                     <div>
-                        {baseSchedule.length === 0 ? (
-                            <p>No base schedule found.</p>
-                        ) : (
+                        {baseSchedule.length === 0 ? <p>No base schedule found.</p> : (
                             baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
                                 <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
@@ -424,24 +416,63 @@ export default function Dashboard() {
                                 </div>
                             ))
                         )}
-                        
-                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>
-                            ➕ Add New Lecture
-                        </button>
+                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>➕ Add New Lecture</button>
+                    </div>
+                )}
+
+                {/* ================= MANAGE STUDENTS TAB ================= */}
+                {activeTab === 'students' && (
+                    <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147' }}>Add New Student</h3>
+                        <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '25px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
+                            <input type="text" placeholder="Roll Number (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...inputStyle, flex: 1, minWidth: '150px'}} />
+                            <input type="text" placeholder="Student Full Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...inputStyle, flex: 2, minWidth: '200px'}} />
+                            <button type="submit" style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>➕ Add</button>
+                        </form>
+
+                        <h3 style={{ color: '#002147' }}>Class Roster ({roster.length} Students)</h3>
+                        {roster.length === 0 ? <p>No students added yet.</p> : (
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                                            <th style={{ padding: '12px' }}>Roll Number</th>
+                                            <th style={{ padding: '12px' }}>Name</th>
+                                            <th style={{ padding: '12px', textAlign: 'right' }}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {roster.map(student => (
+                                            <tr key={student.id} style={{ borderBottom: '1px solid #eee' }}>
+                                                <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.roll_number}</td>
+                                                <td style={{ padding: '12px' }}>{student.student_name}</td>
+                                                <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                    <button onClick={() => handleDeleteStudent(student.id)} style={{ padding: '5px 10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
-            {/* ATTENDANCE MODAL RENDERING */}
+            {/* MODALS */}
             {activeAttendanceLecture && (
                 <AttendanceSheet 
                     lecture={activeAttendanceLecture} 
                     profile={profile}
-                    onClose={() => setActiveAttendanceLecture(null)} 
+                    existingSession={activeAttendanceLecture.attendanceSession}
+                    onClose={(didUpdate) => {
+                        setActiveAttendanceLecture(null);
+                        if (didUpdate) fetchProfileAndSchedule(session.user.id);
+                    }} 
                 />
             )}
 
-            {/* TEMP EXCEPTION EDIT MODAL */}
+            {/* TEMP EXCEPTION MODAL */}
             {isEditModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
@@ -464,65 +495,18 @@ export default function Dashboard() {
                 </div>
             )}
 
-            {/* PERMANENT BASE SCHEDULE MODAL */}
+            {/* BASE MODAL */}
             {isBaseModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
                         <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            
-                            {isManualCourse ? (
-                                <input type="text" placeholder="Type Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} />
-                            ) : (
-                                <select required value={baseForm.course} onChange={(e) => {
-                                    if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); }
-                                    else setBaseForm({...baseForm, course: e.target.value});
-                                }} style={inputStyle}>
-                                    <option value="" disabled>-- Select Subject --</option>
-                                    {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
-                                    <option value="MANUAL">+ Add Manually</option>
-                                </select>
-                            )}
-
-                            {isManualTeacher ? (
-                                <input type="text" placeholder="Type Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} />
-                            ) : (
-                                <select required value={baseForm.teacher} onChange={(e) => {
-                                    if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); }
-                                    else setBaseForm({...baseForm, teacher: e.target.value});
-                                }} style={inputStyle}>
-                                    <option value="" disabled>-- Select Teacher --</option>
-                                    {availableTeachers.map(t => <option key={t} value={t}>{t}</option>)}
-                                    <option value="MANUAL">+ Add Manually</option>
-                                </select>
-                            )}
-                            
-                            {isManualRoom ? (
-                                <input type="text" placeholder="Type Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} />
-                            ) : (
-                                <select required value={baseForm.room} onChange={(e) => {
-                                    if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); }
-                                    else setBaseForm({...baseForm, room: e.target.value});
-                                }} style={inputStyle}>
-                                    <option value="" disabled>-- Select Room --</option>
-                                    {availableRooms.map(r => <option key={r} value={r}>{r}</option>)}
-                                    <option value="MANUAL">+ Add Manually</option>
-                                </select>
-                            )}
-                            
-                            <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>
-                                {days.map(d => <option key={d} value={d}>{d}</option>)}
-                            </select>
-
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                            </div>
-                            
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
-                            </div>
+                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} /> : <select required value={baseForm.course} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } else setBaseForm({...baseForm, course: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Subject --</option>{availableCourses.map(c => <option key={c} value={c}>{c}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualTeacher ? <input type="text" placeholder="Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} /> : <select required value={baseForm.teacher} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); } else setBaseForm({...baseForm, teacher: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Teacher --</option>{availableTeachers.map(t => <option key={t} value={t}>{t}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } else setBaseForm({...baseForm, room: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}><select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select><select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                            <div style={{ display: 'flex', gap: '10px' }}><button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button><button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button></div>
                         </form>
                     </div>
                 </div>
@@ -533,6 +517,6 @@ export default function Dashboard() {
 
 // Styling Constants
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
-const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `1px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
-const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', marginBottom: '5px' };
+const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `2px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
 const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
+const tabStyle = (isActive) => ({ flex: 1, padding: '12px', background: isActive ? '#002147' : '#ddd', color: isActive ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' });
