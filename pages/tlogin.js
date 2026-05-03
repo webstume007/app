@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
+import AttendanceSheet from '../components/AttendanceSheet'; // NEW IMPORT
 
 export default function TeacherLoginAndDashboard() {
     // --- AUTH STATES ---
@@ -45,6 +46,10 @@ export default function TeacherLoginAndDashboard() {
     const [isManualSection, setIsManualSection] = useState(false);
 
     const [activeTab, setActiveTab] = useState('weekly');
+
+    // --- ATTENDANCE APPROVAL STATES ---
+    const [pendingAttendances, setPendingAttendances] = useState([]);
+    const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -287,7 +292,48 @@ export default function TeacherLoginAndDashboard() {
         });
 
         setSchedule(mergedSchedule);
+
+        // --- NEW: FETCH PENDING ATTENDANCES ---
+        const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
+        if (baseIds.length > 0) {
+            const { data: sessionsData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds);
+            
+            if (sessionsData && sessionsData.length > 0) {
+                const sessionIds = sessionsData.map(s => s.id);
+                const { data: recordsData } = await supabase.from('attendance_records').select('*').in('session_id', sessionIds);
+                
+                const pending = sessionsData.filter(s => s.status === 'pending').map(session => {
+                    const base = scheduleData.find(b => b.id === session.base_schedule_id);
+                    const sessionRecords = recordsData ? recordsData.filter(r => r.session_id === session.id) : [];
+                    const presentCount = sessionRecords.filter(r => r.status === 'Present' || r.status === 'Leave').length;
+                    
+                    return {
+                        ...session,
+                        course: base?.course,
+                        section: base?.section,
+                        semester: base?.semester,
+                        day: base?.day,
+                        presentCount,
+                        totalCount: sessionRecords.length,
+                        baseLecture: base
+                    };
+                });
+                setPendingAttendances(pending);
+            }
+        }
+
         setLoading(false);
+    };
+
+    // --- ATTENDANCE ACTIONS ---
+    const handleApproveAttendance = async (sessionId) => {
+        const { error } = await supabase.from('attendance_sessions').update({ status: 'approved' }).eq('id', sessionId);
+        if (error) {
+            showToast("Failed to approve: " + error.message, "error");
+        } else {
+            showToast("Attendance approved successfully!", "success");
+            fetchProfileAndSchedule(profile.name);
+        }
     };
 
     // --- 3-HOUR REMINDER INTERVAL ---
@@ -589,12 +635,18 @@ export default function TeacherLoginAndDashboard() {
                     <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Manage your daily lectures and notify your classes instantly.</p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                     <button onClick={() => setActiveTab('weekly')} style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
                         📅 Today / Weekly
                     </button>
                     <button onClick={() => setActiveTab('permanent')} style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
                         🏛️ Base Schedule
+                    </button>
+                    <button onClick={() => setActiveTab('attendance')} style={{ flex: 1, padding: '12px', background: activeTab === 'attendance' ? '#002147' : '#ddd', color: activeTab === 'attendance' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s', position: 'relative' }}>
+                        📝 Approvals
+                        {pendingAttendances.length > 0 && (
+                            <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem' }}>{pendingAttendances.length}</span>
+                        )}
                     </button>
                 </div>
 
@@ -660,7 +712,52 @@ export default function TeacherLoginAndDashboard() {
                         <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>➕ Add New Lecture</button>
                     </div>
                 )}
+
+                {/* ================= ATTENDANCE APPROVALS TAB ================= */}
+                {activeTab === 'attendance' && (
+                    <div>
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Pending Attendance Approvals</h3>
+                        {pendingAttendances.length === 0 ? <p style={{ background: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>No pending attendance to approve.</p> : (
+                            pendingAttendances.map(session => (
+                                <div key={session.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: '5px solid #f59e0b' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                                        <div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{session.course}</div>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {session.section} ({session.semester})</div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ color: '#002147', fontWeight: '900' }}>{session.session_date}</div>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{session.presentCount} / {session.totalCount} Present</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        <button onClick={() => handleApproveAttendance(session.id)} style={btnStyle('#28a745')}>✅ Approve</button>
+                                        <button onClick={() => {
+                                            // Format the lecture object for the AttendanceSheet component
+                                            const formattedLecture = { ...session.baseLecture, attendanceSession: session };
+                                            setActiveAttendanceLecture(formattedLecture);
+                                        }} style={btnStyle('#007bff')}>✏️ Edit</button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* ATTENDANCE SHEET MODAL */}
+            {activeAttendanceLecture && (
+                <AttendanceSheet 
+                    lecture={activeAttendanceLecture} 
+                    // Mock profile to ensure AttendanceSheet fetches the right class roster based on semester/section
+                    profile={{ id: profile.id, semester: activeAttendanceLecture.semester, section: activeAttendanceLecture.section }}
+                    existingSession={activeAttendanceLecture.attendanceSession}
+                    onClose={(didUpdate) => {
+                        setActiveAttendanceLecture(null);
+                        if (didUpdate) fetchProfileAndSchedule(profile.name);
+                    }} 
+                />
+            )}
 
             {/* TEMP EXCEPTION EDIT MODAL */}
             {isEditModalOpen && (
