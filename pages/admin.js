@@ -15,7 +15,6 @@ export default function AdminDashboard() {
 
     // Global UI State
     const [activeTab, setActiveTab] = useState('overview'); 
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
 
@@ -50,7 +49,7 @@ export default function AdminDashboard() {
     const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
     const [attendanceEditData, setAttendanceEditData] = useState({ session: null, recordsMap: {}, students: [] });
 
-    // NEW: User Edit & Approve Modal State
+    // User Edit & Approve Modal State
     const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
     const [userEditForm, setUserEditForm] = useState({ id: null, type: 'cr', first_name: '', last_name: '', name: '', department: '', semester: '', section: '', phone: '', cnic: '' });
 
@@ -137,15 +136,21 @@ export default function AdminDashboard() {
     
     const approveUser = async (table, id) => {
         setActionLoading(true);
-        await supabase.from(table).update({ is_approved: true }).eq('id', id);
-        await fetchAllData();
+        // Added error catching to see why it was failing before
+        const { error } = await supabase.from(table).update({ is_approved: true }).eq('id', id);
+        
+        if (error) {
+            alert("Failed to approve user. Error: " + error.message);
+        } else {
+            await fetchAllData();
+        }
         setActionLoading(false);
     };
 
     const openEditUserModal = (user, type) => {
         setUserEditForm({
             id: user.id,
-            type: type, // 'cr' or 'teacher'
+            type: type, 
             first_name: user.first_name || '',
             last_name: user.last_name || '',
             name: user.name || '',
@@ -184,9 +189,13 @@ export default function AdminDashboard() {
             };
         }
 
-        await supabase.from(table).update(payload).eq('id', userEditForm.id);
-        setIsUserEditModalOpen(false);
-        await fetchAllData();
+        const { error } = await supabase.from(table).update(payload).eq('id', userEditForm.id);
+        if (error) {
+            alert("Error saving: " + error.message);
+        } else {
+            setIsUserEditModalOpen(false);
+            await fetchAllData();
+        }
         setActionLoading(false);
     };
 
@@ -395,92 +404,68 @@ export default function AdminDashboard() {
         setActionLoading(false);
     };
 
-
     // ==========================================
     // 7. RENDERERS
     // ==========================================
 
     if (!isAuthenticated) {
         return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', fontFamily: "'Inter', sans-serif" }}>
-                <Head><title>Admin Panel | IUB Assistant</title></Head>
-                <div style={{ background: 'white', padding: '40px', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-                        <h1 style={{ margin: 0, color: '#1e293b', fontSize: '1.8rem', fontWeight: 900 }}>Admin God-Mode</h1>
-                        <p style={{ margin: '5px 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>System Control Panel</p>
-                    </div>
-                    {authError && <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '12px', borderRadius: '6px', marginBottom: '20px', fontSize: '0.85rem', fontWeight: 'bold' }}>{authError}</div>}
+            <div style={{ background: '#002147', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif" }}>
+                <Head><title>Admin Login | IUB</title></Head>
+                <div style={{ background: 'white', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                    <h2 style={{ color: '#002147', textAlign: 'center', margin: '0 0 20px 0' }}>Admin God-Mode</h2>
+                    {authError && <div style={{ background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '5px', marginBottom: '15px', fontSize: '0.85rem' }}>{authError}</div>}
                     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <div>
-                            <label style={labelStyle}>Username</label>
-                            <input type="text" value={loginUsername} onChange={e=>setLoginUsername(e.target.value)} required style={inputStyle} />
-                        </div>
-                        <div>
-                            <label style={labelStyle}>Password</label>
-                            <input type="password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} required style={inputStyle} />
-                        </div>
-                        <button type="submit" style={{ ...btnPrimary, marginTop: '10px', padding: '14px' }}>Authorize Access</button>
+                        <input type="text" placeholder="Username" value={loginUsername} onChange={e=>setLoginUsername(e.target.value)} required style={inputStyle} />
+                        <input type="password" placeholder="Password" value={loginPassword} onChange={e=>setLoginPassword(e.target.value)} required style={inputStyle} />
+                        <button type="submit" style={{ width: '100%', padding: '15px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Authorize Access</button>
                     </form>
                 </div>
             </div>
         );
     }
 
-    if (loading) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: '#475569', fontWeight: 'bold' }}>Initializing Global Database...</div>;
+    if (loading) return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Roboto', sans-serif" }}>Initializing Global Database...</div>;
 
     const today = new Date().toLocaleDateString('en-CA');
     const todaysExceptions = exceptions.filter(e => e.exception_date === today);
     const classesCancelledToday = todaysExceptions.filter(e => e.status === 'cancelled').length;
     
-    // Count pending users for KPI
     const pendingCrsCount = crs.filter(c => !c.is_approved).length;
     const pendingTeachersCount = teachers.filter(t => !t.is_approved).length;
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
             <Head><title>Admin Dashboard | IUB Assistant</title></Head>
             
-            {/* MOBILE HAMBURGER */}
-            <button onClick={() => setIsSidebarOpen(true)} style={{ display: 'md-none', position: 'fixed', top: '15px', left: '15px', zIndex: 50, background: '#1e293b', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', cursor: 'pointer', ...mobileOnlyShow }}>
-                ☰ Menu
-            </button>
+            {/* IUB THEMED HEADER */}
+            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 IUB Admin Portal</div>
+                <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
+            </header>
 
-            {/* SIDEBAR */}
-            <aside style={{ ...sidebarStyle, transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
-                <div style={{ padding: '20px', borderBottom: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <h2 style={{ margin: 0, color: 'white', fontSize: '1.2rem', fontWeight: 900 }}>IUB Admin</h2>
-                        <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 'bold' }}>● SYSTEM ONLINE</span>
-                    </div>
-                    <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.5rem', cursor: 'pointer', ...mobileOnlyShow }}>×</button>
-                </div>
-
-                <nav style={{ padding: '20px 10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                    <button onClick={() => {setActiveTab('overview'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'overview')}>📊 System Overview</button>
-                    <button onClick={() => {setActiveTab('users'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'users')}>👥 User Management {(pendingCrsCount + pendingTeachersCount) > 0 && <span style={{background:'red', color:'white', padding:'2px 6px', borderRadius:'10px', fontSize:'0.7rem', marginLeft:'5px'}}>{pendingCrsCount + pendingTeachersCount}</span>}</button>
-                    <button onClick={() => {setActiveTab('schedule'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'schedule')}>📅 Schedule Master</button>
-                    <button onClick={() => {setActiveTab('records'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'records')}>📝 Academic Records</button>
-                    <button onClick={() => {setActiveTab('infrastructure'); setIsSidebarOpen(false);}} style={navItemStyle(activeTab === 'infrastructure')}>🚌 Infrastructure & Alerts</button>
-                </nav>
-
-                <div style={{ padding: '20px', marginTop: 'auto', borderTop: '1px solid #334155' }}>
-                    <button onClick={handleLogout} style={{ width: '100%', padding: '10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Log Out Session</button>
-                </div>
-            </aside>
-
-            {/* MAIN WORKSPACE */}
-            <main style={{ flex: 1, padding: '30px', marginLeft: 0, overflowY: 'auto', ...mainContentResponsive }}>
+            <div style={{ maxWidth: '1200px', margin: '20px auto', padding: '0 15px' }}>
                 
-                {/* LOADER OVERLAY */}
-                {actionLoading && <div style={loaderOverlay}>Processing Global Action...</div>}
+                {/* ACTION LOADER */}
+                {actionLoading && <div style={{ background: '#fff3cd', color: '#856404', padding: '10px', borderRadius: '8px', textAlign: 'center', fontWeight: 'bold', marginBottom: '20px' }}>Processing Database Request...</div>}
+
+                {/* IUB TABS */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                    <button onClick={() => setActiveTab('overview')} style={tabStyle(activeTab === 'overview')}>📊 Overview</button>
+                    <button onClick={() => setActiveTab('users')} style={tabStyle(activeTab === 'users')}>
+                        👥 Users {(pendingCrsCount + pendingTeachersCount) > 0 && <span style={redDot}>{pendingCrsCount + pendingTeachersCount}</span>}
+                    </button>
+                    <button onClick={() => setActiveTab('schedule')} style={tabStyle(activeTab === 'schedule')}>📅 Schedule</button>
+                    <button onClick={() => setActiveTab('records')} style={tabStyle(activeTab === 'records')}>📝 Records</button>
+                    <button onClick={() => setActiveTab('infrastructure')} style={tabStyle(activeTab === 'infrastructure')}>🚌 Infrastructure</button>
+                </div>
 
                 {/* ---------------------------------------------------- */}
                 {/* MODULE 1: OVERVIEW */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'overview' && (
-                    <div className="animate-fade-in">
-                        <h2 style={sectionHeader}>System Overview</h2>
-                        <div style={kpiGrid}>
+                    <div style={{ animation: 'fadeIn 0.3s' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
                             <div style={kpiCard}>
                                 <div style={kpiTitle}>Total Class Reps</div>
                                 <div style={kpiValue}>{crs.length}</div>
@@ -493,59 +478,56 @@ export default function AdminDashboard() {
                                 <div style={kpiTitle}>Base Lectures Tracked</div>
                                 <div style={kpiValue}>{baseSchedule.length}</div>
                             </div>
-                            <div style={{...kpiCard, borderBottom: '4px solid #ef4444'}}>
+                            <div style={{...kpiCard, borderLeft: '5px solid #dc3545'}}>
                                 <div style={kpiTitle}>Classes Cancelled Today</div>
-                                <div style={{...kpiValue, color: '#ef4444'}}>{classesCancelledToday}</div>
+                                <div style={{...kpiValue, color: '#dc3545'}}>{classesCancelledToday}</div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginTop: '30px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                             <div style={contentCard}>
-                                <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>Recent Exception Activity</h3>
+                                <h3 style={cardHeader}>Recent Exception Activity</h3>
                                 {exceptions.slice(0, 5).map(ex => {
                                     const base = baseSchedule.find(b => b.id === ex.base_schedule_id);
                                     return (
-                                        <div key={ex.id} style={{ padding: '10px', background: '#f8fafc', borderRadius: '6px', marginBottom: '10px', fontSize: '0.85rem' }}>
+                                        <div key={ex.id} style={{ padding: '10px', background: '#f8f9fa', borderRadius: '6px', marginBottom: '10px', fontSize: '0.85rem', borderLeft: '3px solid #002147' }}>
                                             <strong>{base?.course || 'Unknown'} (Sec {base?.section})</strong><br/>
-                                            <span style={{ color: ex.status === 'cancelled' ? '#ef4444' : '#3b82f6' }}>{ex.status.toUpperCase()}</span> on {ex.exception_date}
+                                            <span style={{ color: ex.status === 'cancelled' ? '#dc3545' : '#007bff' }}>{ex.status.toUpperCase()}</span> on {ex.exception_date}
                                         </div>
                                     );
                                 })}
                             </div>
                             <div style={contentCard}>
-                                <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>Pending Attendance Approvals</h3>
+                                <h3 style={cardHeader}>Pending Attendance Approvals</h3>
                                 {attendanceSessions.filter(s => s.status === 'pending').map(session => {
                                     const base = baseSchedule.find(b => b.id === session.base_schedule_id);
                                     return (
-                                        <div key={session.id} style={{ padding: '10px', background: '#fef9c3', borderLeft: '4px solid #eab308', borderRadius: '6px', marginBottom: '10px', fontSize: '0.85rem' }}>
+                                        <div key={session.id} style={{ padding: '10px', background: '#fff3cd', borderLeft: '4px solid #ffc107', borderRadius: '6px', marginBottom: '10px', fontSize: '0.85rem' }}>
                                             <strong>{base?.course || 'Unknown'} (Sec {base?.section})</strong><br/>
                                             Submitted on: {session.session_date} | Teacher: {session.teacher_profiles?.name}
                                         </div>
                                     );
                                 })}
-                                {attendanceSessions.filter(s => s.status === 'pending').length === 0 && <p style={{color: '#94a3b8'}}>All caught up.</p>}
+                                {attendanceSessions.filter(s => s.status === 'pending').length === 0 && <p style={{color: '#666'}}>All caught up.</p>}
                             </div>
                         </div>
                     </div>
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 2: USERS (WITH APPROVAL SYSTEM) */}
+                {/* MODULE 2: USERS */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'users' && (
-                    <div className="animate-fade-in">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                            <h2 style={{...sectionHeader, margin: 0}}>User Management</h2>
-                            <div style={{ display: 'flex', background: '#e2e8f0', padding: '4px', borderRadius: '8px' }}>
-                                <button onClick={() => setUserSubTab('crs')} style={toggleBtn(userSubTab === 'crs')}>Class Reps {pendingCrsCount > 0 && <span style={{color:'red'}}>({pendingCrsCount})</span>}</button>
-                                <button onClick={() => setUserSubTab('teachers')} style={toggleBtn(userSubTab === 'teachers')}>Teachers {pendingTeachersCount > 0 && <span style={{color:'red'}}>({pendingTeachersCount})</span>}</button>
-                            </div>
+                    <div style={contentCard}>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                            <button onClick={() => setUserSubTab('crs')} style={subTabBtn(userSubTab === 'crs')}>Class Reps {pendingCrsCount > 0 && `(${pendingCrsCount})`}</button>
+                            <button onClick={() => setUserSubTab('teachers')} style={subTabBtn(userSubTab === 'teachers')}>Teachers {pendingTeachersCount > 0 && `(${pendingTeachersCount})`}</button>
                         </div>
 
-                        <div style={{...contentCard, overflowX: 'auto'}}>
+                        <div style={{ overflowX: 'auto' }}>
                             <table style={tableStyle}>
                                 <thead>
-                                    <tr>
+                                    <tr style={{ background: '#f8f9fa' }}>
                                         <th style={thStyle}>Status</th>
                                         <th style={thStyle}>Name</th>
                                         <th style={thStyle}>Contact</th>
@@ -555,13 +537,9 @@ export default function AdminDashboard() {
                                 </thead>
                                 <tbody>
                                     {userSubTab === 'crs' ? crs.map(cr => (
-                                        <tr key={cr.id} style={trStyle}>
+                                        <tr key={cr.id} style={{ borderBottom: '1px solid #eee' }}>
                                             <td style={tdStyle}>
-                                                {cr.is_approved ? (
-                                                    <span style={{...statusBadge, background:'#dcfce7', color:'#16a34a'}}>Active</span>
-                                                ) : (
-                                                    <span style={{...statusBadge, background:'#fef9c3', color:'#eab308'}}>Pending</span>
-                                                )}
+                                                {cr.is_approved ? <span style={statusGreen}>Active</span> : <span style={statusYellow}>Pending</span>}
                                             </td>
                                             <td style={tdStyle}><strong>{cr.first_name || 'N/A'} {cr.last_name || ''}</strong></td>
                                             <td style={tdStyle}>{cr.phone || 'No Phone'}</td>
@@ -569,41 +547,37 @@ export default function AdminDashboard() {
                                             <td style={tdStyle}>
                                                 {!cr.is_approved ? (
                                                     <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
-                                                        <button onClick={() => approveUser('cr_profiles', cr.id)} style={btnSuccessSmall}>Approve</button>
-                                                        <button onClick={() => openEditUserModal(cr, 'cr')} style={btnEditSmall}>Edit & Approve</button>
-                                                        <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={btnDangerSmall}>Reject</button>
+                                                        <button onClick={() => approveUser('cr_profiles', cr.id)} style={btnStyle('#28a745')}>Approve</button>
+                                                        <button onClick={() => openEditUserModal(cr, 'cr')} style={btnStyle('#007bff')}>Edit & Appr</button>
+                                                        <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={btnStyle('#dc3545')}>Reject</button>
                                                     </div>
                                                 ) : (
                                                     <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
-                                                        <button onClick={() => openEditUserModal(cr, 'cr')} style={btnEditSmall}>Edit</button>
-                                                        <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={btnDangerSmall}>Revoke Access</button>
+                                                        <button onClick={() => openEditUserModal(cr, 'cr')} style={btnStyle('#007bff')}>Edit</button>
+                                                        <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={btnStyle('#dc3545')}>Revoke</button>
                                                     </div>
                                                 )}
                                             </td>
                                         </tr>
                                     )) : teachers.map(teacher => (
-                                        <tr key={teacher.id} style={trStyle}>
+                                        <tr key={teacher.id} style={{ borderBottom: '1px solid #eee' }}>
                                             <td style={tdStyle}>
-                                                {teacher.is_approved ? (
-                                                    <span style={{...statusBadge, background:'#dcfce7', color:'#16a34a'}}>Active</span>
-                                                ) : (
-                                                    <span style={{...statusBadge, background:'#fef9c3', color:'#eab308'}}>Pending</span>
-                                                )}
+                                                {teacher.is_approved ? <span style={statusGreen}>Active</span> : <span style={statusYellow}>Pending</span>}
                                             </td>
                                             <td style={tdStyle}><strong>{teacher.name}</strong></td>
-                                            <td style={tdStyle}>{teacher.email}<br/><span style={{fontSize:'0.8rem', color:'#64748b'}}>{teacher.phone}</span></td>
+                                            <td style={tdStyle}>{teacher.email}<br/><span style={{fontSize:'0.8rem', color:'#666'}}>{teacher.phone}</span></td>
                                             <td style={tdStyle}>{teacher.cnic}</td>
                                             <td style={tdStyle}>
                                                 {!teacher.is_approved ? (
                                                     <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
-                                                        <button onClick={() => approveUser('teacher_profiles', teacher.id)} style={btnSuccessSmall}>Approve</button>
-                                                        <button onClick={() => openEditUserModal(teacher, 'teacher')} style={btnEditSmall}>Edit & Approve</button>
-                                                        <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={btnDangerSmall}>Reject</button>
+                                                        <button onClick={() => approveUser('teacher_profiles', teacher.id)} style={btnStyle('#28a745')}>Approve</button>
+                                                        <button onClick={() => openEditUserModal(teacher, 'teacher')} style={btnStyle('#007bff')}>Edit & Appr</button>
+                                                        <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={btnStyle('#dc3545')}>Reject</button>
                                                     </div>
                                                 ) : (
                                                     <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
-                                                        <button onClick={() => openEditUserModal(teacher, 'teacher')} style={btnEditSmall}>Edit</button>
-                                                        <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={btnDangerSmall}>Revoke Access</button>
+                                                        <button onClick={() => openEditUserModal(teacher, 'teacher')} style={btnStyle('#007bff')}>Edit</button>
+                                                        <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={btnStyle('#dc3545')}>Revoke</button>
                                                     </div>
                                                 )}
                                             </td>
@@ -611,35 +585,30 @@ export default function AdminDashboard() {
                                     ))}
                                 </tbody>
                             </table>
-                            {(userSubTab === 'crs' ? crs : teachers).length === 0 && <p style={{textAlign:'center', padding:'20px', color:'#94a3b8'}}>No records found.</p>}
                         </div>
                     </div>
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 3: SCHEDULE MASTER */}
+                {/* MODULE 3: SCHEDULE */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'schedule' && (
-                    <div className="animate-fade-in">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-                            <h2 style={{...sectionHeader, margin: 0}}>Schedule Master</h2>
-                            <div style={{ display: 'flex', background: '#e2e8f0', padding: '4px', borderRadius: '8px' }}>
-                                <button onClick={() => setScheduleSubTab('base')} style={toggleBtn(scheduleSubTab === 'base')}>Base Matrix</button>
-                                <button onClick={() => setScheduleSubTab('exceptions')} style={toggleBtn(scheduleSubTab === 'exceptions')}>Global Exceptions</button>
-                            </div>
+                    <div style={contentCard}>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                            <button onClick={() => setScheduleSubTab('base')} style={subTabBtn(scheduleSubTab === 'base')}>Base Matrix</button>
+                            <button onClick={() => setScheduleSubTab('exceptions')} style={subTabBtn(scheduleSubTab === 'exceptions')}>Global Exceptions</button>
                         </div>
 
-                        {/* FILTERS */}
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                            <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={filterSelect}>
+                            <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...inputStyle, flex: 1}}>
                                 <option value="">All Semesters</option>
                                 {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
-                            <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={filterSelect}>
+                            <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...inputStyle, flex: 1}}>
                                 <option value="">All Sections</option>
                                 {availableSections.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
-                            <select value={filterDay} onChange={e=>setFilterDay(e.target.value)} style={filterSelect}>
+                            <select value={filterDay} onChange={e=>setFilterDay(e.target.value)} style={{...inputStyle, flex: 1}}>
                                 <option value="ALL">All Days</option>
                                 {days.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
@@ -647,14 +616,14 @@ export default function AdminDashboard() {
                                 <button onClick={() => {
                                     setBaseForm({ id: null, semester: '', section: '', course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
                                     setIsBaseModalOpen(true);
-                                }} style={{...btnPrimary, marginLeft: 'auto'}}>+ Force Add Lecture</button>
+                                }} style={{...btnStyle('#002147'), flex: 1}}>+ Add Lecture</button>
                             )}
                         </div>
 
-                        <div style={{...contentCard, overflowX: 'auto'}}>
+                        <div style={{ overflowX: 'auto' }}>
                             <table style={tableStyle}>
                                 <thead>
-                                    <tr>
+                                    <tr style={{ background: '#f8f9fa' }}>
                                         <th style={thStyle}>Loc</th>
                                         <th style={thStyle}>Course & Teacher</th>
                                         <th style={thStyle}>Timing / Day</th>
@@ -666,14 +635,14 @@ export default function AdminDashboard() {
                                         baseSchedule
                                             .filter(b => (filterSem ? b.semester === filterSem : true) && (filterSec ? b.section === filterSec : true) && (filterDay !== 'ALL' ? b.day === filterDay : true))
                                             .map(cls => (
-                                                <tr key={cls.id} style={trStyle}>
-                                                    <td style={tdStyle}><span style={badgeStyle}>{cls.semester} | Sec {cls.section}</span></td>
-                                                    <td style={tdStyle}><strong>{cls.course}</strong><br/><span style={{fontSize:'0.8rem', color:'#64748b'}}>{cls.teacher} | {cls.room}</span></td>
+                                                <tr key={cls.id} style={{ borderBottom: '1px solid #eee' }}>
+                                                    <td style={tdStyle}><strong>{cls.semester} | Sec {cls.section}</strong></td>
+                                                    <td style={tdStyle}><strong>{cls.course}</strong><br/><span style={{fontSize:'0.8rem', color:'#666'}}>{cls.teacher} | Room: {cls.room}</span></td>
                                                     <td style={tdStyle}><strong>{cls.day}</strong><br/>{convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</td>
                                                     <td style={tdStyle}>
                                                         <div style={{display:'flex', gap:'5px'}}>
-                                                            <button onClick={() => { setBaseForm({...cls}); setIsBaseModalOpen(true); }} style={btnEditSmall}>Edit</button>
-                                                            <button onClick={() => deleteBaseSchedule(cls.id)} style={btnDangerSmall}>Kill</button>
+                                                            <button onClick={() => { setBaseForm({...cls}); setIsBaseModalOpen(true); }} style={btnStyle('#007bff')}>Edit</button>
+                                                            <button onClick={() => deleteBaseSchedule(cls.id)} style={btnStyle('#dc3545')}>Del</button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -688,16 +657,16 @@ export default function AdminDashboard() {
                                             .map(ex => {
                                                 const base = baseSchedule.find(b => b.id === ex.base_schedule_id);
                                                 return (
-                                                <tr key={ex.id} style={trStyle}>
-                                                    <td style={tdStyle}><span style={badgeStyle}>{base?.semester} | Sec {base?.section}</span></td>
-                                                    <td style={tdStyle}><strong>{base?.course}</strong><br/><span style={{fontSize:'0.8rem', color:'#64748b'}}>Target Date: {ex.exception_date}</span></td>
+                                                <tr key={ex.id} style={{ borderBottom: '1px solid #eee' }}>
+                                                    <td style={tdStyle}><strong>{base?.semester} | Sec {base?.section}</strong></td>
+                                                    <td style={tdStyle}><strong>{base?.course}</strong><br/><span style={{fontSize:'0.8rem', color:'#666'}}>Target Date: {ex.exception_date}</span></td>
                                                     <td style={tdStyle}>
-                                                        {ex.status === 'cancelled' && <span style={{...statusBadge, background:'#fee2e2', color:'#dc2626'}}>CANCELLED</span>}
-                                                        {ex.status === 'confirmed' && <span style={{...statusBadge, background:'#dcfce7', color:'#16a34a'}}>CONFIRMED</span>}
-                                                        {ex.status === 'rescheduled' && <span style={{...statusBadge, background:'#dbeafe', color:'#2563eb'}}>MOVED: {convertTo12Hour(ex.new_start_time)} (Rm {ex.new_room})</span>}
+                                                        {ex.status === 'cancelled' && <span style={statusRed}>CANCELLED</span>}
+                                                        {ex.status === 'confirmed' && <span style={statusGreen}>CONFIRMED</span>}
+                                                        {ex.status === 'rescheduled' && <span style={statusBlue}>MOVED: {convertTo12Hour(ex.new_start_time)} (Rm {ex.new_room})</span>}
                                                     </td>
                                                     <td style={tdStyle}>
-                                                        <button onClick={() => deleteException(ex.id)} style={btnDangerSmall}>Undo Exception</button>
+                                                        <button onClick={() => deleteException(ex.id)} style={btnStyle('#dc3545')}>Undo Exception</button>
                                                     </td>
                                                 </tr>
                                             )})
@@ -709,169 +678,161 @@ export default function AdminDashboard() {
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 4: ACADEMIC RECORDS */}
+                {/* MODULE 4: RECORDS */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'records' && (
-                    <div className="animate-fade-in">
-                        <h2 style={sectionHeader}>Academic Records Sandbox</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
-                            
-                            {/* ROSTER VIEWER */}
-                            <div style={contentCard}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                                    <h3 style={{ margin: 0 }}>Global Roster Index</h3>
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <button onClick={() => {
-                                            setStudentForm({ id: null, student_name: '', roll_number: '', semester: filterSem || '', section: filterSec || '' });
-                                            setIsStudentModalOpen(true);
-                                        }} style={btnPrimarySmall}>+ Add</button>
-                                        <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
-                                        <button onClick={() => fileInputRef.current.click()} style={{...btnPrimarySmall, background: '#10b981'}}>CSV Import</button>
-                                    </div>
-                                </div>
-                                <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                                    <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...filterSelect, flex:1}}>
-                                        <option value="">Select Sem</option>
-                                        {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                    <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...filterSelect, flex:1}}>
-                                        <option value="">Select Sec</option>
-                                        {availableSections.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                </div>
-                                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    {(!filterSem || !filterSec) ? <p style={{color:'#94a3b8', textAlign:'center'}}>Select filters to view roster.</p> : (
-                                        <table style={{width:'100%', fontSize:'0.85rem'}}>
-                                            <tbody>
-                                                {roster.filter(r => r.semester === filterSem && r.section === filterSec).map(s => (
-                                                    <tr key={s.id} style={{borderBottom:'1px solid #f1f5f9'}}>
-                                                        <td style={{padding:'8px 0'}}><strong>{s.roll_number}</strong></td>
-                                                        <td style={{padding:'8px 0'}}>{s.student_name}</td>
-                                                        <td style={{padding:'8px 0', textAlign:'right', display:'flex', gap:'5px', justifyContent:'flex-end'}}>
-                                                            <button onClick={() => { setStudentForm(s); setIsStudentModalOpen(true); }} style={btnEditSmall}>Edit</button>
-                                                            <button onClick={async ()=>{
-                                                                if(window.confirm('Delete student?')) {
-                                                                    await supabase.from('class_roster').delete().eq('id', s.id);
-                                                                    fetchAllData();
-                                                                }
-                                                            }} style={btnDangerSmall}>X</button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    )}
-                                </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
+                        
+                        {/* ROSTER VIEWER */}
+                        <div style={contentCard}>
+                            <h3 style={cardHeader}>Global Roster Index</h3>
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                                <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...inputStyle, flex:1}}>
+                                    <option value="">Select Sem</option>
+                                    {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...inputStyle, flex:1}}>
+                                    <option value="">Select Sec</option>
+                                    {availableSections.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                                <button onClick={() => {
+                                    setStudentForm({ id: null, student_name: '', roll_number: '', semester: filterSem || '', section: filterSec || '' });
+                                    setIsStudentModalOpen(true);
+                                }} style={btnStyle('#002147')}>+ Add Student</button>
+                                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
+                                <button onClick={() => fileInputRef.current.click()} style={btnStyle('#28a745')}>CSV Import</button>
                             </div>
 
-                            {/* ATTENDANCE VAULT */}
-                            <div style={contentCard}>
-                                <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>Attendance Vault (Raw Data)</h3>
-                                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    {attendanceSessions.length === 0 ? <p style={{color:'#94a3b8'}}>No sessions recorded yet.</p> : (
-                                        attendanceSessions.sort((a,b) => new Date(b.session_date) - new Date(a.session_date)).map(session => {
-                                            const base = baseSchedule.find(b => b.id === session.base_schedule_id);
-                                            return (
-                                                <div key={session.id} style={{ background:'#f8fafc', padding:'12px', borderRadius:'8px', marginBottom:'10px', borderLeft: session.status === 'approved' ? '4px solid #10b981' : '4px solid #f59e0b'}}>
-                                                    <div style={{display:'flex', justifyContent:'space-between'}}>
-                                                        <strong>{base?.course || 'Deleted Course'}</strong>
-                                                        <span style={{fontSize:'0.8rem', color:'#64748b'}}>{session.session_date}</span>
-                                                    </div>
-                                                    <div style={{fontSize:'0.8rem', color:'#64748b', marginTop:'5px'}}>
-                                                        Sec: {base?.section} ({base?.semester}) | By: {session.auth_users?.email || 'Unknown'}
-                                                    </div>
-                                                    <div style={{marginTop:'10px', display:'flex', gap:'5px', flexWrap:'wrap'}}>
-                                                        <button onClick={async () => {
-                                                            const status = session.status === 'approved' ? 'pending' : 'approved';
-                                                            await supabase.from('attendance_sessions').update({status}).eq('id', session.id);
-                                                            fetchAllData();
-                                                        }} style={{...btnEditSmall, flex: 1}}>{session.status === 'approved' ? 'Unapprove' : 'Force Approve'}</button>
-                                                        
-                                                        <button onClick={() => openAttendanceEditor(session)} style={{...btnPrimarySmall, background:'#3b82f6', flex: 1}}>Edit Records</button>
-                                                        
-                                                        <button onClick={async () => {
-                                                            if(window.confirm('Wipe this attendance record entirely?')) {
-                                                                await supabase.from('attendance_sessions').delete().eq('id', session.id);
+                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                {(!filterSem || !filterSec) ? <p style={{color:'#666', textAlign:'center'}}>Select filters to view roster.</p> : (
+                                    <table style={tableStyle}>
+                                        <tbody>
+                                            {roster.filter(r => r.semester === filterSem && r.section === filterSec).map(s => (
+                                                <tr key={s.id} style={{borderBottom:'1px solid #eee'}}>
+                                                    <td style={tdStyle}><strong>{s.roll_number}</strong></td>
+                                                    <td style={tdStyle}>{s.student_name}</td>
+                                                    <td style={{...tdStyle, textAlign:'right', display:'flex', gap:'5px', justifyContent:'flex-end'}}>
+                                                        <button onClick={() => { setStudentForm(s); setIsStudentModalOpen(true); }} style={{...btnStyle('#007bff'), minWidth:'auto', padding:'5px 10px'}}>Edit</button>
+                                                        <button onClick={async ()=>{
+                                                            if(window.confirm('Delete student?')) {
+                                                                await supabase.from('class_roster').delete().eq('id', s.id);
                                                                 fetchAllData();
                                                             }
-                                                        }} style={{...btnDangerSmall, flex: 1}}>Wipe Data</button>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })
-                                    )}
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-                )}
-
-                {/* ---------------------------------------------------- */}
-                {/* MODULE 6: INFRASTRUCTURE */}
-                {/* ---------------------------------------------------- */}
-                {activeTab === 'infrastructure' && (
-                    <div className="animate-fade-in">
-                        <h2 style={sectionHeader}>Infrastructure & Global Comm</h2>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                            
-                            {/* GLOBAL BROADCAST */}
-                            <div style={contentCard}>
-                                <h3 style={{ margin: '0 0 15px 0', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px', color: '#ef4444' }}>⚠️ Global Emergency Broadcast</h3>
-                                <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '15px' }}>Push a high-priority notification to every single registered section simultaneously.</p>
-                                <form onSubmit={sendGlobalAlert}>
-                                    <textarea 
-                                        required 
-                                        value={globalAlertMsg}
-                                        onChange={e=>setGlobalAlertMsg(e.target.value)}
-                                        placeholder="Enter emergency message here... (e.g. University closed today)"
-                                        style={{...inputStyle, minHeight: '100px', resize: 'vertical'}}
-                                    />
-                                    <button type="submit" style={{...btnPrimary, background: '#ef4444', marginTop: '10px', width: '100%'}}>DISPATCH GLOBAL ALERT</button>
-                                </form>
-                            </div>
-
-                            {/* BUS POINTS */}
-                            <div style={contentCard}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
-                                    <h3 style={{ margin: 0 }}>Bus Point Logic Engine</h3>
-                                    <button onClick={() => {
-                                        setPointForm({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
-                                        setIsPointModalOpen(true);
-                                    }} style={btnPrimarySmall}>+ Add Route</button>
-                                </div>
-                                
-                                <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-                                    <table style={{width:'100%', fontSize:'0.85rem'}}>
-                                        <thead>
-                                            <tr style={{background:'#f1f5f9', textAlign:'left'}}>
-                                                <th style={{padding:'8px'}}>Route</th>
-                                                <th style={{padding:'8px'}}>Time</th>
-                                                <th style={{padding:'8px'}}>Type</th>
-                                                <th style={{padding:'8px'}}>Act</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {pointSchedules.sort((a,b) => a.departure_time.localeCompare(b.departure_time)).map(p => (
-                                                <tr key={p.id} style={{borderBottom:'1px solid #f8fafc'}}>
-                                                    <td style={{padding:'8px'}}>{p.route === 'AC_to_BJC' ? 'AC ➔ BJC' : 'BJC ➔ AC'}</td>
-                                                    <td style={{padding:'8px'}}><strong>{convertTo12Hour(p.departure_time.slice(0,5))}</strong></td>
-                                                    <td style={{padding:'8px'}}>{p.is_saturday ? <span style={{color:'#eab308', fontWeight:'bold'}}>Weekend</span> : 'Weekday'}</td>
-                                                    <td style={{padding:'8px'}}>
-                                                        <button onClick={() => {setPointForm(p); setIsPointModalOpen(true);}} style={{color:'#3b82f6', border:'none', background:'none', cursor:'pointer', marginRight:'5px'}}>Edit</button>
-                                                        <button onClick={() => deletePointSchedule(p.id)} style={{color:'#ef4444', border:'none', background:'none', cursor:'pointer'}}>Del</button>
+                                                        }} style={{...btnStyle('#dc3545'), minWidth:'auto', padding:'5px 10px'}}>X</button>
                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-                                </div>
+                                )}
                             </div>
+                        </div>
 
+                        {/* ATTENDANCE VAULT */}
+                        <div style={contentCard}>
+                            <h3 style={cardHeader}>Attendance Vault (Raw Data)</h3>
+                            <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                {attendanceSessions.length === 0 ? <p style={{color:'#666'}}>No sessions recorded yet.</p> : (
+                                    attendanceSessions.sort((a,b) => new Date(b.session_date) - new Date(a.session_date)).map(session => {
+                                        const base = baseSchedule.find(b => b.id === session.base_schedule_id);
+                                        return (
+                                            <div key={session.id} style={{ background:'#f8f9fa', padding:'12px', borderRadius:'8px', marginBottom:'10px', borderLeft: session.status === 'approved' ? '5px solid #28a745' : '5px solid #ffc107'}}>
+                                                <div style={{display:'flex', justifyContent:'space-between'}}>
+                                                    <strong>{base?.course || 'Deleted Course'}</strong>
+                                                    <span style={{fontSize:'0.8rem', color:'#666'}}>{session.session_date}</span>
+                                                </div>
+                                                <div style={{fontSize:'0.8rem', color:'#666', marginTop:'5px'}}>
+                                                    Sec: {base?.section} ({base?.semester}) | By: {session.auth_users?.email || 'Unknown'}
+                                                </div>
+                                                <div style={{marginTop:'10px', display:'flex', gap:'5px', flexWrap:'wrap'}}>
+                                                    <button onClick={async () => {
+                                                        const status = session.status === 'approved' ? 'pending' : 'approved';
+                                                        await supabase.from('attendance_sessions').update({status}).eq('id', session.id);
+                                                        fetchAllData();
+                                                    }} style={{...btnStyle(session.status === 'approved' ? '#6c757d' : '#28a745'), flex: 1}}>{session.status === 'approved' ? 'Unapprove' : 'Force Approve'}</button>
+                                                    
+                                                    <button onClick={() => openAttendanceEditor(session)} style={{...btnStyle('#007bff'), flex: 1}}>Edit Data</button>
+                                                    
+                                                    <button onClick={async () => {
+                                                        if(window.confirm('Wipe this attendance record entirely?')) {
+                                                            await supabase.from('attendance_sessions').delete().eq('id', session.id);
+                                                            fetchAllData();
+                                                        }
+                                                    }} style={{...btnStyle('#dc3545'), flex: 1}}>Wipe</button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
-            </main>
+
+                {/* ---------------------------------------------------- */}
+                {/* MODULE 5: INFRASTRUCTURE */}
+                {/* ---------------------------------------------------- */}
+                {activeTab === 'infrastructure' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                        
+                        {/* GLOBAL BROADCAST */}
+                        <div style={contentCard}>
+                            <h3 style={{...cardHeader, color: '#dc3545'}}>⚠️ Global Emergency Broadcast</h3>
+                            <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '15px' }}>Push a high-priority notification to every single registered section simultaneously.</p>
+                            <form onSubmit={sendGlobalAlert}>
+                                <textarea 
+                                    required 
+                                    value={globalAlertMsg}
+                                    onChange={e=>setGlobalAlertMsg(e.target.value)}
+                                    placeholder="Enter emergency message here... (e.g. University closed today)"
+                                    style={{...inputStyle, minHeight: '100px', resize: 'vertical'}}
+                                />
+                                <button type="submit" style={{...btnStyle('#dc3545'), marginTop: '10px', width: '100%'}}>DISPATCH GLOBAL ALERT</button>
+                            </form>
+                        </div>
+
+                        {/* BUS POINTS */}
+                        <div style={contentCard}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                                <h3 style={{ margin: 0 }}>Bus Point Logic Engine</h3>
+                                <button onClick={() => {
+                                    setPointForm({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
+                                    setIsPointModalOpen(true);
+                                }} style={{...btnStyle('#002147'), minWidth: 'auto', padding: '8px 12px'}}>+ Route</button>
+                            </div>
+                            
+                            <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                                <table style={tableStyle}>
+                                    <thead>
+                                        <tr style={{background:'#f8f9fa'}}>
+                                            <th style={thStyle}>Route</th>
+                                            <th style={thStyle}>Time</th>
+                                            <th style={thStyle}>Type</th>
+                                            <th style={thStyle}>Act</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pointSchedules.sort((a,b) => a.departure_time.localeCompare(b.departure_time)).map(p => (
+                                            <tr key={p.id} style={{borderBottom:'1px solid #eee'}}>
+                                                <td style={tdStyle}>{p.route === 'AC_to_BJC' ? 'AC ➔ BJC' : 'BJC ➔ AC'}</td>
+                                                <td style={tdStyle}><strong>{convertTo12Hour(p.departure_time.slice(0,5))}</strong></td>
+                                                <td style={tdStyle}>{p.is_saturday ? <span style={{color:'#F2A900', fontWeight:'bold'}}>Weekend</span> : 'Weekday'}</td>
+                                                <td style={{...tdStyle, display:'flex', gap:'5px'}}>
+                                                    <button onClick={() => {setPointForm(p); setIsPointModalOpen(true);}} style={{...btnStyle('#007bff'), padding: '5px', minWidth:'auto'}}>Edit</button>
+                                                    <button onClick={() => deletePointSchedule(p.id)} style={{...btnStyle('#dc3545'), padding: '5px', minWidth:'auto'}}>Del</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+            </div>
 
             {/* ========================================== */}
             {/* MODALS */}
@@ -881,7 +842,7 @@ export default function AdminDashboard() {
             {isUserEditModalOpen && (
                 <div style={modalBackdrop}>
                     <div style={modalContent}>
-                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
                             {userEditForm.type === 'cr' ? 'Edit & Approve Class Rep' : 'Edit & Approve Teacher'}
                         </h3>
                         <form onSubmit={saveEditedUser} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -907,8 +868,8 @@ export default function AdminDashboard() {
                             <input type="text" placeholder="Phone Number" required value={userEditForm.phone} onChange={e=>setUserEditForm({...userEditForm, phone:e.target.value})} style={inputStyle} />
                             
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={()=>setIsUserEditModalOpen(false)} style={{...btnPrimary, background:'#94a3b8', flex:1}}>Cancel</button>
-                                <button type="submit" style={{...btnPrimary, background: '#10b981', flex:1}}>Save & Approve</button>
+                                <button type="button" onClick={()=>setIsUserEditModalOpen(false)} style={btnStyle('#6c757d')}>Cancel</button>
+                                <button type="submit" style={btnStyle('#28a745')}>Save & Approve</button>
                             </div>
                         </form>
                     </div>
@@ -919,7 +880,7 @@ export default function AdminDashboard() {
             {isBaseModalOpen && (
                 <div style={modalBackdrop}>
                     <div style={modalContent}>
-                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>{baseForm.id ? 'Edit Base Lecture' : 'Force Add Lecture'}</h3>
+                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>{baseForm.id ? 'Edit Base Lecture' : 'Force Add Lecture'}</h3>
                         <form onSubmit={saveBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div style={{display:'flex', gap:'10px'}}>
                                 <input type="text" placeholder="Semester (e.g. 3RD)" required value={baseForm.semester} onChange={e=>setBaseForm({...baseForm, semester:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
@@ -936,8 +897,8 @@ export default function AdminDashboard() {
                                 <select required value={baseForm.end_time} onChange={e=>setBaseForm({...baseForm, end_time:e.target.value})} style={{...inputStyle, flex:1}}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={()=>setIsBaseModalOpen(false)} style={{...btnPrimary, background:'#94a3b8', flex:1}}>Cancel</button>
-                                <button type="submit" style={{...btnPrimary, flex:1}}>Save to Database</button>
+                                <button type="button" onClick={()=>setIsBaseModalOpen(false)} style={btnStyle('#6c757d')}>Cancel</button>
+                                <button type="submit" style={btnStyle('#002147')}>Save to Database</button>
                             </div>
                         </form>
                     </div>
@@ -947,27 +908,27 @@ export default function AdminDashboard() {
             {/* POINT SCHEDULE MODAL */}
             {isPointModalOpen && (
                 <div style={modalBackdrop}>
-                    <div style={{...modalContent, maxWidth: '350px'}}>
-                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>{pointForm.id ? 'Edit Bus Route' : 'Add Bus Route'}</h3>
+                    <div style={modalContent}>
+                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>{pointForm.id ? 'Edit Bus Route' : 'Add Bus Route'}</h3>
                         <form onSubmit={savePointSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div>
-                                <label style={labelStyle}>Route Direction</label>
+                                <label style={{fontWeight:'bold', fontSize:'0.85rem'}}>Route Direction</label>
                                 <select value={pointForm.route} onChange={e=>setPointForm({...pointForm, route:e.target.value})} style={inputStyle}>
                                     <option value="AC_to_BJC">Abbasia Campus to Baghdad</option>
                                     <option value="BJC_to_AC">Baghdad to Abbasia Campus</option>
                                 </select>
                             </div>
                             <div>
-                                <label style={labelStyle}>Departure Time (24H format)</label>
+                                <label style={{fontWeight:'bold', fontSize:'0.85rem'}}>Departure Time (24H format)</label>
                                 <input type="time" required value={pointForm.departure_time} onChange={e=>setPointForm({...pointForm, departure_time:e.target.value})} style={inputStyle} />
                             </div>
                             <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
                                 <input type="checkbox" id="isSat" checked={pointForm.is_saturday} onChange={e=>setPointForm({...pointForm, is_saturday:e.target.checked})} style={{width:'20px', height:'20px'}} />
-                                <label htmlFor="isSat" style={{fontWeight:'bold', color:'#475569'}}>Is this a Saturday-only timing?</label>
+                                <label htmlFor="isSat" style={{fontWeight:'bold', color:'#333'}}>Is this a Saturday-only timing?</label>
                             </div>
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={()=>setIsPointModalOpen(false)} style={{...btnPrimary, background:'#94a3b8', flex:1}}>Cancel</button>
-                                <button type="submit" style={{...btnPrimary, flex:1}}>Save Route</button>
+                                <button type="button" onClick={()=>setIsPointModalOpen(false)} style={btnStyle('#6c757d')}>Cancel</button>
+                                <button type="submit" style={btnStyle('#002147')}>Save Route</button>
                             </div>
                         </form>
                     </div>
@@ -977,8 +938,8 @@ export default function AdminDashboard() {
             {/* STUDENT FORM MODAL */}
             {isStudentModalOpen && (
                 <div style={modalBackdrop}>
-                    <div style={{...modalContent, maxWidth: '400px'}}>
-                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>{studentForm.id ? 'Edit Student' : 'Add Student'}</h3>
+                    <div style={modalContent}>
+                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>{studentForm.id ? 'Edit Student' : 'Add Student'}</h3>
                         <form onSubmit={saveStudent} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div style={{display:'flex', gap:'10px'}}>
                                 <input type="text" placeholder="Sem (e.g. 3RD)" required value={studentForm.semester} onChange={e=>setStudentForm({...studentForm, semester:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
@@ -988,8 +949,8 @@ export default function AdminDashboard() {
                             <input type="text" placeholder="Student Full Name" required value={studentForm.student_name} onChange={e=>setStudentForm({...studentForm, student_name:e.target.value})} style={inputStyle} />
                             
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={()=>setIsStudentModalOpen(false)} style={{...btnPrimary, background:'#94a3b8', flex:1}}>Cancel</button>
-                                <button type="submit" style={{...btnPrimary, flex:1}}>Save Student</button>
+                                <button type="button" onClick={()=>setIsStudentModalOpen(false)} style={btnStyle('#6c757d')}>Cancel</button>
+                                <button type="submit" style={btnStyle('#002147')}>Save Student</button>
                             </div>
                         </form>
                     </div>
@@ -1000,18 +961,18 @@ export default function AdminDashboard() {
             {isAttendanceModalOpen && (
                 <div style={modalBackdrop}>
                     <div style={{...modalContent, maxWidth: '600px', display: 'flex', flexDirection: 'column', height: '85vh'}}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
-                            <h3 style={{ margin: 0, color: '#0f172a' }}>Admin Override: Attendance</h3>
-                            <button onClick={() => setIsAttendanceModalOpen(false)} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }}>X</button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
+                            <h3 style={{ margin: 0, color: '#002147' }}>Admin Override: Attendance</h3>
+                            <button onClick={() => setIsAttendanceModalOpen(false)} style={{ background: 'none', border: 'none', color: '#dc3545', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }}>X</button>
                         </div>
                         
                         <div style={{ overflowY: 'auto', flexGrow: 1, paddingRight: '5px' }}>
-                            {attendanceEditData.students.length === 0 ? <p style={{color:'#94a3b8'}}>No students in roster for this section.</p> : (
+                            {attendanceEditData.students.length === 0 ? <p style={{color:'#666'}}>No students in roster for this section.</p> : (
                                 attendanceEditData.students.map((student) => {
                                     const currentStatus = attendanceEditData.recordsMap[student.id];
                                     return (
-                                        <div key={student.id} style={{ border: '1px solid #e2e8f0', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f8fafc' }}>
-                                            <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#334155' }}>{student.roll_number} - {student.student_name}</div>
+                                        <div key={student.id} style={{ border: '1px solid #eee', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f8f9fa' }}>
+                                            <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>{student.roll_number} - {student.student_name}</div>
                                             <div style={{ display: 'flex', gap: '5px' }}>
                                                 {['Present', 'Absent', 'Leave'].map(status => (
                                                     <button
@@ -1020,9 +981,9 @@ export default function AdminDashboard() {
                                                         style={{
                                                             flex: 1, padding: '8px', borderRadius: '5px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
                                                             background: currentStatus === status 
-                                                                ? (status === 'Present' ? '#10b981' : status === 'Absent' ? '#ef4444' : '#f59e0b') 
-                                                                : '#e2e8f0',
-                                                            color: currentStatus === status ? 'white' : '#475569'
+                                                                ? (status === 'Present' ? '#28a745' : status === 'Absent' ? '#dc3545' : '#F2A900') 
+                                                                : '#ddd',
+                                                            color: currentStatus === status ? (status === 'Leave' ? '#002147' : 'white') : '#333'
                                                         }}
                                                     >
                                                         {status}
@@ -1035,110 +996,43 @@ export default function AdminDashboard() {
                             )}
                         </div>
 
-                        <div style={{ paddingTop: '15px', borderTop: '2px solid #e2e8f0', marginTop: 'auto' }}>
-                            <button onClick={saveAttendanceEdits} style={{ width: '100%', padding: '15px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+                        <div style={{ paddingTop: '15px', borderTop: '2px solid #eee', marginTop: 'auto' }}>
+                            <button onClick={saveAttendanceEdits} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
                                 Save & Override Attendance
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-
-            <style jsx global>{`
-                body { margin: 0; background: #f8fafc; }
-                .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-            `}</style>
         </div>
     );
 }
 
 // ==========================================
-// 8. STYLES (Modern SaaS Palette)
+// 8. IUB THEME STYLES
 // ==========================================
 
-const sidebarStyle = {
-    width: '260px',
-    background: '#0f172a',
-    color: '#e2e8f0',
-    display: 'flex',
-    flexDirection: 'column',
-    position: 'fixed',
-    top: 0, bottom: 0, left: 0,
-    zIndex: 40,
-    transition: 'transform 0.3s ease',
-};
+const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' });
+const inputStyle = { width: '100%', padding: '12px', border: '2px solid #dee2e6', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', boxSizing: 'border-box' };
+const tabStyle = (isActive) => ({ flex: 1, padding: '12px', background: isActive ? '#002147' : '#ddd', color: isActive ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s', position: 'relative' });
+const subTabBtn = (isActive) => ({ padding: '10px 15px', border: 'none', background: isActive ? '#F2A900' : '#e9ecef', color: isActive ? '#002147' : '#555', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer' });
 
-const mainContentResponsive = {
-    marginLeft: '260px',
-    '@media (max-width: 768px)': { marginLeft: '0' }
-};
-
-const mobileOnlyShow = {
-    '@media (min-width: 769px)': { display: 'none' }
-};
-
-const navItemStyle = (isActive) => ({
-    padding: '12px 15px',
-    background: isActive ? '#1e293b' : 'transparent',
-    color: isActive ? '#38bdf8' : '#94a3b8',
-    border: 'none',
-    borderRadius: '8px',
-    textAlign: 'left',
-    fontSize: '0.95rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease',
-    borderLeft: isActive ? '4px solid #38bdf8' : '4px solid transparent'
-});
-
-const sectionHeader = { margin: '0 0 25px 0', fontSize: '1.8rem', color: '#0f172a', fontWeight: 900 };
-
-const kpiGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' };
-
-const kpiCard = { background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', borderBottom: '4px solid #38bdf8' };
-
-const kpiTitle = { color: '#64748b', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' };
-
-const kpiValue = { color: '#0f172a', fontSize: '2.5rem', fontWeight: 900, marginTop: '5px' };
-
-const contentCard = { background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' };
-
-const toggleBtn = (isActive) => ({
-    padding: '8px 16px', border: 'none', background: isActive ? 'white' : 'transparent', color: isActive ? '#0f172a' : '#64748b',
-    borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: '0.2s'
-});
-
-const filterSelect = { padding: '10px 15px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none', background: 'white', color: '#334155', fontWeight: 'bold', cursor: 'pointer', minWidth: '150px' };
+const kpiCard = { background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderLeft: '5px solid #F2A900' };
+const kpiTitle = { color: '#666', fontSize: '0.85rem', fontWeight: 'bold', textTransform: 'uppercase' };
+const kpiValue = { color: '#002147', fontSize: '2.5rem', fontWeight: 900, marginTop: '5px' };
+const contentCard = { background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
+const cardHeader = { margin: '0 0 15px 0', borderBottom: '1px solid #eee', paddingBottom: '10px', color: '#002147' };
 
 const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' };
+const thStyle = { padding: '12px 15px', borderBottom: '2px solid #dee2e6', color: '#666', fontWeight: 'bold' };
+const tdStyle = { padding: '15px', borderBottom: '1px solid #eee', color: '#333' };
 
-const thStyle = { padding: '12px 15px', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.5px' };
+const statusGreen = { background: '#d4edda', color: '#155724', padding: '4px 8px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold' };
+const statusRed = { background: '#f8d7da', color: '#721c24', padding: '4px 8px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold' };
+const statusYellow = { background: '#fff3cd', color: '#856404', padding: '4px 8px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold' };
+const statusBlue = { background: '#e7f1ff', color: '#004085', padding: '4px 8px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold' };
+const badgeStyle = { background: '#e9ecef', color: '#333', padding: '4px 8px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold' };
 
-const tdStyle = { padding: '15px', borderBottom: '1px solid #f1f5f9', color: '#334155' };
-
-const trStyle = { transition: 'background 0.2s', ':hover': { background: '#f8fafc' } };
-
-const badgeStyle = { background: '#e0e7ff', color: '#4338ca', padding: '4px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' };
-
-const statusBadge = { padding: '4px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block' };
-
-const btnPrimary = { background: '#3b82f6', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' };
-
-const btnPrimarySmall = { ...btnPrimary, padding: '6px 12px', fontSize: '0.8rem' };
-
-const btnSuccessSmall = { background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' };
-
-const btnEditSmall = { background: '#f1f5f9', color: '#3b82f6', border: '1px solid #cbd5e1', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' };
-
-const btnDangerSmall = { ...btnEditSmall, color: '#ef4444', background: '#fef2f2', border: '1px solid #fecaca' };
-
-const labelStyle = { display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#475569', marginBottom: '6px' };
-
-const inputStyle = { width: '100%', padding: '12px', border: '1px solid #cbd5e1', borderRadius: '8px', outline: 'none', fontSize: '0.95rem', color: '#0f172a', boxSizing: 'border-box' };
-
-const loaderOverlay = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', backdropFilter: 'blur(4px)' };
-
-const modalBackdrop = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.75)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '20px', boxSizing: 'border-box', backdropFilter: 'blur(4px)' };
-
-const modalContent = { background: 'white', padding: '30px', borderRadius: '16px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', maxHeight: '90vh', overflowY: 'auto' };
+const redDot = { position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem' };
+const modalBackdrop = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '20px', boxSizing: 'border-box' };
+const modalContent = { background: 'white', padding: '30px', borderRadius: '10px', width: '100%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' };
