@@ -8,7 +8,7 @@ export default function Dashboard() {
     const [profile, setProfile] = useState(null);
     const [schedule, setSchedule] = useState([]); 
     const [baseSchedule, setBaseSchedule] = useState([]); 
-    const [roster, setRoster] = useState([]); // NEW: State for students
+    const [roster, setRoster] = useState([]); 
     const [loading, setLoading] = useState(true);
     
     // --- DROPDOWN STATES ---
@@ -22,7 +22,7 @@ export default function Dashboard() {
     const [isManualRoom, setIsManualRoom] = useState(false); 
 
     // --- TAB & UI STATES ---
-    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly', 'permanent', 'students'
+    const [activeTab, setActiveTab] = useState('weekly'); // 'weekly', 'permanent', 'students', 'attendance'
     
     const [selectedDay, setSelectedDay] = useState(() => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -33,7 +33,8 @@ export default function Dashboard() {
 
     // --- ATTENDANCE STATES ---
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
-    const [monthlyAttendance, setMonthlyAttendance] = useState("85%"); 
+    const [attendanceStats, setAttendanceStats] = useState([]); 
+    const [monthlyAttendance, setMonthlyAttendance] = useState("0%"); 
 
     // --- STUDENT MANAGEMENT STATE ---
     const [newStudent, setNewStudent] = useState({ name: '', roll: '' });
@@ -69,18 +70,15 @@ export default function Dashboard() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    // Helper: Check if current time is within Class End Time + 30 Mins
-    const isAttendanceEditable = (endTimeStr) => {
-        if (!endTimeStr) return false;
-        const now = new Date();
-        const [hours, minutes] = endTimeStr.split(':').map(Number);
-        
-        const classEndTime = new Date();
-        classEndTime.setHours(hours, minutes, 0, 0);
-        
-        // Add 30 minutes
-        const lockoutTime = new Date(classEndTime.getTime() + 30 * 60000);
-        return now <= lockoutTime;
+    const parseTime = (t) => {
+        if (!t) return 0;
+        let clean = t.replace(/\./g, '').trim().toUpperCase();
+        let [tm, ap] = clean.split(' ');
+        if(!tm) return 0;
+        let [h, m] = tm.split(':').map(Number);
+        if (h === 12) h = 0;
+        if (ap === 'PM') h += 12;
+        return h * 60 + (m || 0);
     };
 
     useEffect(() => {
@@ -129,18 +127,29 @@ export default function Dashboard() {
 
             const today = new Date().toLocaleDateString('en-CA');
             
-            // 3. Fetch Exceptions & Attendance Sessions for TODAY
-            const [exceptionsRes, sessionsRes] = await Promise.all([
+            // 3. Fetch Exceptions & All Attendance Sessions/Records for Stats
+            const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
+            
+            const [exceptionsRes, sessionsRes, recordsRes] = await Promise.all([
                 supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
-                supabase.from('attendance_sessions').select('*').eq('session_date', today)
+                supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds),
+                supabase.from('attendance_records').select('*')
             ]);
 
             const exceptionsData = exceptionsRes.data || [];
-            const sessionsData = sessionsRes.data || [];
+            const allSessions = sessionsRes.data || [];
+            const allRecords = recordsRes.data || [];
 
+            // Map records into sessions for easy stat calculation
+            const sessionsWithRecords = allSessions.map(s => ({
+                ...s,
+                records: allRecords.filter(r => r.session_id === s.id)
+            }));
+
+            // Build schedule for Weekly tab
             const mergedSchedule = (scheduleData || []).map(cls => {
                 const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id);
-                const session = sessionsData.find(s => s.base_schedule_id === cls.id);
+                const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === today);
                 
                 return { 
                     ...cls, 
@@ -148,11 +157,48 @@ export default function Dashboard() {
                     isRescheduled: exception?.status === 'rescheduled',
                     isConfirmed: exception?.status === 'confirmed',
                     exceptionDetails: exception,
-                    attendanceSession: session // Attach today's session if it exists
+                    attendanceSession: sessionToday
+                };
+            });
+            setSchedule(mergedSchedule);
+
+            // Compute Subject Attendance Stats
+            const uniqueSubjects = [...new Set((scheduleData || []).map(s => s.course))];
+            let globalTotalRecords = 0;
+            let globalPresentRecords = 0;
+
+            const stats = uniqueSubjects.map(subject => {
+                const subjectBaseIds = scheduleData.filter(s => s.course === subject).map(s => s.id);
+                const subjectSessions = sessionsWithRecords.filter(s => subjectBaseIds.includes(s.base_schedule_id));
+                
+                let totalRecords = 0;
+                let presentRecords = 0;
+                
+                subjectSessions.forEach(sess => {
+                    sess.records.forEach(rec => {
+                        totalRecords++;
+                        globalTotalRecords++;
+                        if (rec.status === 'Present' || rec.status === 'Leave') {
+                            presentRecords++;
+                            globalPresentRecords++;
+                        }
+                    });
+                });
+
+                const percentage = totalRecords === 0 ? 0 : Math.round((presentRecords / totalRecords) * 100);
+                return { 
+                    subject, 
+                    totalConducted: subjectSessions.length, 
+                    percentage, 
+                    sessions: subjectSessions 
                 };
             });
 
-            setSchedule(mergedSchedule);
+            setAttendanceStats(stats);
+            
+            // Calculate Global Monthly/Overall Percentage
+            const globalPct = globalTotalRecords === 0 ? 0 : Math.round((globalPresentRecords / globalTotalRecords) * 100);
+            setMonthlyAttendance(`${globalPct}%`);
         }
         setLoading(false);
     };
@@ -160,6 +206,49 @@ export default function Dashboard() {
     const handleLogout = async () => {
         await supabase.auth.signOut();
         window.location.href = '/login';
+    };
+
+    // --- CSV GENERATOR FOR ATTENDANCE ---
+    const downloadCSV = (stat) => {
+        if (stat.sessions.length === 0) return alert("No attendance recorded for this subject yet.");
+
+        let csv = "Roll Number,Name";
+        const sortedSessions = stat.sessions.sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
+        
+        // Headers
+        sortedSessions.forEach(s => { csv += `,${s.session_date}`; });
+        csv += ",Overall %\n";
+
+        // Student Rows
+        roster.forEach(student => {
+            let row = `${student.roll_number},${student.student_name}`;
+            let presentCount = 0;
+            let totalCount = 0;
+            
+            sortedSessions.forEach(s => {
+                const rec = s.records.find(r => r.student_id === student.id);
+                if (rec) {
+                    totalCount++;
+                    const isPresent = (rec.status === 'Present' || rec.status === 'Leave') ? 1 : 0;
+                    row += `,${isPresent}`;
+                    if (isPresent === 1) presentCount++;
+                } else {
+                    row += `,N/A`;
+                }
+            });
+            
+            const pct = totalCount === 0 ? 0 : Math.round((presentCount / totalCount) * 100);
+            row += `,${pct}%\n`;
+            csv += row;
+        });
+
+        // Trigger Download
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${stat.subject}_Attendance.csv`;
+        a.click();
     };
 
     // --- STUDENT MANAGEMENT LOGIC ---
@@ -263,6 +352,10 @@ export default function Dashboard() {
     if (!session) return null;
 
     const filteredWeeklySchedule = schedule.filter(cls => cls.day === selectedDay);
+    
+    // Compute current real-time details for ongoing class detection
+    const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
@@ -287,7 +380,7 @@ export default function Dashboard() {
                         <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                     </div>
                     <div style={{ background: '#f8f9fa', padding: '10px 20px', borderRadius: '8px', textAlign: 'center', marginTop: '10px' }}>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Last Month Attendance</p>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Overall Attendance</p>
                         <h3 style={{ margin: '5px 0 0 0', color: '#28a745', fontSize: '1.8rem' }}>{monthlyAttendance}</h3>
                     </div>
                 </div>
@@ -297,6 +390,7 @@ export default function Dashboard() {
                     <button onClick={() => setActiveTab('weekly')} style={tabStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>
                     <button onClick={() => setActiveTab('permanent')} style={tabStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>
                     <button onClick={() => setActiveTab('students')} style={tabStyle(activeTab === 'students')}>👥 Manage Students</button>
+                    <button onClick={() => setActiveTab('attendance')} style={tabStyle(activeTab === 'attendance')}>📝 Attendance</button>
                 </div>
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
@@ -329,15 +423,6 @@ export default function Dashboard() {
                                                 {cls.course}
                                             </div>
                                             <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
-                                            
-                                            {/* ATTENDANCE BADGE */}
-                                            {cls.attendanceSession && (
-                                                <div style={{ display: 'inline-block', marginTop: '5px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', 
-                                                    background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
-                                                    color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
-                                                    {cls.attendanceSession.status === 'approved' ? '✓ Attendance Approved' : '⏳ Attendance Pending'}
-                                                </div>
-                                            )}
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
@@ -345,31 +430,9 @@ export default function Dashboard() {
                                         </div>
                                     </div>
 
-                                    {/* EXPANDED CONTENT */}
+                                    {/* EXPANDED CONTENT (No Attendance Here) */}
                                     {expandedLectureId === cls.id && (
                                         <div style={{ marginTop: '15px', animation: 'fadeIn 0.3s ease-in-out' }}>
-                                            
-                                            {/* ATTENDANCE BUTTONS */}
-                                            <div style={{ marginBottom: '15px', background: '#f8f9fa', padding: '10px', borderRadius: '5px' }}>
-                                                {!cls.attendanceSession ? (
-                                                    <button onClick={(e) => { e.stopPropagation(); setActiveAttendanceLecture(cls); }} style={{...contactBtnStyle('#28a745'), width: '100%'}}>
-                                                        📝 Mark Attendance
-                                                    </button>
-                                                ) : (
-                                                    // Time-Lock Logic check
-                                                    isAttendanceEditable(cls.end_time) && cls.attendanceSession.status === 'pending' ? (
-                                                        <button onClick={(e) => { e.stopPropagation(); setActiveAttendanceLecture(cls); }} style={{...contactBtnStyle('#007bff'), width: '100%'}}>
-                                                            ✏️ Edit Attendance (Time Remaining)
-                                                        </button>
-                                                    ) : (
-                                                        <button disabled style={{...contactBtnStyle('#6c757d'), width: '100%', cursor: 'not-allowed', opacity: 0.7}}>
-                                                            🔒 Edit Window Closed / Approved
-                                                        </button>
-                                                    )
-                                                )}
-                                            </div>
-
-                                            {/* ACTIONS */}
                                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                                 {cls.isCancelled ? (
                                                     <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
@@ -389,6 +452,76 @@ export default function Dashboard() {
                                     )}
                                 </div>
                             ))
+                        )}
+                    </div>
+                )}
+
+                {/* ================= NEW: ATTENDANCE TAB ================= */}
+                {activeTab === 'attendance' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                        {attendanceStats.length === 0 ? <p style={{textAlign: 'center', width: '100%'}}>No subjects found.</p> : (
+                            attendanceStats.map(stat => {
+                                // Real-Time Ongoing Class Check
+                                const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
+                                let isOngoing = false;
+                                let canEdit = false;
+                                let todaySession = null;
+
+                                if (todayClass) {
+                                    const startMins = parseTime(todayClass.start_time);
+                                    const endMins = parseTime(todayClass.end_time);
+                                    isOngoing = currentMins >= startMins && currentMins <= endMins;
+                                    todaySession = todayClass.attendanceSession;
+                                    
+                                    if (todaySession) {
+                                        const sessionTime = new Date(todaySession.created_at).getTime();
+                                        const now = new Date().getTime();
+                                        const diffMins = (now - sessionTime) / 60000;
+                                        // Editable within 30 mins and not yet approved by teacher
+                                        if (diffMins <= 30 && todaySession.status === 'pending') {
+                                            canEdit = true;
+                                        }
+                                    }
+                                }
+
+                                return (
+                                    <div key={stat.subject} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #002147' }}>
+                                        <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
+                                        
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                                            <div>
+                                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Lectures</p>
+                                                <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>{stat.totalConducted}</p>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Attendance</p>
+                                                <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem', color: stat.percentage > 75 ? '#28a745' : '#dc3545' }}>{stat.percentage}%</p>
+                                            </div>
+                                        </div>
+
+                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
+                                            📥 Download CSV
+                                        </button>
+
+                                        {/* DYNAMIC ATTENDANCE BUTTON */}
+                                        {todayClass && isOngoing && !todaySession && (
+                                            <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' }}>
+                                                📝 Mark Attendance (Ongoing)
+                                            </button>
+                                        )}
+                                        {todaySession && canEdit && (
+                                            <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                ✏️ Edit Attendance (Time Remaining)
+                                            </button>
+                                        )}
+                                        {todaySession && !canEdit && (
+                                            <button disabled style={{ width: '100%', padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'not-allowed', opacity: 0.8 }}>
+                                                🔒 Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending Teacher'})
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })
                         )}
                     </div>
                 )}
