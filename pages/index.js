@@ -28,7 +28,6 @@ export default function Home() {
     const [showAlerts, setShowAlerts] = useState(false);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
     
-    // NEW: Track expanded assignment details inside class cards
     const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
 
     // Free Room Filters
@@ -101,13 +100,26 @@ export default function Home() {
                     }
                 }
             })
-            // NEW: Listen for direct INSERTS on class_announcements so they show up instantly without full refresh
+            // Listen for direct INSERTS on class_announcements
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'class_announcements' }, (payload) => {
                 if (payload.new.section === userSection.section && payload.new.semester === userSection.semester) {
                     setAnnouncements(prev => [payload.new, ...prev].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
+                    
+                    // Trigger instant pop-up notification for the specific section
+                    if (Notification.permission === "granted") {
+                        const title = payload.new.type === 'assignment' ? "New Assignment Posted!" : "New Class Announcement";
+                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.ready.then((registration) => {
+                                registration.showNotification(title, {
+                                    body: `${payload.new.subject}: ${payload.new.topics}`, icon: "/icon.png", vibrate: [200, 100, 200]
+                                });
+                            });
+                        } else {
+                            new Notification(title, { body: `${payload.new.subject}: ${payload.new.topics}`, icon: "/icon.png" });
+                        }
+                    }
                 }
             })
-            // Fetch everything globally upon exception or base schedule change
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => fetchLiveSchedule())
             .on('postgres_changes', { event: '*', schema: 'public', table: 'base_schedule' }, () => fetchLiveSchedule())
             .subscribe();
@@ -162,16 +174,25 @@ export default function Home() {
         setIsFirstVisit(false);
     };
 
+    // --- UNIVERSAL TIME PARSER ---
     const parseTime = (t) => {
         if (!t) return 0;
-        const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (!match) return 0;
-        let h = parseInt(match[1], 10);
-        let m = parseInt(match[2], 10);
-        let ap = match[3].toUpperCase();
-        if (h === 12) h = 0;
-        if (ap === 'PM') h += 12;
-        return h * 60 + m;
+        const match12 = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match12) {
+            let h = parseInt(match12[1], 10);
+            let m = parseInt(match12[2], 10);
+            let ap = match12[3].toUpperCase();
+            if (h === 12) h = 0;
+            if (ap === 'PM') h += 12;
+            return h * 60 + m;
+        }
+        const match24 = t.match(/(\d+):(\d+)/);
+        if (match24) {
+            let h = parseInt(match24[1], 10);
+            let m = parseInt(match24[2], 10);
+            return h * 60 + m;
+        }
+        return 0;
     };
 
     const parseDbTime = (t) => {
@@ -180,9 +201,10 @@ export default function Home() {
         return h * 60 + m;
     };
 
-    const convertTo12Hour = (time24) => {
-        if (!time24 || time24.includes('AM') || time24.includes('PM')) return time24;
-        let [h, m] = time24.split(':').map(Number);
+    const convertTo12Hour = (timeStr) => {
+        if (!timeStr) return "";
+        if (timeStr.toUpperCase().includes('AM') || timeStr.toUpperCase().includes('PM')) return timeStr;
+        let [h, m] = timeStr.split(':').map(Number);
         const suffix = h >= 12 ? "PM" : "AM";
         h = h % 12 || 12;
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
@@ -201,7 +223,7 @@ export default function Home() {
         if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
 
-        return null;
+        return null; 
     };
 
     const getNearestPoints = (cls) => {
@@ -257,7 +279,6 @@ export default function Home() {
         }
     };
 
-    // Filter relevant notifications and exclude those in browser cache
     const relevantNotifs = notifications.filter(n => 
         (n.message.includes(userSection?.section) || n.message.includes('GLOBAL')) &&
         !readNotifIds.includes(n.id)
@@ -269,9 +290,9 @@ export default function Home() {
         localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
     };
 
+    // STRICT SECTION ISOLATION FOR ANNOUNCEMENTS
     const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.semester === userSection?.semester);
 
-    // Filter Active Assignments to check for the Red Dot
     const activeAssignments = relevantAnnouncements.filter(ann => {
         if (ann.type !== 'assignment' || !ann.deadline_date || !ann.deadline_time) return false;
         const deadlineDate = new Date(ann.deadline_date);
@@ -290,7 +311,6 @@ export default function Home() {
         return `https://wa.me/?text=Salam%20${encodeURIComponent(teacherName)}`;
     };
 
-    // Helper to get time remaining string for assignments
     const getTimeRemainingStr = (ann) => {
         if (!ann.deadline_date || !ann.deadline_time) return null;
         const deadlineDate = new Date(ann.deadline_date);
@@ -298,7 +318,7 @@ export default function Home() {
         deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
         
         const diffMs = deadlineDate - currentTime;
-        if (diffMs <= 0) return null; // Expired
+        if (diffMs <= 0) return null; 
         
         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
@@ -308,7 +328,6 @@ export default function Home() {
 
     if (loading) return <div style={centerStyle}>Loading System Data...</div>;
 
-    // --- WELCOME SCREEN ---
     if (isFirstVisit) {
         return (
             <div style={welcomeBg}>
@@ -351,7 +370,7 @@ export default function Home() {
         if (selectedDay !== 'ALL') {
             classes = classes.filter(c => c.day === selectedDay);
         }
-        return classes; // Sorting happens in renderClassCards
+        return classes; 
     };
 
     const mySchedule = getFilteredClasses('section', userSection?.section);
@@ -390,8 +409,8 @@ export default function Home() {
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
 
-                        // NEW: Find active assignments for THIS specific course
-                        const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course);
+                        // STRICT SECTION ISOLATION FOR ASSIGNMENTS IN LECTURE CARDS
+                        const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
 
                         return (
                             <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
@@ -411,7 +430,6 @@ export default function Home() {
                                     )}
                                 </div>
                                 
-                                {/* NEW: ASSIGNMENT PENDING BAR */}
                                 {activeSubjectAssignments.length > 0 && (
                                     <div 
                                         onClick={() => setExpandedAssignmentId(expandedAssignmentId === cls.id ? null : cls.id)}
@@ -422,7 +440,6 @@ export default function Home() {
                                     </div>
                                 )}
 
-                                {/* NEW: EXPANDED ASSIGNMENT DETAILS */}
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
                                     <div style={{ background: '#fef2f2', borderLeft: '5px solid #dc3545', padding: '12px', animation: 'fadeIn 0.2s ease' }}>
                                         {activeSubjectAssignments.map(ann => (
@@ -466,10 +483,11 @@ export default function Home() {
         }
     };
 
+    // --- MAIN APP VIEW ---
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
-                <title>My Schedule | IUB Assistant</title>
+                <title>My Schedule | IUB AI</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
                 <meta name="theme-color" content="#002147" />
                 <link rel="manifest" href="/manifest.json" />
@@ -491,7 +509,6 @@ export default function Home() {
                 {['class', 'room', 'teacher', 'announcements'].map(tab => (
                     <button key={tab} onClick={() => { setCurrentTab(tab); setShowAlerts(false); }} style={tabBtn(currentTab === tab)}>
                         {tab === 'class' ? '📅 SCHED' : tab === 'room' ? '🚪 ROOMS' : tab === 'teacher' ? '👨‍🏫 TEACHERS' : '📢 NEWS'}
-                        {/* RED DOT ON NEWS TAB IF THERE ARE ACTIVE ASSIGNMENTS */}
                         {tab === 'announcements' && activeAssignments.length > 0 && <span style={newsRedDot}></span>}
                     </button>
                 ))}
@@ -727,7 +744,6 @@ const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', 
 const notifBannerStyle = { background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900', gap: '10px' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' };
 
-// Point Strip Style
 const pointStripStyle = {
     background: '#3f3f3f', color: '#fff', padding: '8px 12px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px',
     display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold', justifyContent: 'flex-start'
