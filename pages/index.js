@@ -9,7 +9,7 @@ export default function Home() {
     const [notifications, setNotifications] = useState([]);
     const [pointsData, setPointsData] = useState([]); 
     const [announcements, setAnnouncements] = useState([]); 
-    const [teachersData, setTeachersData] = useState([]); // NEW: Store teacher contacts
+    const [teachersData, setTeachersData] = useState([]); 
     const [loading, setLoading] = useState(true);
 
     // Persistence States
@@ -128,7 +128,7 @@ export default function Home() {
             supabase.from('notifications').select('*').order('created_at', { ascending: false }),
             supabase.from('point_schedules').select('*'),
             supabase.from('class_announcements').select('*').order('created_at', { ascending: false }),
-            supabase.from('teacher_profiles').select('name, phone') // Fetch Teacher Contacts
+            supabase.from('teacher_profiles').select('name, phone') 
         ]);
     
         setRawData(baseRes.data || []);
@@ -154,32 +154,40 @@ export default function Home() {
         setIsFirstVisit(false);
     };
 
-    // --- BULLETPROOF TIME PARSER ---
-    // Fixes the 12:00 PM vs 9:00 AM sorting bug by strictly isolating hours, mins, and AM/PM
+    // --- UNIVERSAL TIME PARSER (FIX FOR SORTING & NA POINTS) ---
+    // Intelligently parses 12-hour AM/PM formats OR 24-hour SQL strings
     const parseTime = (t) => {
         if (!t) return 0;
-        const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
-        if (!match) return 0;
         
-        let h = parseInt(match[1], 10);
-        let m = parseInt(match[2], 10);
-        let ap = match[3].toUpperCase();
-        
-        if (h === 12) h = 0;
-        if (ap === 'PM') h += 12;
-        
-        return h * 60 + m;
+        // 1. Try matching 12-hour format (e.g., "1:30 PM", "8:00AM")
+        const match12 = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match12) {
+            let h = parseInt(match12[1], 10);
+            let m = parseInt(match12[2], 10);
+            let ap = match12[3].toUpperCase();
+            if (h === 12) h = 0;
+            if (ap === 'PM') h += 12;
+            return h * 60 + m;
+        }
+
+        // 2. Try matching 24-hour SQL/System format (e.g., "13:30:00" or "08:00")
+        const match24 = t.match(/(\d+):(\d+)/);
+        if (match24) {
+            let h = parseInt(match24[1], 10);
+            let m = parseInt(match24[2], 10);
+            return h * 60 + m;
+        }
+
+        return 0; // Fallback
     };
 
-    const parseDbTime = (t) => {
-        if (!t) return 0;
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
-    };
-
-    const convertTo12Hour = (time24) => {
-        if (!time24 || time24.includes('AM') || time24.includes('PM')) return time24;
-        let [h, m] = time24.split(':').map(Number);
+    const convertTo12Hour = (timeStr) => {
+        if (!timeStr) return "";
+        // If it already has AM/PM, it's formatted. Just return it.
+        if (timeStr.toUpperCase().includes('AM') || timeStr.toUpperCase().includes('PM')) return timeStr;
+        
+        // Convert 24-hour (e.g. 13:30:00) to 12-hour
+        let [h, m] = timeStr.split(':').map(Number);
         const suffix = h >= 12 ? "PM" : "AM";
         h = h % 12 || 12;
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
@@ -210,15 +218,15 @@ export default function Home() {
 
         const targetUpMins = clsStartMins - 30;
         const validUp = pointsData
-            .filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins)
-            .sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
+            .filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseTime(p.departure_time) <= targetUpMins)
+            .sort((a, b) => parseTime(b.departure_time) - parseTime(a.departure_time)); 
         
         const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
 
         const targetDownMins = clsEndMins;
         const validDown = pointsData
-            .filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins)
-            .sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
+            .filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseTime(p.departure_time) >= targetDownMins)
+            .sort((a, b) => parseTime(a.departure_time) - parseTime(b.departure_time)); 
         
         const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
 
@@ -272,7 +280,6 @@ export default function Home() {
     const getTeacherWhatsAppLink = (teacherName) => {
         const tInfo = teachersData.find(t => t.name === teacherName);
         if (tInfo && tInfo.phone) {
-            // Remove non-numeric characters, replace leading 0 with 92 for standard intl format
             let p = tInfo.phone.replace(/\D/g, '');
             if(p.startsWith('0')) p = '92' + p.substring(1);
             return `https://wa.me/${p}?text=Salam%20${encodeURIComponent(teacherName)}`;
@@ -349,7 +356,7 @@ export default function Home() {
         const daysToRender = selectedDay === 'ALL' ? days : [selectedDay];
 
         return daysToRender.map(day => {
-            // STRICT TIME SORTING - Using new Regex Parser
+            // STRICT TIME SORTING - Using Universal Time Parser
             const dayClasses = scheduleList
                 .filter(c => c.day === day)
                 .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
@@ -510,7 +517,6 @@ export default function Home() {
                                             {allRooms.filter(r => r.toLowerCase().includes(roomSearch.toLowerCase())).map(r => <option key={r} value={r}>{r}</option>)}
                                         </select>
                                         
-                                        {/* Repositioned Day Filter */}
                                         <div style={{...dayFilter, marginTop: '10px', marginBottom: '20px'}}>
                                             {filterDays.map(day => (
                                                 <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>{day}</button>
@@ -559,7 +565,6 @@ export default function Home() {
                                     {allTeachers.filter(t => t.toLowerCase().includes(teacherSearch.toLowerCase())).map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                                 
-                                {/* Repositioned Day Filter */}
                                 <div style={{...dayFilter, marginTop: '10px', marginBottom: '20px'}}>
                                     {filterDays.map(day => (
                                         <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>{day}</button>
@@ -578,7 +583,6 @@ export default function Home() {
                             </div>
                         )}
 
-                        {/* NEW: ANNOUNCEMENTS TAB */}
                         {currentTab === 'announcements' && (
                             <div>
                                 {userSection?.section === 'GUEST' ? (
@@ -625,7 +629,7 @@ export default function Home() {
                                                 
                                                 {ann.type === 'assignment' && (
                                                     <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
-                                                        <span>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {ann.deadline_time}</span>
+                                                        <span>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</span>
                                                         <span>{timeRemainingDisplay}</span>
                                                     </div>
                                                 )}
