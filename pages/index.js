@@ -7,16 +7,18 @@ export default function Home() {
     const [rawData, setRawData] = useState([]);
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
-    const [pointsData, setPointsData] = useState([]); // NEW: Point Schedules State
+    const [pointsData, setPointsData] = useState([]); 
+    const [announcements, setAnnouncements] = useState([]); // NEW: Announcements State
     const [loading, setLoading] = useState(true);
 
     // Persistence States
     const [userSection, setUserSection] = useState(null);
     const [isFirstVisit, setIsFirstVisit] = useState(true);
+    const [currentTime, setCurrentTime] = useState(new Date()); // For Announcement Countdowns
 
     // Active View States
-    const [currentTab, setCurrentTab] = useState('class'); // 'class' | 'room' | 'teacher'
-    const [roomSubTab, setRoomSubTab] = useState('schedule'); // 'schedule' | 'free'
+    const [currentTab, setCurrentTab] = useState('class'); // 'class' | 'room' | 'teacher' | 'announcements'
+    const [roomSubTab, setRoomSubTab] = useState('schedule'); 
     const [selectedDay, setSelectedDay] = useState(() => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
         return today === 'SUN' ? 'ALL' : today;
@@ -43,10 +45,7 @@ export default function Home() {
     const timeSlots = [];
     let ts = 8 * 60;
     while (ts < 18 * 60) {
-        let h = Math.floor(ts / 60),
-            m = ts % 60,
-            amp = h >= 12 ? 'PM' : 'AM',
-            dh = h > 12 ? h - 12 : h;
+        let h = Math.floor(ts / 60), m = ts % 60, amp = h >= 12 ? 'PM' : 'AM', dh = h > 12 ? h - 12 : h;
         if (dh === 0) dh = 12;
         timeSlots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`);
         ts += 30;
@@ -65,16 +64,20 @@ export default function Home() {
         }
 
         fetchLiveSchedule();
+
+        // 1-Minute Timer for Countdown Sync
+        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+        return () => clearInterval(timer);
     }, []);
 
     // 2. SUPABASE REALTIME LISTENER
     useEffect(() => {
-        if (!userSection) return;
+        if (!userSection || userSection.section === 'GUEST') return;
 
         const channel = supabase
             .channel('student-dashboard-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-                if (payload.new.message.includes(userSection.section)) {
+                if (payload.new.message.includes(userSection.section) || payload.new.message.includes('GLOBAL')) {
                     setNotifications(prev => [payload.new, ...prev]);
                     setAlertsRead(false);
                     
@@ -82,9 +85,7 @@ export default function Home() {
                         if ('serviceWorker' in navigator) {
                             navigator.serviceWorker.ready.then((registration) => {
                                 registration.showNotification("IUB Update Alert", {
-                                    body: payload.new.message,
-                                    icon: "/icon.png",
-                                    vibrate: [200, 100, 200]
+                                    body: payload.new.message, icon: "/icon.png", vibrate: [200, 100, 200]
                                 });
                             });
                         } else {
@@ -100,6 +101,9 @@ export default function Home() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'base_schedule' }, () => {
                 supabase.from('base_schedule').select('*').then(res => setRawData(res.data || []));
             })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'class_announcements' }, () => {
+                supabase.from('class_announcements').select('*').then(res => setAnnouncements(res.data || []));
+            })
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -108,9 +112,7 @@ export default function Home() {
     // 3. INITIALIZE SERVICE WORKER
     useEffect(() => {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then((reg) => console.log('Service Worker Registered!'))
-                .catch((err) => console.error('Service Worker Failed!', err));
+            navigator.serviceWorker.register('/sw.js').then((reg) => console.log('SW Registered')).catch((err) => console.error('SW Failed!', err));
         }
     }, []);
 
@@ -124,18 +126,19 @@ export default function Home() {
     const fetchLiveSchedule = async () => {
         const today = new Date().toLocaleDateString('en-CA');  
         
-        // Added point_schedules to the Promise.all fetch
-        const [baseRes, excRes, notifRes, pointsRes] = await Promise.all([
+        const [baseRes, excRes, notifRes, pointsRes, annRes] = await Promise.all([
             supabase.from('base_schedule').select('*'),
-            supabase.from('schedule_exceptions').select('*').eq('exception_date', today),
+            supabase.from('schedule_exceptions').select('*'), // Fetch all for accurate dates
             supabase.from('notifications').select('*').order('created_at', { ascending: false }),
-            supabase.from('point_schedules').select('*')
+            supabase.from('point_schedules').select('*'),
+            supabase.from('class_announcements').select('*').order('created_at', { ascending: false })
         ]);
     
         setRawData(baseRes.data || []);
         setExceptions(excRes.data || []);
         setNotifications(notifRes.data || []);
-        setPointsData(pointsRes.data || []); // Save points data
+        setPointsData(pointsRes.data || []); 
+        setAnnouncements(annRes.data || []);
         setLoading(false);
     };
 
@@ -146,17 +149,24 @@ export default function Home() {
         setIsFirstVisit(false);
     };
 
+    const handleGuestSelection = () => {
+        const selection = { semester: 'N/A', section: 'GUEST' };
+        localStorage.setItem('iub_user_selection', JSON.stringify(selection));
+        setUserSection(selection);
+        setIsFirstVisit(false);
+    };
+
     const parseTime = (t) => {
         if (!t) return 0;
         let clean = t.replace(/\./g, '').trim().toUpperCase();
         let [tm, ap] = clean.split(' ');
+        if(!tm) return 0;
         let [h, m] = tm.split(':').map(Number);
         if (h === 12) h = 0;
         if (ap === 'PM') h += 12;
         return h * 60 + (m || 0);
     };
 
-    // NEW: Helper to parse SQL TIME strings (e.g., "13:30:00") into minutes
     const parseDbTime = (t) => {
         if (!t) return 0;
         const [h, m] = t.split(':').map(Number);
@@ -181,31 +191,29 @@ export default function Home() {
         const classDayIdx = dayMap[cls.day] || 0;
 
         if (classDayIdx < todayIdx) return true;
-        if (classDayIdx === todayIdx) {
-            return parseTime(cls.end_time) <= currentMinutes;
-        }
+        if (classDayIdx === todayIdx) return parseTime(cls.end_time) <= currentMinutes;
         return false;
     };
 
-    // Dynamic Extractions
     const availableSemesters = [...new Set(rawData.map(x => x.semester))].filter(Boolean).sort();
     const getSectionsForSem = (sem) => [...new Set(rawData.filter(x => x.semester === sem).map(x => x.section))].sort();
     const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
     const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
 
     const getStatusStyles = (cls) => {
-        const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
+        // Find if there's an exception matching today or a future date
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
         
-        if (exc?.status === 'cancelled') return { label: 'Cancelled', color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
-        if (exc?.status === 'confirmed') return { label: 'Confirmed', color: '#155724', bg: '#d4edda', border: '#28a745' };
-        if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
+        if (exc?.status === 'cancelled') return { label: `Cancelled on ${exc.exception_date}`, color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
+        if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
+        if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
 
         if (isClassPassed(cls)) return { label: 'Passed / As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
 
         return { label: 'As Scheduled', color: '#856404', bg: '#fff', border: '#F2A900' };
     };
 
-    // NEW: Function to find the nearest up/down point timings with travel buffer
     const getNearestPoints = (cls) => {
         if (!pointsData || pointsData.length === 0) return { up: '--:--', down: '--:--' };
 
@@ -213,19 +221,17 @@ export default function Home() {
         const clsStartMins = parseTime(cls.start_time);
         const clsEndMins = parseTime(cls.end_time);
 
-        // Target UP: Must leave AC 30 minutes before class starts
         const targetUpMins = clsStartMins - 30;
         const validUp = pointsData
             .filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins)
-            .sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); // Sort Desc to get closest
+            .sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
         
         const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
 
-        // Target DOWN: Can leave BJC exactly at or after class ends
         const targetDownMins = clsEndMins;
         const validDown = pointsData
             .filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins)
-            .sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); // Sort Asc to get closest
+            .sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
         
         const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
 
@@ -235,10 +241,7 @@ export default function Home() {
     const searchFreeRooms = () => {
         const sVal = parseTime(freeStart);
         const eVal = parseTime(freeEnd);
-        if (sVal >= eVal) {
-            alert("End time must be after start time");
-            return;
-        }
+        if (sVal >= eVal) return alert("End time must be after start time");
 
         const strictlyCancelledClasses = rawData.filter(cls => {
             if (cls.day !== freeDay) return false;
@@ -247,7 +250,8 @@ export default function Home() {
             const overlaps = (sVal < clsE && eVal > clsS);
             if (!overlaps) return false;
 
-            const exc = exceptions.find(e => String(e.base_schedule_id) === String(cls.id));
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
             return exc?.status === 'cancelled';
         });
 
@@ -263,23 +267,23 @@ export default function Home() {
         }
     };
 
-    const relevantNotifs = notifications.filter(n => n.message.includes(userSection?.section));
+    const relevantNotifs = notifications.filter(n => n.message.includes(userSection?.section) || n.message.includes('GLOBAL'));
+    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.semester === userSection?.semester);
 
-    if (loading) return <div style={centerStyle}>Loading...</div>;
+    if (loading) return <div style={centerStyle}>Loading System Data...</div>;
 
     // --- WELCOME SCREEN ---
     if (isFirstVisit) {
         return (
             <div style={welcomeBg}>
                 <div style={welcomeCard}>
-                    <h2 style={{ color: '#002147', margin: '0 0 10px 0' }}>Welcome Students! 👋</h2>
-                    <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '20px' }}>Select your section once to get your personalized schedule.</p>
+                    <h2 style={{ color: '#002147', margin: '0 0 10px 0' }}>Welcome to IUB Assistant! 👋</h2>
+                    <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '20px' }}>Select your section for a personalized schedule, or continue as a guest.</p>
 
                     <select id="initSem" style={selectStyle} onChange={(e) => {
                         const secDropdown = document.getElementById('initSec');
                         const secs = getSectionsForSem(e.target.value);
-                        secDropdown.innerHTML = '<option value="">-- Select Section --</option>' +
-                            secs.map(s => `<option value="${s}">${s}</option>`).join('');
+                        secDropdown.innerHTML = '<option value="">-- Select Section --</option>' + secs.map(s => `<option value="${s}">${s}</option>`).join('');
                     }}>
                         <option value="">-- Select Semester --</option>
                         {availableSemesters.map(s => <option key={s} value={s}>{s} Semester</option>)}
@@ -289,11 +293,18 @@ export default function Home() {
                         <option value="">-- Select Section --</option>
                     </select>
 
-                    <button onClick={() => {
-                        const sem = document.getElementById('initSem').value;
-                        const sec = document.getElementById('initSec').value;
-                        if (sem && sec) handleInitialSelection(sem, sec);
-                    }} style={bigBtn}>Show My Schedule</button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                        <button onClick={() => {
+                            const sem = document.getElementById('initSem').value;
+                            const sec = document.getElementById('initSec').value;
+                            if (sem && sec) handleInitialSelection(sem, sec);
+                            else alert("Please select both Semester and Section");
+                        }} style={bigBtn}>Show My Schedule</button>
+                        
+                        <div style={{color: '#999', fontSize: '0.8rem'}}>— OR —</div>
+                        
+                        <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
+                    </div>
                 </div>
             </div>
         );
@@ -304,7 +315,7 @@ export default function Home() {
         if (selectedDay !== 'ALL') {
             classes = classes.filter(c => c.day === selectedDay);
         }
-        return classes.sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
+        return classes; // Sorting happens in renderClassCards
     };
 
     const mySchedule = getFilteredClasses('section', userSection?.section);
@@ -313,12 +324,26 @@ export default function Home() {
 
     // --- RENDER COMPONENT HELPERS ---
     const renderClassCards = (scheduleList, displayContext) => {
+        if (displayContext === 'class' && userSection?.section === 'GUEST') {
+            return (
+                <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
+                    <p style={{fontSize: '1.2rem'}}>👤 Guest Mode Active</p>
+                    <p>You can search for Teacher schedules and Free Rooms above.</p>
+                    <p>To view a personalized class schedule, click <b>"Change Section"</b> in the top right corner.</p>
+                </div>
+            );
+        }
+
         if (scheduleList.length === 0) return <div style={emptyState}>No classes scheduled for {selectedDay === 'ALL' ? 'the week' : selectedDay}.</div>;
 
         const daysToRender = selectedDay === 'ALL' ? days : [selectedDay];
 
         return daysToRender.map(day => {
-            const dayClasses = scheduleList.filter(c => c.day === day);
+            // STRICT TIME SORTING FIX HERE
+            const dayClasses = scheduleList
+                .filter(c => c.day === day)
+                .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
+                
             if (dayClasses.length === 0) return null;
 
             return (
@@ -326,11 +351,10 @@ export default function Home() {
                     <div style={dayHeaderStrip}>{day}</div>
                     {dayClasses.map((cls, idx) => {
                         const status = getStatusStyles(cls);
-                        const points = getNearestPoints(cls); // Fetch calculated point timings
+                        const points = getNearestPoints(cls); 
 
                         return (
                             <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px' }}>
-                                {/* Main Class Card - Modified for flat bottom */}
                                 <div style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: status.bg, borderLeft: `5px solid ${status.border}` }}>
                                     <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
@@ -339,25 +363,18 @@ export default function Home() {
                                         {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
                                         <span>👥 {cls.section}</span>
                                     </div>
-                                    <div style={{ marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>● {status.label}</div>
+                                    <div style={{ marginTop: '8px', fontSize: '0.75rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>● {status.label}</div>
                                 </div>
                                 
-                                {/* Nearest Points UI Strip */}
                                 <div style={pointStripStyle}>
                                     <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
                                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                                        {/* Up Green Icon & Time */}
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745">
-                                                <path d="M12 2L4 10h5v12h6V10h5L12 2z"/>
-                                            </svg>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2L4 10h5v12h6V10h5L12 2z"/></svg>
                                             {points.up}
                                         </span>
-                                        {/* Down Blue Icon & Time */}
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#007bff">
-                                                <path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/>
-                                            </svg>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#007bff"><path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/></svg>
                                             {points.down}
                                         </span>
                                     </div>
@@ -374,9 +391,7 @@ export default function Home() {
         if (deferredPrompt) {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') {
-                setDeferredPrompt(null);
-            }
+            if (outcome === 'accepted') setDeferredPrompt(null);
         }
     };
 
@@ -403,9 +418,9 @@ export default function Home() {
             </header>
 
             <div style={tabBar}>
-                {['class', 'room', 'teacher'].map(tab => (
+                {['class', 'room', 'teacher', 'announcements'].map(tab => (
                     <button key={tab} onClick={() => { setCurrentTab(tab); setShowAlerts(false); }} style={tabBtn(currentTab === tab)}>
-                        {tab === 'class' ? '📅 SCHEDULE' : tab === 'room' ? '🚪 ROOMS' : '👨‍🏫 TEACHERS'}
+                        {tab === 'class' ? '📅 SCHED' : tab === 'room' ? '🚪 ROOMS' : tab === 'teacher' ? '👨‍🏫 TEACHERS' : '📢 NEWS'}
                     </button>
                 ))}
             </div>
@@ -451,15 +466,16 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
-                        {(currentTab === 'class' || currentTab === 'teacher' || (currentTab === 'room' && roomSubTab === 'schedule')) && (
-                            <div style={dayFilter}>
-                                {filterDays.map(day => (
-                                    <button key={day} onClick={() => setSelectedDay(day)} style={dayBtnStyle(selectedDay === day)}>{day}</button>
-                                ))}
-                            </div>
+                        {currentTab === 'class' && (
+                            <>
+                                <div style={dayFilter}>
+                                    {filterDays.map(day => (
+                                        <button key={day} onClick={() => setSelectedDay(day)} style={dayBtnStyle(selectedDay === day)}>{day}</button>
+                                    ))}
+                                </div>
+                                {renderClassCards(mySchedule, 'class')}
+                            </>
                         )}
-
-                        {currentTab === 'class' && renderClassCards(mySchedule, 'class')}
 
                         {currentTab === 'room' && (
                             <>
@@ -475,6 +491,14 @@ export default function Home() {
                                             <option value="">-- Select Room --</option>
                                             {allRooms.filter(r => r.toLowerCase().includes(roomSearch.toLowerCase())).map(r => <option key={r} value={r}>{r}</option>)}
                                         </select>
+                                        
+                                        {/* Repositioned Day Filter */}
+                                        <div style={{...dayFilter, marginTop: '10px', marginBottom: '20px'}}>
+                                            {filterDays.map(day => (
+                                                <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>{day}</button>
+                                            ))}
+                                        </div>
+
                                         {selectedRoom && renderClassCards(roomSchedule, 'room')}
                                     </div>
                                 )}
@@ -516,6 +540,13 @@ export default function Home() {
                                     <option value="">-- Select Teacher --</option>
                                     {allTeachers.filter(t => t.toLowerCase().includes(teacherSearch.toLowerCase())).map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
+                                
+                                {/* Repositioned Day Filter */}
+                                <div style={{...dayFilter, marginTop: '10px', marginBottom: '20px'}}>
+                                    {filterDays.map(day => (
+                                        <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>{day}</button>
+                                    ))}
+                                </div>
 
                                 {selectedTeacher && (
                                     <>
@@ -525,6 +556,64 @@ export default function Home() {
                                         </a>
                                         {renderClassCards(teacherSchedule, 'teacher')}
                                     </>
+                                )}
+                            </div>
+                        )}
+
+                        {/* NEW: ANNOUNCEMENTS TAB */}
+                        {currentTab === 'announcements' && (
+                            <div>
+                                {userSection?.section === 'GUEST' ? (
+                                    <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
+                                        <p style={{fontSize: '1.2rem'}}>👤 Guest Mode Active</p>
+                                        <p>Announcements and assignments are specific to class sections.</p>
+                                        <p>Please select a section to view its announcements.</p>
+                                    </div>
+                                ) : relevantAnnouncements.length === 0 ? (
+                                    <div style={emptyState}>No announcements posted for Section {userSection.section}.</div>
+                                ) : (
+                                    relevantAnnouncements.map(ann => {
+                                        let timeRemainingDisplay = null;
+                                        let isExpired = false;
+
+                                        if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
+                                            const deadlineDate = new Date(ann.deadline_date);
+                                            const deadlineMins = parseTime(ann.deadline_time);
+                                            deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
+                                            
+                                            const diffMs = deadlineDate - currentTime;
+                                            
+                                            if (diffMs > 0) {
+                                                const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                                const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+                                                const mins = Math.floor((diffMs / 1000 / 60) % 60);
+                                                timeRemainingDisplay = `⏳ ${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m remaining`;
+                                            } else {
+                                                isExpired = true;
+                                                timeRemainingDisplay = `❌ Deadline Passed`;
+                                            }
+                                        }
+
+                                        return (
+                                            <div key={ann.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: ann.type === 'assignment' ? '5px solid #F2A900' : '5px solid #007bff', opacity: isExpired ? 0.6 : 1 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', background: '#eee', padding: '3px 8px', borderRadius: '12px', color: '#555', textTransform: 'uppercase' }}>
+                                                        {ann.subject} • {ann.type}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.75rem', color: '#999' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
+                                                </div>
+                                                <h4 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#000' }}>{ann.topics}</h4>
+                                                <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#444', whiteSpace: 'pre-wrap' }}>{ann.details}</p>
+                                                
+                                                {ann.type === 'assignment' && (
+                                                    <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
+                                                        <span>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {ann.deadline_time}</span>
+                                                        <span>{timeRemainingDisplay}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })
                                 )}
                             </div>
                         )}
@@ -548,7 +637,7 @@ const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15
 const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
 const redDot = { position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
 const tabBar = { display: 'flex', background: '#fff', padding: '6px', gap: '4px', position: 'sticky', top: '55px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, minWidth: '85px', padding: '10px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' });
+const tabBtn = (active) => ({ flex: 1, minWidth: '75px', padding: '10px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' });
 const subTabBtn = (active) => ({ flex: 1, padding: '10px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' });
 const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px', WebkitOverflowScrolling: 'touch' };
 const dayBtnStyle = (active) => ({ flex: 1, minWidth: '45px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' });
@@ -568,16 +657,8 @@ const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', 
 const notifBannerStyle = { background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900', gap: '10px' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' };
 
-// NEW: Point Strip Style perfectly mapping your points-demo.jpg
+// Point Strip Style
 const pointStripStyle = {
-    background: '#3f3f3f',
-    color: '#fff',
-    padding: '8px 12px',
-    borderBottomLeftRadius: '10px',
-    borderBottomRightRadius: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: '0.8rem',
-    fontWeight: 'bold',
-    justifyContent: 'flex-start'
+    background: '#3f3f3f', color: '#fff', padding: '8px 12px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px',
+    display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold', justifyContent: 'flex-start'
 };
