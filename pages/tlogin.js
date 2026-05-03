@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
-import AttendanceSheet from '../components/AttendanceSheet'; // NEW IMPORT
+import AttendanceSheet from '../components/AttendanceSheet'; 
 
 export default function TeacherLoginAndDashboard() {
     // --- AUTH STATES ---
@@ -10,6 +10,9 @@ export default function TeacherLoginAndDashboard() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     
+    // --- NEW: GATEKEEPER STATE ---
+    const [isPendingApproval, setIsPendingApproval] = useState(false);
+
     // --- SIGNUP SPECIFIC STATES ---
     const [signupName, setSignupName] = useState('');
     const [cnic, setCnic] = useState('');
@@ -17,7 +20,7 @@ export default function TeacherLoginAndDashboard() {
     const [availableTeacherNames, setAvailableTeacherNames] = useState([]);
     const [authError, setAuthError] = useState('');
 
-    // --- NEW: TOAST & TIMER STATES ---
+    // --- TOAST & TIMER STATES ---
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [resendTimer, setResendTimer] = useState(0);
     const [unverifiedEmail, setUnverifiedEmail] = useState('');
@@ -29,7 +32,7 @@ export default function TeacherLoginAndDashboard() {
     const [loading, setLoading] = useState(true);
     const alertedClasses = useRef(new Set()); 
 
-    // --- PWA & NOTIFICATION STATES (From index.js) ---
+    // --- PWA & NOTIFICATION STATES ---
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
 
@@ -82,21 +85,41 @@ export default function TeacherLoginAndDashboard() {
 
     const parseTime = (t) => {
         if (!t) return 0;
-        let clean = t.replace(/\./g, '').trim().toUpperCase();
-        let [tm, ap] = clean.split(' ');
-        let [h, m] = tm.split(':').map(Number);
-        if (h === 12) h = 0;
-        if (ap === 'PM') h += 12;
-        return h * 60 + (m || 0);
+        const match12 = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match12) {
+            let h = parseInt(match12[1], 10);
+            let m = parseInt(match12[2], 10);
+            let ap = match12[3].toUpperCase();
+            if (h === 12) h = 0;
+            if (ap === 'PM') h += 12;
+            return h * 60 + m;
+        }
+        const match24 = t.match(/(\d+):(\d+)/);
+        if (match24) {
+            let h = parseInt(match24[1], 10);
+            let m = parseInt(match24[2], 10);
+            return h * 60 + m;
+        }
+        return 0;
     };
 
-    // --- CSS TOAST FUNCTION ---
+    const getDateForCurrentWeekDay = (dayName) => {
+        const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
+        const today = new Date();
+        const currentDay = today.getDay(); 
+        const targetDay = dayMap[dayName.toUpperCase()];
+        const diff = targetDay - currentDay;
+        
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + diff);
+        return targetDate.toLocaleDateString('en-CA');
+    };
+
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
         setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
     };
 
-    // --- RESEND TIMER EFFECT ---
     useEffect(() => {
         let interval;
         if (resendTimer > 0) {
@@ -105,23 +128,17 @@ export default function TeacherLoginAndDashboard() {
         return () => clearInterval(interval);
     }, [resendTimer]);
 
-    // --- 1. INITIAL LOAD & AUTH CHECK ---
     useEffect(() => {
-        // A. REGISTER SERVICE WORKER
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(() => console.log('SW Registered'))
-                .catch((err) => console.error('SW Registration Failed', err));
+            navigator.serviceWorker.register('/sw.js').catch((err) => console.error('SW Registration Failed', err));
         }
 
-        // B. CAPTURE INSTALL PROMPT
         const handleInstall = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
         };
         window.addEventListener('beforeinstallprompt', handleInstall);
 
-        // C. AUTH & SESSION CHECK
         supabase.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 verifyTeacherAndLoad(session.user.id, session);
@@ -139,7 +156,6 @@ export default function TeacherLoginAndDashboard() {
             }
         });
 
-        // D. NOTIFICATION CHECK
         if ("Notification" in window && Notification.permission === "default") {
             setShowNotifBanner(true);
         }
@@ -150,24 +166,27 @@ export default function TeacherLoginAndDashboard() {
         };
     }, []);
 
-    // --- STRICT TEACHER VERIFICATION (BLOCKS CRs) ---
+    // --- STRICT TEACHER VERIFICATION (GATEKEEPER) ---
     const verifyTeacherAndLoad = async (userId, activeSession) => {
         const { data: profileData, error } = await supabase.from('teacher_profiles').select('*').eq('id', userId).single();
         if (error || !profileData) {
-            // It's a CR or invalid user, sign them out immediately
             await supabase.auth.signOut();
             setSession(null);
             setLoading(false);
             setAuthError("Unauthorized: This email is not registered as a Teacher.");
+        } else if (profileData.is_approved === false) {
+            // --- GATEKEEPER TRIGGERED ---
+            setIsPendingApproval(true);
+            setSession(activeSession);
+            setProfile(profileData);
+            setLoading(false);
         } else {
-            // Valid Teacher
             setSession(activeSession);
             setProfile(profileData);
             fetchProfileAndSchedule(profileData.name);
         }
     };
 
-    // --- FETCH UNCLAIMED TEACHERS FOR SIGNUP ---
     const fetchUnclaimedTeachers = async () => {
         const { data: allLectures } = await supabase.from('base_schedule').select('teacher');
         const { data: claimedProfiles } = await supabase.from('teacher_profiles').select('name');
@@ -175,54 +194,38 @@ export default function TeacherLoginAndDashboard() {
         if (allLectures) {
             const allTeacherNames = [...new Set(allLectures.map(x => x.teacher))].filter(Boolean);
             const claimedNames = claimedProfiles ? claimedProfiles.map(p => p.name) : [];
-            
-            // Only show teachers who haven't created an account yet
             const unclaimed = allTeacherNames.filter(name => !claimedNames.includes(name));
             setAvailableTeacherNames(unclaimed.sort());
         }
     };
 
-    // --- AUTHENTICATION HANDLERS ---
     const handleLogin = async (e) => {
         e.preventDefault();
         setAuthError('');
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
             setAuthError(error.message);
-        } else if (data?.user) {
-            // Verification is handled by verifyTeacherAndLoad via onAuthStateChange
-        }
+        } 
     };
 
     const handleSignup = async (e) => {
         e.preventDefault();
-        
-        if (!signupName) {
-            return showToast('Please select your name from the dropdown.', 'error');
-        }
+        if (!signupName) return showToast('Please select your name from the dropdown.', 'error');
     
-        // 1. Sign up the user in Supabase Auth
         const { data, error } = await supabase.auth.signUp({ 
             email, 
             password,
             options: {
-                // This forces the email button to redirect to your success page
                 emailRedirectTo: 'https://mohsinakhtar.me/verify-success',
-                data: { 
-                    full_name: signupName, 
-                    phone: phone, 
-                    cnic: cnic 
-                }
+                data: { full_name: signupName, phone: phone, cnic: cnic }
             }
         });
     
-        // 2. Handle Auth Errors
         if (error) {
             showToast(error.message, "error");
             return;
         }
 
-        // 3. Insert Profile Data into teacher_profiles
         if (data?.user) {
             const { error: profileError } = await supabase.from('teacher_profiles').insert([{
                 id: data.user.id, 
@@ -236,35 +239,29 @@ export default function TeacherLoginAndDashboard() {
                 console.error("Profile Insert Error:", profileError);
                 showToast("Auth created, but profile failed: " + profileError.message, "error");
             } else {
-                // Success! Set timers, show toast, and switch to Login screen
                 setUnverifiedEmail(email);
-                setResendTimer(60); // Start 60s cooldown timer
-                showToast("Verification email sent! Please check your inbox and click the link.", "success");
+                setResendTimer(60); 
+                showToast("Account created! Verify your email to submit your profile for admin approval.", "success");
                 setIsLoginMode(true);
-                fetchUnclaimedTeachers(); // Remove the teacher's name from the dropdown
+                fetchUnclaimedTeachers(); 
             }
         }
     };
 
-    // --- RESEND EMAIL HANDLER ---
     const handleResendEmail = async () => {
         if (resendTimer > 0) return;
         const { error } = await supabase.auth.resend({ type: 'signup', email: unverifiedEmail });
-        if (error) {
-            showToast(error.message, "error");
-        } else {
-            showToast("Verification email resent! Please check your inbox.", "success");
-            setResendTimer(60);
-        }
+        if (error) showToast(error.message, "error");
+        else { showToast("Verification email resent! Please check your inbox.", "success"); setResendTimer(60); }
     };
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         setSession(null);
         setProfile(null);
+        setIsPendingApproval(false);
     };
 
-    // --- DASHBOARD DATA FETCHING ---
     const fetchProfileAndSchedule = async (teacherName) => {
         const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('teacher', teacherName);
         setBaseSchedule(scheduleData || []);
@@ -278,10 +275,11 @@ export default function TeacherLoginAndDashboard() {
         }
 
         const today = new Date().toLocaleDateString('en-CA');
-        const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*').eq('exception_date', today);
+        const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*');
 
         const mergedSchedule = (scheduleData || []).map(cls => {
-            const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id);
+            const targetDate = getDateForCurrentWeekDay(cls.day);
+            const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id && ex.exception_date === targetDate);
             return { 
                 ...cls, 
                 isCancelled: exception?.status === 'cancelled',
@@ -293,7 +291,6 @@ export default function TeacherLoginAndDashboard() {
 
         setSchedule(mergedSchedule);
 
-        // --- NEW: FETCH PENDING ATTENDANCES ---
         const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
         if (baseIds.length > 0) {
             const { data: sessionsData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds);
@@ -325,7 +322,6 @@ export default function TeacherLoginAndDashboard() {
         setLoading(false);
     };
 
-    // --- ATTENDANCE ACTIONS ---
     const handleApproveAttendance = async (sessionId) => {
         const { error } = await supabase.from('attendance_sessions').update({ status: 'approved' }).eq('id', sessionId);
         if (error) {
@@ -336,10 +332,8 @@ export default function TeacherLoginAndDashboard() {
         }
     };
 
-    // --- 3-HOUR REMINDER INTERVAL ---
     useEffect(() => {
         if (!session || schedule.length === 0) return;
-
         const interval = setInterval(() => {
             const now = new Date();
             const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -359,9 +353,7 @@ export default function TeacherLoginAndDashboard() {
                                     icon: "/icon.png" 
                                 });
                             }
-                            supabase.from('notifications').insert([{ 
-                                message: `⚠️ Teacher Reminder: ${cls.course} (Sec ${cls.section}) is pending confirmation.` 
-                            }]).then();
+                            supabase.from('notifications').insert([{ message: `⚠️ Teacher Reminder: ${cls.course} (Sec ${cls.section}) is pending confirmation.` }]).then();
                         }
                     }
                 }
@@ -371,25 +363,20 @@ export default function TeacherLoginAndDashboard() {
         return () => clearInterval(interval);
     }, [schedule, session]);
 
-    // --- REALTIME LISTENER ---
     useEffect(() => {
-        if (!profile || schedule.length === 0) return;
-
+        if (!profile || !profile.is_approved || schedule.length === 0) return;
         const channel = supabase
             .channel('teacher-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
                 const newMsg = payload.new.message;
                 const isRelevant = schedule.some(cls => newMsg.includes(cls.course) && newMsg.includes(cls.section));
-                
                 if (isRelevant && Notification.permission === "granted") {
                     new Notification("IUB Schedule Alert", { body: newMsg, icon: "/icon.png" });
                 }
             }).subscribe();
-
         return () => { supabase.removeChannel(channel); };
     }, [profile, schedule]);
 
-    // --- PWA PERMISSION ACTIONS ---
     const handleInstallClick = async () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
@@ -406,61 +393,52 @@ export default function TeacherLoginAndDashboard() {
         }
     };
 
-    // ==========================================
-    // --- LECTURE ACTIONS (WITH ERROR HANDLING) ---
-    // ==========================================
-    const handleConfirmClass = async (classId, courseName, section) => {
+    const handleConfirmClass = async (classId, courseName, section, clsDay) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false, isRescheduled: false } : c));
-        
-        const today = new Date().toLocaleDateString('en-CA');
+        const targetDate = getDateForCurrentWeekDay(clsDay);
         const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId, exception_date: today, status: 'confirmed', cancelled_by: session.user.id
+            base_schedule_id: classId, exception_date: targetDate, status: 'confirmed', cancelled_by: session.user.id
         }]);
 
-        if (error) {
-            showToast("Failed to update: " + error.message, "error");
-        } else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.` }]);
-            if(notifError) showToast("Updated, but notification failed: " + notifError.message, "error");
+        if (error) showToast("Failed to update: " + error.message, "error");
+        else {
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${section} will be held on ${targetDate}.` }]);
+            if(notifError) showToast("Updated, but notification failed.", "error");
             else showToast("Class confirmed & students notified!", "success");
         }
         fetchProfileAndSchedule(profile.name); 
     };
 
-    const handleCancelClass = async (classId, courseName, section) => {
+    const handleCancelClass = async (classId, courseName, section, clsDay) => {
         const confirmCancel = window.confirm(`Are you sure you want to CANCEL ${courseName}?`);
         if (!confirmCancel) return;
 
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false, isRescheduled: false } : c));
-        
-        const today = new Date().toLocaleDateString('en-CA');
+        const targetDate = getDateForCurrentWeekDay(clsDay);
         const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: classId, exception_date: today, status: 'cancelled', cancelled_by: session.user.id
+            base_schedule_id: classId, exception_date: targetDate, status: 'cancelled', cancelled_by: session.user.id
         }]);
 
-        if (error) {
-            showToast("Failed to cancel: " + error.message, "error");
-        } else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.` }]);
-            if(notifError) showToast("Cancelled, but notification failed: " + notifError.message, "error");
+        if (error) showToast("Failed to cancel: " + error.message, "error");
+        else {
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${section} on ${targetDate} has been cancelled by ${profile.name}.` }]);
+            if(notifError) showToast("Cancelled, but notification failed.", "error");
             else showToast("Class cancelled & students notified!", "success");
         }
         fetchProfileAndSchedule(profile.name);
     };
 
-    const handleUndoException = async (classId, actionType, courseName, section) => {
+    const handleUndoException = async (classId, actionType, courseName, section, clsDay) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
-        const today = new Date().toLocaleDateString('en-CA');
+        const targetDate = getDateForCurrentWeekDay(clsDay);
         
-        const { error } = await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: today });
+        const { error } = await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: targetDate });
 
-        if (error) {
-            showToast("Failed to undo: " + error.message, "error");
-        } else {
-            if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${section} has been cancelled by ${profile.name}.`);
-            else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${section} will be held as scheduled today.`);
+        if (error) showToast("Failed to undo: " + error.message, "error");
+        else {
+            if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${section} on ${targetDate} has been cancelled by ${profile.name}.`);
+            else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${section} will be held on ${targetDate}.`);
             else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${section}%`);
-            
             showToast("Action reversed successfully.", "success");
         }
         fetchProfileAndSchedule(profile.name);
@@ -468,15 +446,15 @@ export default function TeacherLoginAndDashboard() {
 
     const submitReschedule = async (e) => {
         e.preventDefault();
+        const targetDate = getDateForCurrentWeekDay(editingClass.day);
         const { error } = await supabase.from('schedule_exceptions').insert([{
-            base_schedule_id: editingClass.id, exception_date: new Date().toLocaleDateString('en-CA'), status: 'rescheduled',
+            base_schedule_id: editingClass.id, exception_date: targetDate, status: 'rescheduled',
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
 
-        if (error) {
-            showToast("Failed to reschedule: " + error.message, "error");
-        } else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}).` }]);
+        if (error) showToast("Failed to reschedule: " + error.message, "error");
+        else {
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}) on ${targetDate}.` }]);
             if(notifError) showToast("Rescheduled, but notification failed.", "error");
             else showToast(`Class rescheduled & students notified!`, "success");
         }
@@ -484,7 +462,6 @@ export default function TeacherLoginAndDashboard() {
         fetchProfileAndSchedule(profile.name);
     };
 
-    // --- PERMANENT MODAL FUNCTIONS ---
     const openEditModal = (cls) => {
         setEditingClass(cls); setNewDate(new Date().toLocaleDateString('en-CA'));
         setNewStartTime(convertTo12Hour(cls.start_time)); setNewEndTime(convertTo12Hour(cls.end_time));
@@ -531,19 +508,13 @@ export default function TeacherLoginAndDashboard() {
     if (!session) {
         return (
             <div style={{ background: '#002147', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif" }}>
-                
-                {/* CSS TOAST NOTIFICATION */}
                 <div style={{...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
                     {toast.message}
                 </div>
-
                 <div style={{ background: 'white', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
                     <h2 style={{ color: '#002147', textAlign: 'center', margin: '0 0 20px 0' }}>{isLoginMode ? 'Teacher Login' : 'Teacher Sign Up'}</h2>
-                    
                     {authError && <div style={{ background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '5px', marginBottom: '15px', fontSize: '0.85rem' }}>{authError}</div>}
-
                     <form onSubmit={isLoginMode ? handleLogin : handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        
                         {!isLoginMode && (
                             <>
                                 <select required value={signupName} onChange={(e) => setSignupName(e.target.value)} style={inputStyle}>
@@ -551,39 +522,49 @@ export default function TeacherLoginAndDashboard() {
                                     {availableTeacherNames.map(name => <option key={name} value={name}>{name}</option>)}
                                 </select>
                                 {availableTeacherNames.length === 0 && <span style={{ fontSize: '0.75rem', color: 'red' }}>All teachers currently in the record already have accounts.</span>}
-                                
                                 <input type="text" placeholder="CNIC Number" required value={cnic} onChange={(e) => setCnic(e.target.value)} style={inputStyle} />
                                 <input type="text" placeholder="Phone Number" required value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
                             </>
                         )}
-                        
                         <input type="email" placeholder="Email Address" required value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
                         <input type="password" placeholder="Password" required value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-                        
                         <button type="submit" disabled={!isLoginMode && availableTeacherNames.length === 0} style={{ width: '100%', padding: '15px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', opacity: (!isLoginMode && availableTeacherNames.length === 0) ? 0.5 : 1 }}>
                             {isLoginMode ? 'Login' : 'Sign Up'}
                         </button>
                     </form>
-
-                    {/* NEW: RESEND EMAIL UI */}
                     {isLoginMode && unverifiedEmail && (
                         <div style={{ marginTop: '15px', padding: '15px', background: '#f8f9fa', borderRadius: '8px', textAlign: 'center', fontSize: '0.85rem' }}>
                             <p style={{ margin: '0 0 10px 0', color: '#555', fontWeight: 'bold' }}>Didn't receive the email?</p>
-                            <button 
-                                onClick={handleResendEmail} 
-                                disabled={resendTimer > 0} 
-                                style={{ width: '100%', background: resendTimer > 0 ? '#ccc' : '#002147', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: resendTimer > 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
+                            <button onClick={handleResendEmail} disabled={resendTimer > 0} style={{ width: '100%', background: resendTimer > 0 ? '#ccc' : '#002147', color: 'white', border: 'none', padding: '10px', borderRadius: '5px', cursor: resendTimer > 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
                                 {resendTimer > 0 ? `Resend available in ${resendTimer}s` : 'Resend Verification Email'}
                             </button>
                         </div>
                     )}
-
                     <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem' }}>
                         {isLoginMode ? "Don't have an account? " : "Already have an account? "}
                         <span onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(''); }} style={{ color: '#007bff', cursor: 'pointer', fontWeight: 'bold' }}>
                             {isLoginMode ? 'Sign Up' : 'Login'}
                         </span>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    // --- RENDER PENDING APPROVAL SCREEN ---
+    if (isPendingApproval) {
+        return (
+            <div style={{ background: '#f0f2f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif", padding: '20px' }}>
+                <Head><title>Pending Approval | IUB Assistant</title></Head>
+                <div style={{ background: 'white', padding: '40px', borderRadius: '12px', textAlign: 'center', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '15px' }}>⏳</div>
+                    <h2 style={{ color: '#002147', margin: '0 0 15px 0' }}>Approval Pending</h2>
+                    <p style={{ color: '#555', fontSize: '1rem', lineHeight: '1.5', marginBottom: '25px' }}>
+                        Your account has been successfully verified, but an administrator must manually approve your access before you can view your dashboard.
+                    </p>
+                    <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '12px 25px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}>
+                        Log Out
+                    </button>
                 </div>
             </div>
         );
@@ -597,12 +578,10 @@ export default function TeacherLoginAndDashboard() {
           <Head>
             <title>Teacher Dashboard | IUB</title>
             <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
-            {/* ADD THESE TWO LINES */}
             <link rel="manifest" href="/manifest.json" />
             <meta name="theme-color" content="#002147" />
         </Head>
 
-            {/* DASHBOARD CSS TOAST */}
             <div style={{...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
                 {toast.message}
             </div>
@@ -616,7 +595,6 @@ export default function TeacherLoginAndDashboard() {
 
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
                 
-                {/* --- PWA & NOTIF BANNERS --- */}
                 {deferredPrompt && (
                     <div style={{ background: '#17a2b8', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
                         <div><b>Install App 📱</b><br/><span style={{ opacity: 0.9 }}>Add IUB Assistant to your home screen for better performance.</span></div>
@@ -668,14 +646,14 @@ export default function TeacherLoginAndDashboard() {
                                         </div>
                                     </div>
                                     {cls.isRescheduled && <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})</div>}
-                                    {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>✅ Confirmed to be Held</div>}
+                                    {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>✅ Confirmed to be Held on {cls.exceptionDetails?.exception_date}</div>}
                                     
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        {cls.isCancelled ? <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course, cls.section)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button> : cls.isConfirmed ? <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course, cls.section)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={() => handleUndoException(cls.id, 'rescheduled', cls.course, cls.section)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button> : (
+                                        {cls.isCancelled ? <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button> : cls.isConfirmed ? <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button> : (
                                             <>
-                                                <button onClick={() => handleConfirmClass(cls.id, cls.course, cls.section)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                                <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Modify Time/Room</button>
-                                                <button onClick={() => handleCancelClass(cls.id, cls.course, cls.section)} style={btnStyle('#dc3545')}>❌ Cancel Lecture</button>
+                                                <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                                <button onClick={(e) => openEditModal(e, cls)} style={btnStyle('#007bff')}>🕒 Modify Time/Room</button>
+                                                <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#dc3545')}>❌ Cancel Lecture</button>
                                             </>
                                         )}
                                     </div>
@@ -733,7 +711,6 @@ export default function TeacherLoginAndDashboard() {
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                         <button onClick={() => handleApproveAttendance(session.id)} style={btnStyle('#28a745')}>✅ Approve</button>
                                         <button onClick={() => {
-                                            // Format the lecture object for the AttendanceSheet component
                                             const formattedLecture = { ...session.baseLecture, attendanceSession: session };
                                             setActiveAttendanceLecture(formattedLecture);
                                         }} style={btnStyle('#007bff')}>✏️ Edit</button>
@@ -749,7 +726,6 @@ export default function TeacherLoginAndDashboard() {
             {activeAttendanceLecture && (
                 <AttendanceSheet 
                     lecture={activeAttendanceLecture} 
-                    // Mock profile to ensure AttendanceSheet fetches the right class roster based on semester/section
                     profile={{ id: profile.id, semester: activeAttendanceLecture.semester, section: activeAttendanceLecture.section }}
                     existingSession={activeAttendanceLecture.attendanceSession}
                     onClose={(didUpdate) => {
@@ -782,7 +758,7 @@ export default function TeacherLoginAndDashboard() {
                 </div>
             )}
 
-            {/* PERMANENT BASE SCHEDULE MODAL */}
+            {/* BASE MODAL */}
             {isBaseModalOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box', overflowY: 'auto' }}>
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto' }}>
