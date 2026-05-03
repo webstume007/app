@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react'; // Added useRef for CSV
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet';
@@ -38,6 +38,7 @@ export default function Dashboard() {
 
     // --- STUDENT MANAGEMENT STATE ---
     const [newStudent, setNewStudent] = useState({ name: '', roll: '' });
+    const fileInputRef = useRef(null); // Reference for hidden file input
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -157,7 +158,7 @@ export default function Dashboard() {
                     isRescheduled: exception?.status === 'rescheduled',
                     isConfirmed: exception?.status === 'confirmed',
                     exceptionDetails: exception,
-                    attendanceSession: sessionToday
+                    attendanceSession: sessionToday // Attach today's session if it exists
                 };
             });
             setSchedule(mergedSchedule);
@@ -251,7 +252,7 @@ export default function Dashboard() {
         a.click();
     };
 
-    // --- STUDENT MANAGEMENT LOGIC ---
+    // --- STUDENT MANAGEMENT LOGIC (WITH CSV IMPORT) ---
     const handleAddStudent = async (e) => {
         e.preventDefault();
         const { error } = await supabase.from('class_roster').insert([{
@@ -268,6 +269,51 @@ export default function Dashboard() {
         if (!window.confirm("Remove this student?")) return;
         await supabase.from('class_roster').delete().eq('id', id);
         fetchProfileAndSchedule(session.user.id);
+    };
+
+    // NEW: Handle CSV Upload for Students
+    const handleCSVUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const text = event.target.result;
+                const rows = text.split('\n').map(r => r.split(','));
+                const payloads = [];
+                
+                // Assuming CSV is "Roll Number, Name"
+                // Skip header row if it contains text like "roll"
+                let startIndex = rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
+
+                for(let i = startIndex; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length >= 2) {
+                        const roll = row[0].trim();
+                        const name = row[1].trim();
+                        if (roll && name) {
+                            payloads.push({ student_name: name, roll_number: roll, semester: profile.semester, section: profile.section });
+                        }
+                    }
+                }
+
+                if (payloads.length > 0) {
+                    const { error } = await supabase.from('class_roster').insert(payloads);
+                    if (error) alert("Error importing: " + error.message);
+                    else {
+                        alert(`Successfully imported ${payloads.length} students!`);
+                        fetchProfileAndSchedule(session.user.id);
+                    }
+                } else {
+                    alert("No valid data found in CSV.");
+                }
+            } catch (err) {
+                alert("Failed to parse CSV.");
+            }
+            e.target.value = null; // reset input
+        };
+        reader.readAsText(file);
     };
 
     // --- SCHEDULE LOGIC ---
@@ -339,13 +385,13 @@ export default function Dashboard() {
         const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.semester, section: profile.section };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
-        await fetchProfileAndSchedule(session.user.id);
+        fetchProfileAndSchedule(session.user.id);
     };
 
     const deleteBaseLecture = async (id, courseName) => {
         if (!window.confirm(`Permanently delete ${courseName}? This cannot be undone.`)) return;
         await supabase.from('base_schedule').delete().eq('id', id);
-        await fetchProfileAndSchedule(session.user.id);
+        fetchProfileAndSchedule(session.user.id);
     };
 
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
@@ -423,6 +469,15 @@ export default function Dashboard() {
                                                 {cls.course}
                                             </div>
                                             <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                            
+                                            {/* ATTENDANCE BADGE */}
+                                            {cls.attendanceSession && (
+                                                <div style={{ display: 'inline-block', marginTop: '5px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', 
+                                                    background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
+                                                    color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
+                                                    {cls.attendanceSession.status === 'approved' ? '✓ Attendance Approved' : '⏳ Attendance Pending'}
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
@@ -456,7 +511,7 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* ================= NEW: ATTENDANCE TAB ================= */}
+                {/* ================= ATTENDANCE TAB ================= */}
                 {activeTab === 'attendance' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
                         {attendanceStats.length === 0 ? <p style={{textAlign: 'center', width: '100%'}}>No subjects found.</p> : (
@@ -556,7 +611,23 @@ export default function Dashboard() {
                 {/* ================= MANAGE STUDENTS TAB ================= */}
                 {activeTab === 'students' && (
                     <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                        <h3 style={{ marginTop: 0, color: '#002147' }}>Add New Student</h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0, color: '#002147' }}>Add New Student</h3>
+                            {/* CSV UPLOAD BUTTON */}
+                            <div>
+                                <input 
+                                    type="file" 
+                                    accept=".csv" 
+                                    ref={fileInputRef} 
+                                    onChange={handleCSVUpload} 
+                                    style={{ display: 'none' }} 
+                                />
+                                <button onClick={() => fileInputRef.current.click()} style={{ padding: '8px 15px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                    📥 Import CSV
+                                </button>
+                            </div>
+                        </div>
+
                         <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '25px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
                             <input type="text" placeholder="Roll Number (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...inputStyle, flex: 1, minWidth: '150px'}} />
                             <input type="text" placeholder="Student Full Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...inputStyle, flex: 2, minWidth: '200px'}} />
@@ -639,7 +710,7 @@ export default function Dashboard() {
                             {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } else setBaseForm({...baseForm, room: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}><select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select><select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                            <div style={{ display: 'flex', gap: '10px' }}><button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button><button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button></div>
+                            <div style={{ display: 'flex', gap: '10px' }}><button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button><button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button></div>
                         </form>
                     </div>
                 </div>
