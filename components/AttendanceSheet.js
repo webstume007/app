@@ -1,101 +1,114 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function AttendanceSheet({ lecture, onClose, crId }) {
-  const [students, setStudents] = useState([]);
-  const [attendance, setAttendance] = useState({}); // { student_id: 'Present' }
+export default function AttendanceSheet({ lecture, onClose, profile }) {
+    const [students, setStudents] = useState([]);
+    const [attendance, setAttendance] = useState({});
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchStudents();
-  }, []);
+    useEffect(() => {
+        fetchStudents();
+    }, []);
 
-  const fetchStudents = async () => {
-    // Fetch from your roster table
-    const { data, error } = await supabase.from('Class_Roster').select('*');
-    if (data) {
-      setStudents(data);
-      // Optional: Auto-fill everyone as 'Present' for efficiency
-      const defaultAttendance = {};
-      data.forEach(s => defaultAttendance[s.id] = 'Present');
-      setAttendance(defaultAttendance);
-    }
-  };
+    const fetchStudents = async () => {
+        // Fetch students matching the CR's semester and section
+        const { data, error } = await supabase
+            .from('class_roster')
+            .select('*')
+            .eq('semester', profile.semester)
+            .eq('section', profile.section)
+            .order('roll_number', { ascending: true });
 
-  const handleMark = (studentId, status) => {
-    setAttendance(prev => ({ ...prev, [studentId]: status }));
-  };
+        if (data) {
+            setStudents(data);
+            // Default everyone to 'Present'
+            const defaultAtt = {};
+            data.forEach(s => defaultAtt[s.id] = 'Present');
+            setAttendance(defaultAtt);
+        }
+        setLoading(false);
+    };
 
-  const handleSubmit = async () => {
-    // 1. Create the Session
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('Attendance_Sessions')
-      .insert([{ 
-        lecture_id: lecture.id, 
-        date: new Date().toISOString().split('T')[0],
-        submitted_by: crId,
-        status: 'pending'
-      }])
-      .select()
-      .single();
+    const handleMark = (studentId, status) => {
+        setAttendance(prev => ({ ...prev, [studentId]: status }));
+    };
 
-    if (sessionError) return alert('Error creating session');
+    const handleSubmit = async () => {
+        const today = new Date().toLocaleDateString('en-CA');
+        
+        // 1. Create the session
+        const { data: sessionData, error: sessionError } = await supabase
+            .from('attendance_sessions')
+            .insert([{ 
+                base_schedule_id: lecture.id, 
+                session_date: today,
+                submitted_by: profile.id, // CR's ID
+                status: 'pending'
+            }])
+            .select()
+            .single();
 
-    // 2. Prepare bulk insert array for records
-    const recordsToInsert = students.map(student => ({
-      session_id: sessionData.id,
-      student_id: student.id,
-      status: attendance[student.id]
-    }));
+        if (sessionError) {
+            alert('Error creating session: ' + sessionError.message);
+            return;
+        }
 
-    // 3. Bulk Insert
-    const { error: recordsError } = await supabase
-      .from('Attendance_Records')
-      .insert(recordsToInsert);
+        // 2. Insert records
+        const records = students.map(student => ({
+            session_id: sessionData.id,
+            student_id: student.id,
+            status: attendance[student.id]
+        }));
 
-    if (!recordsError) {
-      alert('Attendance Submitted to Teacher for Approval!');
-      onClose();
-    }
-  };
+        const { error: recordsError } = await supabase.from('attendance_records').insert(records);
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md h-[80vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Mark Attendance: {lecture.subject}</h2>
-          <button onClick={onClose} className="text-red-500 font-bold">X</button>
-        </div>
+        if (!recordsError) {
+            alert('Attendance submitted for Teacher approval!');
+            onClose();
+        } else {
+            alert('Error submitting records.');
+        }
+    };
 
-        <div className="overflow-y-auto flex-grow space-y-4">
-          {students.map((student) => (
-            <div key={student.id} className="border p-3 rounded flex flex-col">
-              <span className="font-semibold">{student.roll_number} - {student.student_name}</span>
-              <div className="flex justify-between mt-2">
-                {['Present', 'Absent', 'Leave'].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => handleMark(student.id, status)}
-                    className={`px-3 py-1 rounded ${
-                      attendance[student.id] === status 
-                        ? (status === 'Present' ? 'bg-green-500 text-white' : status === 'Absent' ? 'bg-red-500 text-white' : 'bg-yellow-500 text-white')
-                        : 'bg-gray-200'
-                    }`}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
+    return (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '15px', boxSizing: 'border-box' }}>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '10px', width: '100%', maxWidth: '500px', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
+                    <h3 style={{ margin: 0, color: '#002147' }}>Mark Attendance: {lecture.course}</h3>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'red', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer' }}>X</button>
+                </div>
+
+                <div style={{ overflowY: 'auto', flexGrow: 1, paddingRight: '5px' }}>
+                    {loading ? <p>Loading roster...</p> : students.length === 0 ? <p>No students found in roster for this section.</p> : (
+                        students.map((student) => (
+                            <div key={student.id} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f9f9f9' }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>{student.roll_number} - {student.student_name}</div>
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    {['Present', 'Absent', 'Leave'].map(status => (
+                                        <button
+                                            key={status}
+                                            onClick={() => handleMark(student.id, status)}
+                                            style={{
+                                                flex: 1, padding: '8px', borderRadius: '5px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
+                                                background: attendance[student.id] === status 
+                                                    ? (status === 'Present' ? '#28a745' : status === 'Absent' ? '#dc3545' : '#ffc107') 
+                                                    : '#e9ecef',
+                                                color: attendance[student.id] === status && status !== 'Leave' ? 'white' : '#333'
+                                            }}
+                                        >
+                                            {status}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                <button onClick={handleSubmit} style={{ width: '100%', padding: '15px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', marginTop: '15px' }}>
+                    Submit to Teacher
+                </button>
             </div>
-          ))}
         </div>
-
-        <button 
-          onClick={handleSubmit} 
-          className="mt-4 w-full bg-blue-600 text-white py-3 rounded font-bold hover:bg-blue-700 transition"
-        >
-          Submit Attendance
-        </button>
-      </div>
-    </div>
-  );
+    );
 }
