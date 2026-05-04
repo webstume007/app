@@ -58,7 +58,10 @@ export default function Home() {
     useEffect(() => {
         const savedSelection = localStorage.getItem('iub_user_selection');
         if (savedSelection) {
-            setUserSection(JSON.parse(savedSelection));
+            const parsed = JSON.parse(savedSelection);
+            // Backward compatibility for old cache
+            if (parsed.semester && !parsed.session) parsed.session = parsed.semester;
+            setUserSection(parsed);
             setIsFirstVisit(false);
         }
 
@@ -100,9 +103,9 @@ export default function Home() {
                     }
                 }
             })
-            // Listen for direct INSERTS on class_announcements
+            // Listen for direct INSERTS on class_announcements (Strict Session Match)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'class_announcements' }, (payload) => {
-                if (payload.new.section === userSection.section && payload.new.semester === userSection.semester) {
+                if (payload.new.section === userSection.section && payload.new.session === userSection.session) {
                     setAnnouncements(prev => [payload.new, ...prev].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
                     
                     // Trigger instant pop-up notification for the specific section
@@ -160,15 +163,15 @@ export default function Home() {
         setLoading(false);
     };
 
-    const handleInitialSelection = (sem, sec) => {
-        const selection = { semester: sem, section: sec };
+    const handleInitialSelection = (sessionVal, secVal) => {
+        const selection = { session: sessionVal, section: secVal };
         localStorage.setItem('iub_user_selection', JSON.stringify(selection));
         setUserSection(selection);
         setIsFirstVisit(false);
     };
 
     const handleGuestSelection = () => {
-        const selection = { semester: 'N/A', section: 'GUEST' };
+        const selection = { session: 'N/A', section: 'GUEST' };
         localStorage.setItem('iub_user_selection', JSON.stringify(selection));
         setUserSection(selection);
         setIsFirstVisit(false);
@@ -210,8 +213,10 @@ export default function Home() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    const availableSemesters = [...new Set(rawData.map(x => x.semester))].filter(Boolean).sort();
-    const getSectionsForSem = (sem) => [...new Set(rawData.filter(x => x.semester === sem).map(x => x.section))].sort();
+    // Extract dynamic dropdown data natively matching the new schema
+    const availableSessions = [...new Set(rawData.map(x => x.session))].filter(Boolean).sort();
+    const getSectionsForSession = (sess) => [...new Set(rawData.filter(x => x.session === sess).map(x => x.section))].sort();
+    
     const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
     const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
 
@@ -290,8 +295,8 @@ export default function Home() {
         localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
     };
 
-    // STRICT SECTION ISOLATION FOR ANNOUNCEMENTS
-    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.semester === userSection?.semester);
+    // STRICT SECTION & SESSION ISOLATION FOR ANNOUNCEMENTS
+    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.session === userSection?.session);
 
     const activeAssignments = relevantAnnouncements.filter(ann => {
         if (ann.type !== 'assignment' || !ann.deadline_date || !ann.deadline_time) return false;
@@ -326,47 +331,15 @@ export default function Home() {
         return `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
     };
 
-    if (loading) return <div style={centerStyle}>Loading System Data...</div>;
-
-    if (isFirstVisit) {
-        return (
-            <div style={welcomeBg}>
-                <div style={welcomeCard}>
-                    <h2 style={{ color: '#002147', margin: '0 0 10px 0' }}>Welcome to IUB Assistant! 👋</h2>
-                    <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '20px' }}>Select your section for a personalized schedule, or continue as a guest.</p>
-
-                    <select id="initSem" style={selectStyle} onChange={(e) => {
-                        const secDropdown = document.getElementById('initSec');
-                        const secs = getSectionsForSem(e.target.value);
-                        secDropdown.innerHTML = '<option value="">-- Select Section --</option>' + secs.map(s => `<option value="${s}">${s}</option>`).join('');
-                    }}>
-                        <option value="">-- Select Semester --</option>
-                        {availableSemesters.map(s => <option key={s} value={s}>{s} Semester</option>)}
-                    </select>
-
-                    <select id="initSec" style={selectStyle}>
-                        <option value="">-- Select Section --</option>
-                    </select>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                        <button onClick={() => {
-                            const sem = document.getElementById('initSem').value;
-                            const sec = document.getElementById('initSec').value;
-                            if (sem && sec) handleInitialSelection(sem, sec);
-                            else alert("Please select both Semester and Section");
-                        }} style={bigBtn}>Show My Schedule</button>
-                        
-                        <div style={{color: '#999', fontSize: '0.8rem'}}>— OR —</div>
-                        
-                        <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
+    // Strict Filter Logic for Students
     const getFilteredClasses = (filterKey, filterValue) => {
         let classes = rawData.filter(c => c[filterKey] === filterValue);
+        
+        // If getting student's own schedule, strictly enforce the Session to avoid cross-term leakage
+        if (filterKey === 'section') {
+            classes = classes.filter(c => c.session === userSection?.session);
+        }
+
         if (selectedDay !== 'ALL') {
             classes = classes.filter(c => c.day === selectedDay);
         }
@@ -484,6 +457,45 @@ export default function Home() {
     };
 
     // --- MAIN APP VIEW ---
+    if (loading) return <div style={centerStyle}>Loading System Data...</div>;
+
+    if (isFirstVisit) {
+        return (
+            <div style={welcomeBg}>
+                <div style={welcomeCard}>
+                    <h2 style={{ color: '#002147', margin: '0 0 10px 0' }}>Welcome to IUB Assistant! 👋</h2>
+                    <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '20px' }}>Select your section for a personalized schedule, or continue as a guest.</p>
+
+                    <select id="initSession" style={selectStyle} onChange={(e) => {
+                        const secDropdown = document.getElementById('initSec');
+                        const secs = getSectionsForSession(e.target.value);
+                        secDropdown.innerHTML = '<option value="">-- Select Section --</option>' + secs.map(s => `<option value="${s}">${s}</option>`).join('');
+                    }}>
+                        <option value="">-- Select Session --</option>
+                        {availableSessions.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+
+                    <select id="initSec" style={selectStyle}>
+                        <option value="">-- Select Section --</option>
+                    </select>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                        <button onClick={() => {
+                            const sem = document.getElementById('initSession').value;
+                            const sec = document.getElementById('initSec').value;
+                            if (sem && sec) handleInitialSelection(sem, sec);
+                            else alert("Please select both Session and Section");
+                        }} style={bigBtn}>Show My Schedule</button>
+                        
+                        <div style={{color: '#999', fontSize: '0.8rem'}}>— OR —</div>
+                        
+                        <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
@@ -495,7 +507,9 @@ export default function Home() {
             </Head>
 
             <header style={headerStyle}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>🎓 {userSection?.section}</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>
+                    {userSection?.section === 'GUEST' ? '🎓 GUEST' : `🎓 ${userSection?.section} (${userSection?.session})`}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
                         🔔
@@ -743,8 +757,4 @@ const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-
 const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.9rem', marginTop: 'auto' };
 const notifBannerStyle = { background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900', gap: '10px' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' };
-
-const pointStripStyle = {
-    background: '#3f3f3f', color: '#fff', padding: '8px 12px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px',
-    display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold', justifyContent: 'flex-start'
-};
+const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '8px 12px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold', justifyContent: 'flex-start' };
