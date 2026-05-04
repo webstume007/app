@@ -20,10 +20,10 @@ export default function Dashboard() {
 
     // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
-    const [allDepartmentRooms, setAllDepartmentRooms] = useState([]); // All rooms across department
+    const [allDepartmentRooms, setAllDepartmentRooms] = useState([]); 
     const [availableCourses, setAvailableCourses] = useState([]);
     const [availableTeachers, setAvailableTeachers] = useState([]);
-    const [teacherCourseMap, setTeacherCourseMap] = useState({}); // Auto-fill course mapping
+    const [teacherCourseMap, setTeacherCourseMap] = useState({}); 
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
@@ -41,7 +41,7 @@ export default function Dashboard() {
     const [expandedLectureId, setExpandedLectureId] = useState(null);
 
     // --- ATTENDANCE STATES ---
-    const [attendanceView, setAttendanceView] = useState('mark'); // mark, download, stats
+    const [attendanceView, setAttendanceView] = useState('mark'); 
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
     const [attendanceStats, setAttendanceStats] = useState([]); 
     const [allSessionsData, setAllSessionsData] = useState([]); 
@@ -185,7 +185,6 @@ export default function Dashboard() {
         return () => { supabase.removeChannel(channel); };
     }, [profile]);
 
-    // Handle dynamic lecture selection for Announcements
     useEffect(() => {
         if(announcementForm.subject && announcementForm.subject !== 'General') {
             const relatedLectures = schedule.filter(c => c.course === announcementForm.subject);
@@ -207,12 +206,20 @@ export default function Dashboard() {
                 return; 
             }
 
-            // FIX: Restored to profileData.semester to match your existing data
-            const { data: rosterData } = await supabase.from('students').select('*').eq('session', profileData.semester).eq('section', profileData.section).order('registration_number');
+            // FIX: Bypassing the strict semester/session text match. 
+            // We now strictly pull everything linked to this CR's unique Section (e.g. "1E")
+            
+            // 1. Fetch Students by Section
+            const { data: rosterData } = await supabase.from('students')
+                .select('*')
+                .eq('section', profileData.section)
+                .order('registration_number');
             setRoster(rosterData || []);
 
-            // FIX: Restored to profileData.semester to match your existing data
-            const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
+            // 2. Fetch Base Schedule by Section
+            const { data: scheduleData } = await supabase.from('base_schedule')
+                .select('*')
+                .eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
             const { data: allBaseSchedules } = await supabase.from('base_schedule').select('room, teacher, course');
@@ -227,8 +234,11 @@ export default function Dashboard() {
                 setTeacherCourseMap(tMap);
             }
             
-            // FIX: Restored to profileData.semester to match your existing data
-            const { data: annData } = await supabase.from('class_announcements').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('created_at', { ascending: false });
+            // 3. Fetch Announcements by Section
+            const { data: annData } = await supabase.from('class_announcements')
+                .select('*')
+                .eq('section', profileData.section)
+                .order('created_at', { ascending: false });
             setAnnouncements(annData || []);
 
             if (scheduleData) {
@@ -339,7 +349,7 @@ export default function Dashboard() {
     const submitAnnouncement = async (e) => {
         e.preventDefault();
         const payload = {
-            semester: profile.semester, // FIX: Restored to profile.semester
+            semester: profile.semester, // Kept for data integrity 
             section: profile.section,
             type: announcementForm.type,
             subject: announcementForm.subject,
@@ -414,7 +424,6 @@ export default function Dashboard() {
 
     const handleAddStudent = async (e) => {
         e.preventDefault();
-        // FIX: Mapping profile.semester to the session column in the students table
         const { error } = await supabase.from('students').insert([{ student_name: newStudent.name, registration_number: newStudent.roll, session: profile.semester, section: profile.section }]);
         if (error) alert("Error: " + error.message);
         else { setNewStudent({ name: '', roll: '' }); fetchProfileAndSchedule(session.user.id); }
@@ -443,7 +452,6 @@ export default function Dashboard() {
                     if (row.length >= 2) {
                         const reg = row[0].trim();
                         const name = row[1].trim();
-                        // FIX: Mapping profile.semester to the session column
                         if (reg && name) { payloads.push({ student_name: name, registration_number: reg, session: profile.semester, section: profile.section }); }
                     }
                 }
@@ -518,7 +526,6 @@ export default function Dashboard() {
 
     const submitBaseSchedule = async (e) => {
         e.preventDefault(); setIsBaseModalOpen(false); 
-        // FIX: Restored semester variable here
         const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.semester, section: profile.section };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
@@ -559,7 +566,6 @@ export default function Dashboard() {
     const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
     const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
-    // Responsive tab filters based on width
     const visibleTabs = isMobile 
         ? ['weekly', 'attendance', 'announcements'] 
         : ['weekly', 'permanent', 'students', 'attendance', 'announcements'];
@@ -573,7 +579,6 @@ export default function Dashboard() {
 
             <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', position: 'relative' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    {/* Hamburger Menu Toggle */}
                     <button onClick={() => setIsSidebarOpen(true)} style={{ background: 'transparent', border: 'none', color: '#F2A900', fontSize: '1.8rem', cursor: 'pointer', padding: 0 }}>
                         ☰
                     </button>
@@ -585,7 +590,6 @@ export default function Dashboard() {
                 </div>
             </header>
 
-            {/* SIDEBAR OVERLAY */}
             {isSidebarOpen && (
                 <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh', background: 'rgba(0,0,0,0.5)', zIndex: 3000 }} onClick={() => setIsSidebarOpen(false)}>
                     <div style={{ width: '280px', height: '100vh', background: '#002147', color: 'white', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px', transform: 'translateX(0)', transition: '0.3s ease-in-out' }} onClick={(e) => e.stopPropagation()}>
@@ -607,11 +611,10 @@ export default function Dashboard() {
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                         <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
+                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>Semester {profile?.semester} | Section {profile?.section}</strong></p>
                     </div>
                 </div>
 
-                {/* TABS (Responsive) */}
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                     {visibleTabs.includes('weekly') && <button onClick={() => setActiveTab('weekly')} style={tabStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>}
                     {visibleTabs.includes('permanent') && <button onClick={() => setActiveTab('permanent')} style={tabStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>}
@@ -693,7 +696,6 @@ export default function Dashboard() {
                 {/* ================= SPLIT ATTENDANCE TAB ================= */}
                 {activeTab === 'attendance' && (
                     <div>
-                        {/* Attendance Sub-navigation */}
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px' }}>
                             <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>✅ Mark Attendance</button>
                             <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>📥 Download CSV</button>
@@ -725,7 +727,7 @@ export default function Dashboard() {
                                         }
                                     }
 
-                                    if (!todayClass) return null; // Only show subjects with a class today in this view
+                                    if (!todayClass) return null; 
 
                                     return (
                                         <div key={`mark-${stat.subject}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #28a745' }}>
@@ -1081,7 +1083,7 @@ export default function Dashboard() {
                             
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="button" onClick={() => { setIsEditModalOpen(false); setIsManualRoom(false); }} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
                     </div>
