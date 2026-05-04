@@ -10,7 +10,7 @@ export default function TeacherLoginAndDashboard() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     
-    // --- NEW: GATEKEEPER STATE ---
+    // --- GATEKEEPER STATE ---
     const [isPendingApproval, setIsPendingApproval] = useState(false);
 
     // --- SIGNUP SPECIFIC STATES ---
@@ -29,6 +29,7 @@ export default function TeacherLoginAndDashboard() {
     const [profile, setProfile] = useState(null);
     const [schedule, setSchedule] = useState([]);
     const [baseSchedule, setBaseSchedule] = useState([]);
+    const [roster, setRoster] = useState([]); // All students for this teacher's sections
     const [loading, setLoading] = useState(true);
     const alertedClasses = useRef(new Set()); 
 
@@ -48,11 +49,22 @@ export default function TeacherLoginAndDashboard() {
     const [isManualSemester, setIsManualSemester] = useState(false);
     const [isManualSection, setIsManualSection] = useState(false);
 
+    // --- TAB STATES ---
     const [activeTab, setActiveTab] = useState('weekly');
+    
+    // --- WEEKLY TIMETABLE STATES ---
+    const [selectedDay, setSelectedDay] = useState(() => {
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+        return ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].includes(today) ? today : "MON";
+    });
 
-    // --- ATTENDANCE APPROVAL STATES ---
+    // --- ATTENDANCE & APPROVAL STATES ---
+    const [attendanceView, setAttendanceView] = useState('approve'); // mark, approve, download, stats
     const [pendingAttendances, setPendingAttendances] = useState([]);
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
+    const [attendanceStats, setAttendanceStats] = useState([]);
+    const [allSessionsData, setAllSessionsData] = useState([]);
+    const [attendanceSectionFilter, setAttendanceSectionFilter] = useState('ALL');
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -175,7 +187,6 @@ export default function TeacherLoginAndDashboard() {
             setLoading(false);
             setAuthError("Unauthorized: This email is not registered as a Teacher.");
         } else if (profileData.is_approved === false) {
-            // --- GATEKEEPER TRIGGERED ---
             setIsPendingApproval(true);
             setSession(activeSession);
             setProfile(profileData);
@@ -263,9 +274,11 @@ export default function TeacherLoginAndDashboard() {
     };
 
     const fetchProfileAndSchedule = async (teacherName) => {
+        // Fetch Base Schedule for this teacher
         const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('teacher', teacherName);
         setBaseSchedule(scheduleData || []);
         
+        // Populate all Dropdowns
         const { data: allData } = await supabase.from('base_schedule').select('room, course, semester, section');
         if (allData) {
             setAvailableRooms([...new Set(allData.map(x => x.room))].filter(Boolean).sort());
@@ -274,51 +287,94 @@ export default function TeacherLoginAndDashboard() {
             setAvailableSections([...new Set(allData.map(x => x.section))].filter(Boolean).sort());
         }
 
-        const today = new Date().toLocaleDateString('en-CA');
+        // Fetch Students for the classes this teacher teaches
+        if (scheduleData && scheduleData.length > 0) {
+            const uniqueGroups = [...new Set(scheduleData.map(s => JSON.stringify({ session: s.semester, section: s.section })))].map(str => JSON.parse(str));
+            let allStudents = [];
+            for (const group of uniqueGroups) {
+                const { data: students } = await supabase.from('students').select('*').eq('session', group.session).eq('section', group.section);
+                if (students) allStudents = [...allStudents, ...students];
+            }
+            setRoster(allStudents);
+        }
+
         const { data: exceptionsData } = await supabase.from('schedule_exceptions').select('*');
+
+        const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
+        let sessionsWithRecords = [];
+        let stats = [];
+        let pending = [];
+
+        if (baseIds.length > 0) {
+            const [sessionsRes, recordsRes] = await Promise.all([
+                supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds),
+                supabase.from('attendance_records').select('*')
+            ]);
+
+            const allSessions = sessionsRes.data || [];
+            const allRecords = recordsRes.data || [];
+
+            sessionsWithRecords = allSessions.map(s => {
+                const base = scheduleData.find(b => b.id === s.base_schedule_id);
+                return {
+                    ...s,
+                    course: base?.course,
+                    section: base?.section,
+                    semester: base?.semester,
+                    day: base?.day,
+                    baseLecture: base,
+                    records: allRecords.filter(r => r.session_id === s.id)
+                }
+            });
+            
+            setAllSessionsData(sessionsWithRecords);
+
+            // Calculate pending attendances
+            pending = sessionsWithRecords.filter(s => s.status === 'pending').map(session => {
+                const presentCount = session.records.filter(r => r.status === 'Present' || r.status === 'Leave').length;
+                return { ...session, presentCount, totalCount: session.records.length };
+            });
+            setPendingAttendances(pending);
+
+            // Calculate overall stats per Course + Section combination
+            const uniqueClasses = [...new Set(scheduleData.map(s => JSON.stringify({ course: s.course, section: s.section })))].map(str => JSON.parse(str));
+            
+            stats = uniqueClasses.map(cls => {
+                const classBaseIds = scheduleData.filter(s => s.course === cls.course && s.section === cls.section).map(s => s.id);
+                const classSessions = sessionsWithRecords.filter(s => classBaseIds.includes(s.base_schedule_id));
+                
+                let totalRecords = 0;
+                let presentRecords = 0;
+                
+                classSessions.forEach(sess => {
+                    sess.records.forEach(rec => {
+                        totalRecords++;
+                        if (rec.status === 'Present' || rec.status === 'Leave') presentRecords++;
+                    });
+                });
+
+                const percentage = totalRecords === 0 ? 0 : Math.round((presentRecords / totalRecords) * 100);
+                return { subject: cls.course, section: cls.section, totalConducted: classSessions.length, percentage, sessions: classSessions };
+            });
+            setAttendanceStats(stats);
+        }
 
         const mergedSchedule = (scheduleData || []).map(cls => {
             const targetDate = getDateForCurrentWeekDay(cls.day);
             const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id && ex.exception_date === targetDate);
+            const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === targetDate);
+            
             return { 
                 ...cls, 
                 isCancelled: exception?.status === 'cancelled',
                 isRescheduled: exception?.status === 'rescheduled',
                 isConfirmed: exception?.status === 'confirmed',
-                exceptionDetails: exception
+                exceptionDetails: exception,
+                attendanceSession: sessionToday
             };
         });
 
         setSchedule(mergedSchedule);
-
-        const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
-        if (baseIds.length > 0) {
-            const { data: sessionsData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds);
-            
-            if (sessionsData && sessionsData.length > 0) {
-                const sessionIds = sessionsData.map(s => s.id);
-                const { data: recordsData } = await supabase.from('attendance_records').select('*').in('session_id', sessionIds);
-                
-                const pending = sessionsData.filter(s => s.status === 'pending').map(session => {
-                    const base = scheduleData.find(b => b.id === session.base_schedule_id);
-                    const sessionRecords = recordsData ? recordsData.filter(r => r.session_id === session.id) : [];
-                    const presentCount = sessionRecords.filter(r => r.status === 'Present' || r.status === 'Leave').length;
-                    
-                    return {
-                        ...session,
-                        course: base?.course,
-                        section: base?.section,
-                        semester: base?.semester,
-                        day: base?.day,
-                        presentCount,
-                        totalCount: sessionRecords.length,
-                        baseLecture: base
-                    };
-                });
-                setPendingAttendances(pending);
-            }
-        }
-
         setLoading(false);
     };
 
@@ -330,6 +386,62 @@ export default function TeacherLoginAndDashboard() {
             showToast("Attendance approved successfully!", "success");
             fetchProfileAndSchedule(profile.name);
         }
+    };
+
+    // Calculate individual student attendance %
+    const getStudentAttendance = (studentReg, subjectFilter, sectionFilter) => {
+        let present = 0, total = 0;
+        allSessionsData.forEach(session => {
+            // Check filters
+            if (subjectFilter !== 'ALL' && session.course !== subjectFilter) return;
+            if (sectionFilter !== 'ALL' && session.section !== sectionFilter) return;
+
+            const record = session.records.find(r => r.student_id === studentReg);
+            if (record) {
+                total++;
+                if (record.status === 'Present' || record.status === 'Leave') present++;
+            }
+        });
+        return total === 0 ? 0 : Math.round((present / total) * 100);
+    };
+
+    const downloadCSV = (stat) => {
+        if (stat.sessions.length === 0) return showToast("No attendance recorded for this subject yet.", "error");
+
+        let csv = "Registration Number,Name";
+        const sortedSessions = stat.sessions.sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
+        
+        sortedSessions.forEach(s => { csv += `,${s.session_date}`; });
+        csv += ",Overall %\n";
+
+        // Filter roster to only include students in this section
+        const sectionRoster = roster.filter(student => student.section === stat.section);
+
+        sectionRoster.forEach(student => {
+            let row = `${student.registration_number},${student.student_name}`;
+            let presentCount = 0, totalCount = 0;
+            
+            sortedSessions.forEach(s => {
+                const rec = s.records.find(r => r.student_id === student.registration_number);
+                if (rec) {
+                    totalCount++;
+                    const isPresent = (rec.status === 'Present' || rec.status === 'Leave') ? 1 : 0;
+                    row += `,${isPresent}`;
+                    if (isPresent === 1) presentCount++;
+                } else { row += `,N/A`; }
+            });
+            
+            const pct = totalCount === 0 ? 0 : Math.round((presentCount / totalCount) * 100);
+            row += `,${pct}%\n`;
+            csv += row;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${stat.subject}_Section_${stat.section}_Attendance.csv`;
+        a.click();
     };
 
     useEffect(() => {
@@ -573,6 +685,14 @@ export default function TeacherLoginAndDashboard() {
     // ==========================================
     // RENDER: TEACHER DASHBOARD
     // ==========================================
+    
+    const filteredWeeklySchedule = schedule
+        .filter(cls => cls.day === selectedDay)
+        .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
+
+    const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
+
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
           <Head>
@@ -610,30 +730,42 @@ export default function TeacherLoginAndDashboard() {
 
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900' }}>
                     <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.name}</h2>
-                    <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Manage your daily lectures and notify your classes instantly.</p>
+                    <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Manage your daily lectures and student attendance.</p>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                     <button onClick={() => setActiveTab('weekly')} style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
                         📅 Today / Weekly
                     </button>
+                    <button onClick={() => setActiveTab('attendance')} style={{ flex: 1, padding: '12px', background: activeTab === 'attendance' ? '#002147' : '#ddd', color: activeTab === 'attendance' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s', position: 'relative' }}>
+                        📝 Attendance & Approvals
+                        {pendingAttendances.length > 0 && (
+                            <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#dc3545', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', border: '2px solid white' }}>{pendingAttendances.length}</span>
+                        )}
+                    </button>
                     <button onClick={() => setActiveTab('permanent')} style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
                         🏛️ Base Schedule
-                    </button>
-                    <button onClick={() => setActiveTab('attendance')} style={{ flex: 1, padding: '12px', background: activeTab === 'attendance' ? '#002147' : '#ddd', color: activeTab === 'attendance' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s', position: 'relative' }}>
-                        📝 Approvals
-                        {pendingAttendances.length > 0 && (
-                            <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem' }}>{pendingAttendances.length}</span>
-                        )}
                     </button>
                 </div>
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
                     <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Classes (Temp Actions)</h3>
-                        {schedule.length === 0 ? <p>No classes found assigned to you.</p> : (
-                            schedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
+                        <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '20px', paddingBottom: '10px', scrollbarWidth: 'none' }}>
+                            {days.map(day => (
+                                <button key={`day-${day}`} onClick={() => setSelectedDay(day)}
+                                    style={{ 
+                                        padding: '10px 20px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
+                                        background: selectedDay === day ? '#002147' : '#e9ecef', color: selectedDay === day ? '#F2A900' : '#495057', boxShadow: selectedDay === day ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
+                                    }}>
+                                    {day}
+                                </button>
+                            ))}
+                        </div>
+
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Classes for {selectedDay} (Temp Actions)</h3>
+                        {filteredWeeklySchedule.length === 0 ? <p style={{ textAlign: 'center', padding: '20px', background: 'white', borderRadius: '8px' }}>No classes scheduled for {selectedDay}.</p> : (
+                            filteredWeeklySchedule.map((cls) => (
                                 <div key={cls.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none', opacity: cls.isCancelled ? 0.6 : 1 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
@@ -649,16 +781,184 @@ export default function TeacherLoginAndDashboard() {
                                     {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>✅ Confirmed to be Held on {cls.exceptionDetails?.exception_date}</div>}
                                     
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        {cls.isCancelled ? <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button> : cls.isConfirmed ? <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button> : (
+                                        {cls.isCancelled ? <button onClick={(e) => handleUndoException(cls.id, 'cancelled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button> : cls.isConfirmed ? <button onClick={(e) => handleUndoException(cls.id, 'confirmed', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={(e) => handleUndoException(cls.id, 'rescheduled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button> : (
                                             <>
-                                                <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                                <button onClick={(e) => openEditModal(e, cls)} style={btnStyle('#007bff')}>🕒 Modify Time/Room</button>
-                                                <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#dc3545')}>❌ Cancel Lecture</button>
+                                                <button onClick={(e) => handleConfirmClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#28a745')}>✅ Will Held</button>
+                                                <button onClick={(e) => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Modify Time/Room</button>
+                                                <button onClick={(e) => handleCancelClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#dc3545')}>❌ Cancel Lecture</button>
                                             </>
                                         )}
                                     </div>
                                 </div>
                             ))
+                        )}
+                    </div>
+                )}
+
+                {/* ================= COMPREHENSIVE ATTENDANCE TAB ================= */}
+                {activeTab === 'attendance' && (
+                    <div>
+                        {/* Attendance Sub-navigation */}
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px', overflowX: 'auto' }}>
+                            <button onClick={() => setAttendanceView('approve')} style={subTabStyle(attendanceView === 'approve')}>
+                                ✅ Approvals {pendingAttendances.length > 0 && <span style={{ background: '#dc3545', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem', marginLeft: '5px' }}>{pendingAttendances.length}</span>}
+                            </button>
+                            <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>📝 Mark / Edit</button>
+                            <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>📥 Download CSV</button>
+                            <button onClick={() => setAttendanceView('stats')} style={subTabStyle(attendanceView === 'stats')}>📊 Statistics</button>
+                        </div>
+
+                        {/* SUB-VIEW 1: APPROVALS */}
+                        {attendanceView === 'approve' && (
+                            <div>
+                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Pending Attendance submitted by CR</h3>
+                                {pendingAttendances.length === 0 ? <p style={{ background: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>No pending attendance to approve.</p> : (
+                                    pendingAttendances.map(session => (
+                                        <div key={`pend-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: '5px solid #f59e0b' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{session.course}</div>
+                                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {session.section} ({session.semester})</div>
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ color: '#002147', fontWeight: '900' }}>{session.session_date}</div>
+                                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>{session.presentCount} / {session.totalCount} Present</div>
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                                <button onClick={() => handleApproveAttendance(session.id)} style={btnStyle('#28a745')}>✅ Approve Directly</button>
+                                                <button onClick={() => {
+                                                    const formattedLecture = { ...session.baseLecture, attendanceSession: session };
+                                                    setActiveAttendanceLecture(formattedLecture);
+                                                }} style={btnStyle('#007bff')}>✏️ Review & Edit</button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
+                        {/* SUB-VIEW 2: MARK / EDIT ATTENDANCE */}
+                        {attendanceView === 'mark' && (
+                            <div>
+                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Today's Lectures</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+                                    {attendanceStats.map(stat => {
+                                        const todayClass = schedule.find(c => c.course === stat.subject && c.section === stat.section && c.day === currentDay && !c.isCancelled);
+                                        if (!todayClass) return null;
+
+                                        const startMins = parseTime(todayClass.start_time);
+                                        const endMins = parseTime(todayClass.end_time);
+                                        const isOngoing = currentMins >= startMins && currentMins <= endMins;
+                                        const todaySession = todayClass.attendanceSession;
+
+                                        return (
+                                            <div key={`mark-today-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #28a745' }}>
+                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
+                                                <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>Sec: {stat.section} | {todayClass.start_time} - {todayClass.end_time}</p>
+                                                
+                                                {isOngoing && !todaySession && (
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' }}>
+                                                        📝 Mark Attendance (Ongoing)
+                                                    </button>
+                                                )}
+                                                {(!isOngoing && !todaySession) && (
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                        📝 Mark Attendance
+                                                    </button>
+                                                )}
+                                                {todaySession && (
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                        ✏️ Edit Today's Attendance
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                    {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.section === stat.section && c.day === currentDay && !c.isCancelled)).length === 0 && (
+                                        <p style={{textAlign: 'center', width: '100%', padding: '20px', background: 'white', borderRadius: '8px'}}>No classes scheduled for today.</p>
+                                    )}
+                                </div>
+
+                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Edit Past Sessions (Anytime)</h3>
+                                {allSessionsData.length === 0 ? <p style={{textAlign: 'center', padding: '20px', background: 'white', borderRadius: '8px'}}>No past sessions recorded.</p> : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
+                                        {allSessionsData.sort((a,b) => new Date(b.session_date) - new Date(a.session_date)).map(session => (
+                                            <div key={`editpast-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6c757d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 'bold', color: '#000', fontSize: '0.95rem' }}>{session.course}</div>
+                                                    <div style={{ color: '#666', fontSize: '0.8rem' }}>Sec: {session.section} | Date: {session.session_date}</div>
+                                                </div>
+                                                <button onClick={() => {
+                                                    const formattedLecture = { ...session.baseLecture, attendanceSession: session };
+                                                    setActiveAttendanceLecture(formattedLecture);
+                                                }} style={{ padding: '8px 15px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
+                                                    Edit
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* SUB-VIEW 3: DOWNLOAD CSV */}
+                        {attendanceView === 'download' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                                {attendanceStats.map(stat => (
+                                    <div key={`dl-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #17a2b8' }}>
+                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
+                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>Section: {stat.section}</p>
+                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
+                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                            📥 Download .CSV Report
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* SUB-VIEW 4: STATISTICS */}
+                        {attendanceView === 'stats' && (
+                            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                                    <h3 style={{ margin: 0, color: '#002147' }}>Student Attendance Overview</h3>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold' }}>
+                                            <option value="ALL">All Sections</option>
+                                            {availableSections.map(s => <option key={s} value={s}>Section {s}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                                                <th style={{ padding: '12px' }}>Registration No.</th>
+                                                <th style={{ padding: '12px' }}>Name</th>
+                                                <th style={{ padding: '12px' }}>Section</th>
+                                                <th style={{ padding: '12px', textAlign: 'right' }}>Overall Att %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {roster.filter(s => attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter).map(student => {
+                                                const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter);
+                                                return (
+                                                    <tr key={student.registration_number} style={{ borderBottom: '1px solid #eee' }}>
+                                                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.registration_number}</td>
+                                                        <td style={{ padding: '12px' }}>{student.student_name}</td>
+                                                        <td style={{ padding: '12px' }}>{student.section}</td>
+                                                        <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>
+                                                            {pct}%
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}
@@ -690,43 +990,13 @@ export default function TeacherLoginAndDashboard() {
                         <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>➕ Add New Lecture</button>
                     </div>
                 )}
-
-                {/* ================= ATTENDANCE APPROVALS TAB ================= */}
-                {activeTab === 'attendance' && (
-                    <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Pending Attendance Approvals</h3>
-                        {pendingAttendances.length === 0 ? <p style={{ background: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>No pending attendance to approve.</p> : (
-                            pendingAttendances.map(session => (
-                                <div key={session.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: '5px solid #f59e0b' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
-                                        <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{session.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {session.section} ({session.semester})</div>
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900' }}>{session.session_date}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{session.presentCount} / {session.totalCount} Present</div>
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        <button onClick={() => handleApproveAttendance(session.id)} style={btnStyle('#28a745')}>✅ Approve</button>
-                                        <button onClick={() => {
-                                            const formattedLecture = { ...session.baseLecture, attendanceSession: session };
-                                            setActiveAttendanceLecture(formattedLecture);
-                                        }} style={btnStyle('#007bff')}>✏️ Edit</button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* ATTENDANCE SHEET MODAL */}
             {activeAttendanceLecture && (
                 <AttendanceSheet 
                     lecture={activeAttendanceLecture} 
-                    profile={{ id: profile.id, semester: activeAttendanceLecture.semester, section: activeAttendanceLecture.section }}
+                    profile={{ name: profile.name, isTeacher: true, section: activeAttendanceLecture.section, semester: activeAttendanceLecture.semester }}
                     existingSession={activeAttendanceLecture.attendanceSession}
                     onClose={(didUpdate) => {
                         setActiveAttendanceLecture(null);
@@ -764,8 +1034,8 @@ export default function TeacherLoginAndDashboard() {
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto' }}>
                         <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {isManualSemester ? <input type="text" placeholder="Semester (e.g. 1st)..." required value={baseForm.semester} onChange={(e) => setBaseForm({...baseForm, semester: e.target.value})} style={inputStyle} /> : <select required value={baseForm.semester} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSemester(true); setBaseForm({...baseForm, semester: ''}); } else setBaseForm({...baseForm, semester: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Semester --</option>{availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            {isManualSection ? <input type="text" placeholder="Section (e.g. A)..." required value={baseForm.section} onChange={(e) => setBaseForm({...baseForm, section: e.target.value})} style={inputStyle} /> : <select required value={baseForm.section} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSection(true); setBaseForm({...baseForm, section: ''}); } else setBaseForm({...baseForm, section: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Section --</option>{availableSections.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualSemester ? <input type="text" placeholder="Semester (e.g. Spring 2026)..." required value={baseForm.semester} onChange={(e) => setBaseForm({...baseForm, semester: e.target.value})} style={inputStyle} /> : <select required value={baseForm.semester} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSemester(true); setBaseForm({...baseForm, semester: ''}); } else setBaseForm({...baseForm, semester: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Semester --</option>{availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualSection ? <input type="text" placeholder="Section (e.g. 1E)..." required value={baseForm.section} onChange={(e) => setBaseForm({...baseForm, section: e.target.value})} style={inputStyle} /> : <select required value={baseForm.section} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSection(true); setBaseForm({...baseForm, section: ''}); } else setBaseForm({...baseForm, section: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Section --</option>{availableSections.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} /> : <select required value={baseForm.course} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } else setBaseForm({...baseForm, course: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Subject --</option>{availableCourses.map(c => <option key={c} value={c}>{c}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualRoom ? <input type="text" placeholder="Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } else setBaseForm({...baseForm, room: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
@@ -787,4 +1057,5 @@ export default function TeacherLoginAndDashboard() {
 
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' });
 const inputStyle = { width: '100%', padding: '12px', border: '2px solid #dee2e6', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', boxSizing: 'border-box' };
+const subTabStyle = (isActive) => ({ flex: 1, padding: '10px', background: isActive ? '#fff' : 'transparent', color: isActive ? '#002147' : '#555', border: isActive ? '1px solid #ddd' : '1px solid transparent', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', whiteSpace: 'nowrap' });
 const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.95rem' };
