@@ -14,10 +14,16 @@ export default function Dashboard() {
     // --- NEW: GATEKEEPER STATE ---
     const [isPendingApproval, setIsPendingApproval] = useState(false);
 
+    // --- RESPONSIVE & SIDEBAR STATES ---
+    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
     // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
+    const [allDepartmentRooms, setAllDepartmentRooms] = useState([]); // All rooms across department
     const [availableCourses, setAvailableCourses] = useState([]);
     const [availableTeachers, setAvailableTeachers] = useState([]);
+    const [teacherCourseMap, setTeacherCourseMap] = useState({}); // Auto-fill course mapping
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
@@ -35,9 +41,9 @@ export default function Dashboard() {
     const [expandedLectureId, setExpandedLectureId] = useState(null);
 
     // --- ATTENDANCE STATES ---
+    const [attendanceView, setAttendanceView] = useState('mark'); // mark, download, stats
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
     const [attendanceStats, setAttendanceStats] = useState([]); 
-    const [monthlyAttendance, setMonthlyAttendance] = useState("0%"); 
     const [allSessionsData, setAllSessionsData] = useState([]); 
     const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); 
 
@@ -47,7 +53,10 @@ export default function Dashboard() {
 
     // --- ANNOUNCEMENT STATES ---
     const [announcements, setAnnouncements] = useState([]);
-    const [announcementForm, setAnnouncementForm] = useState({ type: 'assignment', subject: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
+    const [editAnnId, setEditAnnId] = useState(null);
+    const [oldAnnMsg, setOldAnnMsg] = useState('');
+    const [announcementForm, setAnnouncementForm] = useState({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
+    const [upcomingLectures, setUpcomingLectures] = useState([]);
     const [currentTime, setCurrentTime] = useState(new Date());
     const notifiedDeadlines = useRef(new Set()); 
 
@@ -114,6 +123,15 @@ export default function Dashboard() {
         return targetDate.toLocaleDateString('en-CA');
     };
 
+    // --- WINDOW RESIZE LISTENER ---
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const isMobile = windowWidth < 768;
+
     useEffect(() => {
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
@@ -155,7 +173,7 @@ export default function Dashboard() {
     }, [announcements]);
 
     useEffect(() => {
-        if (!profile || !profile.is_approved) return; // Only listen if approved
+        if (!profile || !profile.is_approved) return; 
         const channel = supabase
             .channel('cr-realtime-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
@@ -167,26 +185,51 @@ export default function Dashboard() {
         return () => { supabase.removeChannel(channel); };
     }, [profile]);
 
+    // Handle dynamic lecture selection for Announcements
+    useEffect(() => {
+        if(announcementForm.subject && announcementForm.subject !== 'General') {
+            const relatedLectures = schedule.filter(c => c.course === announcementForm.subject);
+            setUpcomingLectures(relatedLectures);
+        } else {
+            setUpcomingLectures([]);
+        }
+    }, [announcementForm.subject, schedule]);
+
     const fetchProfileAndSchedule = async (userId) => {
         const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
         
         if (profileData) {
             setProfile(profileData);
             
-            // --- GATEKEEPER CHECK ---
             if (profileData.is_approved === false) {
                 setIsPendingApproval(true);
                 setLoading(false);
-                return; // Stop loading the dashboard data
+                return; 
             }
 
-            const { data: rosterData } = await supabase.from('class_roster').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('roll_number');
+            // NEW: Updated to fetch from 'students' using session & section
+            const { data: rosterData } = await supabase.from('students').select('*').eq('session', profileData.session).eq('section', profileData.section).order('registration_number');
             setRoster(rosterData || []);
 
-            const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
+            // Fetch Schedule Data
+            // Note: Since base_schedule previously used 'semester', ensure it's aligned. Using profileData.session
+            const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.session).eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
-            const { data: annData } = await supabase.from('class_announcements').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('created_at', { ascending: false });
+            // Fetch all department rooms for the global dropdown & map teacher courses
+            const { data: allBaseSchedules } = await supabase.from('base_schedule').select('room, teacher, course');
+            if (allBaseSchedules) {
+                const deptRooms = [...new Set(allBaseSchedules.map(x => x.room))].filter(Boolean).sort();
+                setAllDepartmentRooms(deptRooms);
+                
+                const tMap = {};
+                allBaseSchedules.forEach(bs => {
+                    if (bs.teacher && bs.course) tMap[bs.teacher] = bs.course;
+                });
+                setTeacherCourseMap(tMap);
+            }
+            
+            const { data: annData } = await supabase.from('class_announcements').select('*').eq('semester', profileData.session).eq('section', profileData.section).order('created_at', { ascending: false });
             setAnnouncements(annData || []);
 
             if (scheduleData) {
@@ -231,8 +274,6 @@ export default function Dashboard() {
             setSchedule(mergedSchedule);
 
             const uniqueSubjects = [...new Set((scheduleData || []).map(s => s.course))];
-            let globalTotalRecords = 0;
-            let globalPresentRecords = 0;
 
             const stats = uniqueSubjects.map(subject => {
                 const subjectBaseIds = scheduleData.filter(s => s.course === subject).map(s => s.id);
@@ -244,10 +285,8 @@ export default function Dashboard() {
                 subjectSessions.forEach(sess => {
                     sess.records.forEach(rec => {
                         totalRecords++;
-                        globalTotalRecords++;
                         if (rec.status === 'Present' || rec.status === 'Leave') {
                             presentRecords++;
-                            globalPresentRecords++;
                         }
                     });
                 });
@@ -257,8 +296,6 @@ export default function Dashboard() {
             });
 
             setAttendanceStats(stats);
-            const globalPct = globalTotalRecords === 0 ? 0 : Math.round((globalPresentRecords / globalTotalRecords) * 100);
-            setMonthlyAttendance(`${globalPct}%`);
         }
         setLoading(false);
     };
@@ -268,11 +305,12 @@ export default function Dashboard() {
         window.location.href = '/login';
     };
 
-    const getStudentAttendance = (studentId, subjectFilter) => {
+    const getStudentAttendance = (studentReg, subjectFilter) => {
         let present = 0, total = 0;
         allSessionsData.forEach(session => {
             if (subjectFilter !== 'ALL' && session.course !== subjectFilter) return;
-            const record = session.records.find(r => r.student_id === studentId);
+            // NEW: Using registration_number instead of student_id
+            const record = session.records.find(r => r.student_id === studentReg);
             if (record) {
                 total++;
                 if (record.status === 'Present' || record.status === 'Leave') present++;
@@ -281,10 +319,29 @@ export default function Dashboard() {
         return total === 0 ? 0 : Math.round((present / total) * 100);
     };
 
+    const handleEditAnnouncement = (ann) => {
+        setEditAnnId(ann.id);
+        setAnnouncementForm({
+            type: ann.type,
+            subject: ann.subject,
+            lecture_selector: 'manual',
+            deadline_date: ann.deadline_date || '',
+            deadline_time: ann.deadline_time || '8:00 AM',
+            topics: ann.topics,
+            details: ann.details
+        });
+        
+        const oldMsg = ann.type === 'assignment' 
+            ? `📢 NEW ASSIGNMENT: ${ann.subject} - ${ann.topics}. Due: ${ann.deadline_date}`
+            : `📢 MESSAGE: ${ann.topics} - Section ${profile.section}`;
+        setOldAnnMsg(oldMsg);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const submitAnnouncement = async (e) => {
         e.preventDefault();
         const payload = {
-            semester: profile.semester,
+            semester: profile.session, // Using session for new DB schema
             section: profile.section,
             type: announcementForm.type,
             subject: announcementForm.subject,
@@ -294,35 +351,49 @@ export default function Dashboard() {
             details: announcementForm.details
         };
 
-        const { error } = await supabase.from('class_announcements').insert([payload]);
-        if (error) return alert("Failed to add announcement: " + error.message);
+        if (editAnnId) {
+            const { error } = await supabase.from('class_announcements').update(payload).eq('id', editAnnId);
+            if (error) return alert("Failed to update: " + error.message);
 
-        const notifMsg = announcementForm.type === 'assignment' 
-            ? `📢 NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
-            : `📢 MESSAGE: ${announcementForm.topics} - Section ${profile.section}`;
-            
-        await supabase.from('notifications').insert([{ message: notifMsg }]);
+            const notifMsg = payload.type === 'assignment' 
+                ? `📢 UPDATED ASSIGNMENT: ${payload.subject} - ${payload.topics}. Due: ${payload.deadline_date}`
+                : `📢 UPDATED MESSAGE: ${payload.topics} - Section ${profile.section}`;
+                
+            // Update Notification instantly
+            await supabase.from('notifications').update({ message: notifMsg }).eq('message', oldAnnMsg);
+            alert("Announcement updated and class notified!");
+        } else {
+            const { error } = await supabase.from('class_announcements').insert([payload]);
+            if (error) return alert("Failed to add announcement: " + error.message);
 
-        alert("Announcement posted and class notified!");
-        setAnnouncementForm({ type: 'assignment', subject: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
+            const notifMsg = payload.type === 'assignment' 
+                ? `📢 NEW ASSIGNMENT: ${payload.subject} - ${payload.topics}. Due: ${payload.deadline_date}`
+                : `📢 MESSAGE: ${payload.topics} - Section ${profile.section}`;
+                
+            await supabase.from('notifications').insert([{ message: notifMsg }]);
+            alert("Announcement posted and class notified!");
+        }
+
+        setEditAnnId(null);
+        setAnnouncementForm({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
         fetchProfileAndSchedule(session.user.id);
     };
 
     const downloadCSV = (stat) => {
         if (stat.sessions.length === 0) return alert("No attendance recorded for this subject yet.");
 
-        let csv = "Roll Number,Name";
+        let csv = "Registration Number,Name";
         const sortedSessions = stat.sessions.sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
         
         sortedSessions.forEach(s => { csv += `,${s.session_date}`; });
         csv += ",Overall %\n";
 
         roster.forEach(student => {
-            let row = `${student.roll_number},${student.student_name}`;
+            let row = `${student.registration_number},${student.student_name}`;
             let presentCount = 0, totalCount = 0;
             
             sortedSessions.forEach(s => {
-                const rec = s.records.find(r => r.student_id === student.id);
+                const rec = s.records.find(r => r.student_id === student.registration_number);
                 if (rec) {
                     totalCount++;
                     const isPresent = (rec.status === 'Present' || rec.status === 'Leave') ? 1 : 0;
@@ -346,14 +417,15 @@ export default function Dashboard() {
 
     const handleAddStudent = async (e) => {
         e.preventDefault();
-        const { error } = await supabase.from('class_roster').insert([{ student_name: newStudent.name, roll_number: newStudent.roll, semester: profile.semester, section: profile.section }]);
+        // Insert into NEW students table
+        const { error } = await supabase.from('students').insert([{ student_name: newStudent.name, registration_number: newStudent.roll, session: profile.session, section: profile.section }]);
         if (error) alert("Error: " + error.message);
         else { setNewStudent({ name: '', roll: '' }); fetchProfileAndSchedule(session.user.id); }
     };
 
-    const handleDeleteStudent = async (id) => {
+    const handleDeleteStudent = async (regNum) => {
         if (!window.confirm("Remove this student?")) return;
-        await supabase.from('class_roster').delete().eq('id', id);
+        await supabase.from('students').delete().eq('registration_number', regNum);
         fetchProfileAndSchedule(session.user.id);
     };
 
@@ -368,18 +440,18 @@ export default function Dashboard() {
                 const rows = text.split('\n').map(r => r.split(','));
                 const payloads = [];
                 
-                let startIndex = rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
+                let startIndex = rows[0].join('').toLowerCase().includes('regist') || rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
                 for(let i = startIndex; i < rows.length; i++) {
                     const row = rows[i];
                     if (row.length >= 2) {
-                        const roll = row[0].trim();
+                        const reg = row[0].trim();
                         const name = row[1].trim();
-                        if (roll && name) { payloads.push({ student_name: name, roll_number: roll, semester: profile.semester, section: profile.section }); }
+                        if (reg && name) { payloads.push({ student_name: name, registration_number: reg, session: profile.session, section: profile.section }); }
                     }
                 }
 
                 if (payloads.length > 0) {
-                    const { error } = await supabase.from('class_roster').insert(payloads);
+                    const { error } = await supabase.from('students').insert(payloads);
                     if (error) alert("Error importing: " + error.message);
                     else { alert(`Successfully imported ${payloads.length} students!`); fetchProfileAndSchedule(session.user.id); }
                 } else { alert("No valid data found in CSV."); }
@@ -438,7 +510,7 @@ export default function Dashboard() {
     const openBaseModal = (cls = null) => {
         if (cls) {
             setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
-            setIsManualCourse(!availableCourses.includes(cls.course)); setIsManualTeacher(!availableTeachers.includes(cls.teacher)); setIsManualRoom(!availableRooms.includes(cls.room));
+            setIsManualCourse(!availableCourses.includes(cls.course)); setIsManualTeacher(!availableTeachers.includes(cls.teacher)); setIsManualRoom(!allDepartmentRooms.includes(cls.room));
         } else {
             setBaseForm({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
             setIsManualCourse(false); setIsManualTeacher(false); setIsManualRoom(false);
@@ -448,7 +520,7 @@ export default function Dashboard() {
 
     const submitBaseSchedule = async (e) => {
         e.preventDefault(); setIsBaseModalOpen(false); 
-        const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.semester, section: profile.section };
+        const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.session, section: profile.section };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
         fetchProfileAndSchedule(session.user.id);
@@ -463,7 +535,6 @@ export default function Dashboard() {
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
     if (!session) return null;
 
-    // --- RENDER PENDING APPROVAL SCREEN ---
     if (isPendingApproval) {
         return (
             <div style={{ background: '#f0f2f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif", padding: '20px' }}>
@@ -489,6 +560,11 @@ export default function Dashboard() {
     const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
     const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
+    // Responsive tab filters based on width
+    const visibleTabs = isMobile 
+        ? ['weekly', 'attendance', 'announcements'] 
+        : ['weekly', 'permanent', 'students', 'attendance', 'announcements'];
+
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
             <Head>
@@ -496,34 +572,54 @@ export default function Dashboard() {
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
             </Head>
 
-            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
+            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    {/* Hamburger Menu Toggle */}
+                    <button onClick={() => setIsSidebarOpen(true)} style={{ background: 'transparent', border: 'none', color: '#F2A900', fontSize: '1.8rem', cursor: 'pointer', padding: 0 }}>
+                        ☰
+                    </button>
+                    <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
+                </div>
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                     <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>🔔 Notifications</a>
                     <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
                 </div>
             </header>
 
+            {/* SIDEBAR OVERLAY */}
+            {isSidebarOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh', background: 'rgba(0,0,0,0.5)', zIndex: 3000 }} onClick={() => setIsSidebarOpen(false)}>
+                    <div style={{ width: '280px', height: '100vh', background: '#002147', color: 'white', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px', transform: 'translateX(0)', transition: '0.3s ease-in-out' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '10px' }}>
+                            <span style={{ fontWeight: 'bold', color: '#F2A900', fontSize: '1.2rem' }}>Menu</span>
+                            <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
+                        </div>
+                        <button onClick={() => { setActiveTab('weekly'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>
+                        <button onClick={() => { setActiveTab('permanent'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>
+                        <button onClick={() => { setActiveTab('students'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'students')}>👥 Manage Students</button>
+                        <button onClick={() => { setActiveTab('attendance'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'attendance')}>📝 Attendance</button>
+                        <button onClick={() => { setActiveTab('announcements'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'announcements')}>📢 Announcements</button>
+                    </div>
+                </div>
+            )}
+
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
                 
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                         <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
+                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.session} Session | Section {profile?.section}</strong></p>
                     </div>
-                    <div style={{ background: '#f8f9fa', padding: '10px 20px', borderRadius: '8px', textAlign: 'center', marginTop: '10px' }}>
-                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', textTransform: 'uppercase', fontWeight: 'bold' }}>Overall Attendance</p>
-                        <h3 style={{ margin: '5px 0 0 0', color: '#28a745', fontSize: '1.8rem' }}>{monthlyAttendance}</h3>
-                    </div>
+                    {/* Overall Attendance Display Removed as requested */}
                 </div>
 
-                {/* TABS */}
+                {/* TABS (Responsive) */}
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                    <button onClick={() => setActiveTab('weekly')} style={tabStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>
-                    <button onClick={() => setActiveTab('permanent')} style={tabStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>
-                    <button onClick={() => setActiveTab('students')} style={tabStyle(activeTab === 'students')}>👥 Manage Students</button>
-                    <button onClick={() => setActiveTab('attendance')} style={tabStyle(activeTab === 'attendance')}>📝 Attendance</button>
-                    <button onClick={() => setActiveTab('announcements')} style={tabStyle(activeTab === 'announcements')}>📢 Announcements</button>
+                    {visibleTabs.includes('weekly') && <button onClick={() => setActiveTab('weekly')} style={tabStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>}
+                    {visibleTabs.includes('permanent') && <button onClick={() => setActiveTab('permanent')} style={tabStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>}
+                    {visibleTabs.includes('students') && <button onClick={() => setActiveTab('students')} style={tabStyle(activeTab === 'students')}>👥 Manage Students</button>}
+                    {visibleTabs.includes('attendance') && <button onClick={() => setActiveTab('attendance')} style={tabStyle(activeTab === 'attendance')}>📝 Attendance</button>}
+                    {visibleTabs.includes('announcements') && <button onClick={() => setActiveTab('announcements')} style={tabStyle(activeTab === 'announcements')}>📢 Announcements</button>}
                 </div>
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
@@ -596,13 +692,20 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* ================= ADVANCED ATTENDANCE TAB ================= */}
+                {/* ================= SPLIT ATTENDANCE TAB ================= */}
                 {activeTab === 'attendance' && (
                     <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Subject Analytics & Reports</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px', marginBottom: '30px' }}>
-                            {attendanceStats.length === 0 ? <p style={{textAlign: 'center', width: '100%'}}>No subjects found.</p> : (
-                                attendanceStats.map(stat => {
+                        {/* Attendance Sub-navigation */}
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px' }}>
+                            <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>✅ Mark Attendance</button>
+                            <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>📥 Download CSV</button>
+                            <button onClick={() => setAttendanceView('stats')} style={subTabStyle(attendanceView === 'stats')}>📊 Statistics</button>
+                        </div>
+
+                        {/* SUB-VIEW 1: MARK ATTENDANCE */}
+                        {attendanceView === 'mark' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                                {attendanceStats.map(stat => {
                                     const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
                                     let isOngoing = false;
                                     let canEdit = false;
@@ -624,24 +727,14 @@ export default function Dashboard() {
                                         }
                                     }
 
-                                    return (
-                                        <div key={stat.subject} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #002147' }}>
-                                            <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                                <div>
-                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Lectures</p>
-                                                    <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem' }}>{stat.totalConducted}</p>
-                                                </div>
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>Avg Attendance</p>
-                                                    <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.1rem', color: stat.percentage > 75 ? '#28a745' : '#dc3545' }}>{stat.percentage}%</p>
-                                                </div>
-                                            </div>
-                                            <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '15px' }}>
-                                                📥 Download CSV Report
-                                            </button>
+                                    if (!todayClass) return null; // Only show subjects with a class today in this view
 
-                                            {todayClass && isOngoing && !todaySession && (
+                                    return (
+                                        <div key={`mark-${stat.subject}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #28a745' }}>
+                                            <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
+                                            <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>{todayClass.start_time} - {todayClass.end_time} | Room {todayClass.room}</p>
+                                            
+                                            {isOngoing && !todaySession && (
                                                 <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' }}>
                                                     📝 Mark Attendance (Ongoing)
                                                 </button>
@@ -656,48 +749,73 @@ export default function Dashboard() {
                                                     🔒 Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending Teacher'})
                                                 </button>
                                             )}
+                                            {!isOngoing && !todaySession && (
+                                                <div style={{ textAlign: 'center', padding: '10px', color: '#856404', background: '#fff3cd', borderRadius: '5px', fontSize: '0.9rem' }}>
+                                                    Not currently active.
+                                                </div>
+                                            )}
                                         </div>
-                                    )
-                                })
-                            )}
-                        </div>
+                                    );
+                                })}
+                                {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled)).length === 0 && (
+                                    <p style={{textAlign: 'center', width: '100%', padding: '20px', background: 'white', borderRadius: '8px'}}>No classes scheduled for today to mark attendance.</p>
+                                )}
+                            </div>
+                        )}
 
-                        {/* Section 2: Student Class Viewer */}
-                        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-                                <h3 style={{ margin: 0, color: '#002147' }}>Student Attendance Overview</h3>
-                                <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold' }}>
-                                    <option value="ALL">All Subjects (Overall)</option>
-                                    {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
+                        {/* SUB-VIEW 2: DOWNLOAD CSV */}
+                        {attendanceView === 'download' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                                {attendanceStats.map(stat => (
+                                    <div key={`dl-${stat.subject}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #17a2b8' }}>
+                                        <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
+                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
+                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                            📥 Download .CSV Report
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
-                            
-                            <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                    <thead>
-                                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                            <th style={{ padding: '12px' }}>Roll Number</th>
-                                            <th style={{ padding: '12px' }}>Name</th>
-                                            <th style={{ padding: '12px', textAlign: 'right' }}>Attendance %</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {roster.map(student => {
-                                            const pct = getStudentAttendance(student.id, attendanceSubjectFilter);
-                                            return (
-                                                <tr key={student.id} style={{ borderBottom: '1px solid #eee' }}>
-                                                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.roll_number}</td>
-                                                    <td style={{ padding: '12px' }}>{student.student_name}</td>
-                                                    <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>
-                                                        {pct}%
-                                                    </td>
-                                                </tr>
-                                            )
-                                        })}
-                                    </tbody>
-                                </table>
+                        )}
+
+                        {/* SUB-VIEW 3: STATISTICS */}
+                        {attendanceView === 'stats' && (
+                            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                                    <h3 style={{ margin: 0, color: '#002147' }}>Student Attendance Overview</h3>
+                                    <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold' }}>
+                                        <option value="ALL">All Subjects (Overall)</option>
+                                        {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                        <thead>
+                                            <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                                                <th style={{ padding: '12px' }}>Registration Number</th>
+                                                <th style={{ padding: '12px' }}>Name</th>
+                                                <th style={{ padding: '12px', textAlign: 'right' }}>Attendance %</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {roster.map(student => {
+                                                const pct = getStudentAttendance(student.registration_number, attendanceSubjectFilter);
+                                                return (
+                                                    <tr key={student.registration_number} style={{ borderBottom: '1px solid #eee' }}>
+                                                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.registration_number}</td>
+                                                        <td style={{ padding: '12px' }}>{student.student_name}</td>
+                                                        <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>
+                                                            {pct}%
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
 
@@ -705,42 +823,82 @@ export default function Dashboard() {
                 {activeTab === 'announcements' && (
                     <div>
                         <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
-                            <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Publish Announcement</h3>
+                            <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
+                                {editAnnId ? '✏️ Edit Announcement' : 'Publish Announcement'}
+                            </h3>
                             <form onSubmit={submitAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 <div style={{ display: 'flex', gap: '10px' }}>
                                     <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({...announcementForm, type: e.target.value})} style={{...inputStyle, flex: 1, fontWeight: 'bold'}}>
                                         <option value="assignment">📝 Assignment</option>
                                         <option value="message">📢 Simple Message</option>
                                     </select>
-                                    <select required value={announcementForm.subject} onChange={(e) => setAnnouncementForm({...announcementForm, subject: e.target.value})} style={{...inputStyle, flex: 2}}>
+                                    <select required value={announcementForm.subject} onChange={(e) => {
+                                        setAnnouncementForm({...announcementForm, subject: e.target.value, lecture_selector: ''});
+                                    }} style={{...inputStyle, flex: 2}}>
                                         <option value="" disabled>-- Select Subject --</option>
                                         <option value="General">General / Off-Topic</option>
                                         {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
 
-                                {announcementForm.type === 'assignment' && (
-                                    <div style={{ display: 'flex', gap: '10px', background: '#f8f9fa', padding: '10px', borderRadius: '5px', border: '1px solid #dee2e6' }}>
-                                        <div style={{flex: 1}}>
-                                            <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#666', marginBottom: '5px'}}>Deadline Date</label>
-                                            <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_date: e.target.value})} style={inputStyle} />
-                                        </div>
-                                        <div style={{flex: 1}}>
-                                            <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#666', marginBottom: '5px'}}>Deadline Time</label>
-                                            <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_time: e.target.value})} style={inputStyle}>
-                                                {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                                                <option value="11:59 PM">11:59 PM (Midnight)</option>
+                                {announcementForm.type === 'assignment' && announcementForm.subject && (
+                                    <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '5px', border: '1px solid #dee2e6' }}>
+                                        <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px'}}>Select Deadline</label>
+                                        
+                                        {upcomingLectures.length > 0 && announcementForm.subject !== 'General' && (
+                                            <select 
+                                                value={announcementForm.lecture_selector} 
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setAnnouncementForm({...announcementForm, lecture_selector: val});
+                                                    if (val && val !== 'manual') {
+                                                        const [d, t] = val.split('|');
+                                                        setAnnouncementForm(prev => ({...prev, deadline_date: d, deadline_time: t}));
+                                                    }
+                                                }} 
+                                                style={{...inputStyle, marginBottom: '10px'}}
+                                            >
+                                                <option value="" disabled>-- Select Upcoming Lecture Date --</option>
+                                                {upcomingLectures.map(l => {
+                                                    const dDate = getDateForCurrentWeekDay(l.day);
+                                                    const timeFmt = convertTo12Hour(l.start_time);
+                                                    return <option key={l.id} value={`${dDate}|${timeFmt}`}>{l.day} {dDate} (By {timeFmt})</option>;
+                                                })}
+                                                <option value="manual">➕ Provide Manual Date & Time</option>
                                             </select>
-                                        </div>
+                                        )}
+
+                                        {(announcementForm.lecture_selector === 'manual' || upcomingLectures.length === 0 || announcementForm.subject === 'General') && (
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <div style={{flex: 1}}>
+                                                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#666', marginBottom: '5px'}}>Manual Date</label>
+                                                    <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_date: e.target.value})} style={inputStyle} />
+                                                </div>
+                                                <div style={{flex: 1}}>
+                                                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#666', marginBottom: '5px'}}>Manual Time</label>
+                                                    <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_time: e.target.value})} style={inputStyle}>
+                                                        {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                                        <option value="11:59 PM">11:59 PM (Midnight)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
                                 <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4 Exercises)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({...announcementForm, topics: e.target.value})} style={inputStyle} />
                                 <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({...announcementForm, details: e.target.value})} style={{...inputStyle, minHeight: '100px', resize: 'vertical'}} />
                                 
-                                <button type="submit" style={{ padding: '15px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>
-                                    🚀 Push to Entire Class
-                                </button>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    {editAnnId && (
+                                        <button type="button" onClick={() => { setEditAnnId(null); setAnnouncementForm({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' }); }} style={{ padding: '15px', background: '#ccc', color: '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', flex: 1 }}>
+                                            Cancel Edit
+                                        </button>
+                                    )}
+                                    <button type="submit" style={{ padding: '15px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', flex: 2 }}>
+                                        {editAnnId ? '💾 Update Announcement' : '🚀 Push to Entire Class'}
+                                    </button>
+                                </div>
                             </form>
                         </div>
 
@@ -786,14 +944,19 @@ export default function Dashboard() {
                                             </div>
                                         )}
                                         
-                                        <button onClick={async () => {
-                                            if(window.confirm('Delete this announcement globally?')) {
-                                                await supabase.from('class_announcements').delete().eq('id', ann.id);
-                                                fetchProfileAndSchedule(session.user.id);
-                                            }
-                                        }} style={{ ...btnStyle('#dc3545'), padding: '5px 10px', fontSize: '0.75rem', marginTop: '10px', width: 'auto', flex: 'none' }}>
-                                            Delete Post
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                            <button onClick={() => handleEditAnnouncement(ann)} style={{ ...btnStyle('#17a2b8'), padding: '5px 10px', fontSize: '0.75rem', width: 'auto', flex: 'none' }}>
+                                                ✏️ Edit
+                                            </button>
+                                            <button onClick={async () => {
+                                                if(window.confirm('Delete this announcement globally?')) {
+                                                    await supabase.from('class_announcements').delete().eq('id', ann.id);
+                                                    fetchProfileAndSchedule(session.user.id);
+                                                }
+                                            }} style={{ ...btnStyle('#dc3545'), padding: '5px 10px', fontSize: '0.75rem', width: 'auto', flex: 'none' }}>
+                                                🗑️ Delete Post
+                                            </button>
+                                        </div>
                                     </div>
                                 )
                             })
@@ -842,7 +1005,7 @@ export default function Dashboard() {
                         </div>
 
                         <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '25px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
-                            <input type="text" placeholder="Roll Number (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...inputStyle, flex: 1, minWidth: '150px'}} />
+                            <input type="text" placeholder="Registration No (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...inputStyle, flex: 1, minWidth: '150px'}} />
                             <input type="text" placeholder="Student Full Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...inputStyle, flex: 2, minWidth: '200px'}} />
                             <button type="submit" style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>➕ Add</button>
                         </form>
@@ -853,7 +1016,7 @@ export default function Dashboard() {
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                     <thead>
                                         <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                            <th style={{ padding: '12px' }}>Roll Number</th>
+                                            <th style={{ padding: '12px' }}>Registration Number</th>
                                             <th style={{ padding: '12px' }}>Name</th>
                                             <th style={{ padding: '12px', textAlign: 'center' }}>Att %</th>
                                             <th style={{ padding: '12px', textAlign: 'right' }}>Action</th>
@@ -861,14 +1024,14 @@ export default function Dashboard() {
                                     </thead>
                                     <tbody>
                                         {roster.map(student => {
-                                            const pct = getStudentAttendance(student.id, 'ALL');
+                                            const pct = getStudentAttendance(student.registration_number, 'ALL');
                                             return (
-                                                <tr key={student.id} style={{ borderBottom: '1px solid #eee' }}>
-                                                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.roll_number}</td>
+                                                <tr key={student.registration_number} style={{ borderBottom: '1px solid #eee' }}>
+                                                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.registration_number}</td>
                                                     <td style={{ padding: '12px' }}>{student.student_name}</td>
                                                     <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>{pct}%</td>
                                                     <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                        <button onClick={() => handleDeleteStudent(student.id)} style={{ padding: '5px 10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
+                                                        <button onClick={() => handleDeleteStudent(student.registration_number)} style={{ padding: '5px 10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
                                                     </td>
                                                 </tr>
                                             )
@@ -905,11 +1068,21 @@ export default function Dashboard() {
                                 <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                                 <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
-                            <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
-                                {availableRooms.length > 0 ? availableRooms.map(r => <option key={r} value={r}>{r}</option>) : <option value={newRoom}>{newRoom}</option>}
+                            <select required value={newRoom} onChange={(e) => {
+                                if (e.target.value === 'MANUAL') {
+                                    setIsManualRoom(true); setNewRoom('');
+                                } else {
+                                    setNewRoom(e.target.value);
+                                }
+                            }} style={inputStyle}>
+                                <option value="" disabled>-- Select Dept Room --</option>
+                                {allDepartmentRooms.map(r => <option key={`resch-${r}`} value={r}>{r}</option>)}
+                                <option value="MANUAL">➕ Add Room Manually</option>
                             </select>
+                            {isManualRoom && <input type="text" placeholder="Type Room Name Manually..." required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={{...inputStyle, border: '2px solid #007bff'}} />}
+                            
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
+                                <button type="button" onClick={() => { setIsEditModalOpen(false); setIsManualRoom(false); }} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
                                 <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
                             </div>
                         </form>
@@ -923,12 +1096,54 @@ export default function Dashboard() {
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
                         <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} /> : <select required value={baseForm.course} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } else setBaseForm({...baseForm, course: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Subject --</option>{availableCourses.map(c => <option key={c} value={c}>{c}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            {isManualTeacher ? <input type="text" placeholder="Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={inputStyle} /> : <select required value={baseForm.teacher} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); } else setBaseForm({...baseForm, teacher: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Teacher --</option>{availableTeachers.map(t => <option key={t} value={t}>{t}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } else setBaseForm({...baseForm, room: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {/* Course Dropdown */}
+                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={{...inputStyle, border: '2px solid #007bff'}} /> : 
+                            <select required value={baseForm.course} onChange={(e) => { 
+                                if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } 
+                                else setBaseForm({...baseForm, course: e.target.value}); 
+                            }} style={inputStyle}>
+                                <option value="" disabled>-- Select Subject --</option>
+                                {availableCourses.map(c => <option key={`bc-${c}`} value={c}>{c}</option>)}
+                                <option value="MANUAL">➕ Add Manually</option>
+                            </select>}
+
+                            {/* Teacher Dropdown (Auto-fills Course) */}
+                            {isManualTeacher ? <input type="text" placeholder="Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={{...inputStyle, border: '2px solid #007bff'}} /> : 
+                            <select required value={baseForm.teacher} onChange={(e) => { 
+                                if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); } 
+                                else {
+                                    const selectedTeacher = e.target.value;
+                                    const autoCourse = teacherCourseMap[selectedTeacher];
+                                    setBaseForm({...baseForm, teacher: selectedTeacher, course: autoCourse || baseForm.course});
+                                }
+                            }} style={inputStyle}>
+                                <option value="" disabled>-- Select Teacher --</option>
+                                {availableTeachers.map(t => <option key={`bt-${t}`} value={t}>{t}</option>)}
+                                <option value="MANUAL">➕ Add Manually</option>
+                            </select>}
+
+                            {/* Room Dropdown (Shows all Dept Rooms) */}
+                            {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={{...inputStyle, border: '2px solid #007bff'}} /> : 
+                            <select required value={baseForm.room} onChange={(e) => { 
+                                if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } 
+                                else setBaseForm({...baseForm, room: e.target.value}); 
+                            }} style={inputStyle}>
+                                <option value="" disabled>-- Select Room --</option>
+                                {allDepartmentRooms.map(r => <option key={`br-${r}`} value={r}>{r}</option>)}
+                                <option value="MANUAL">➕ Add Manually</option>
+                            </select>}
+
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}><select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select><select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                            <div style={{ display: 'flex', gap: '10px' }}><button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button><button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button></div>
+                            
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -940,4 +1155,5 @@ export default function Dashboard() {
 const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
 const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
 const tabStyle = (isActive) => ({ flex: 1, padding: '12px', background: isActive ? '#002147' : '#ddd', color: isActive ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' });
-const contactBtnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '8px', background: 'transparent', color: bg, border: `2px solid ${bg}`, borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s' });
+const subTabStyle = (isActive) => ({ flex: 1, padding: '10px', background: isActive ? '#fff' : 'transparent', color: isActive ? '#002147' : '#555', border: isActive ? '1px solid #ddd' : '1px solid transparent', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' });
+const sidebarBtnStyle = (isActive) => ({ width: '100%', padding: '12px', background: isActive ? '#F2A900' : 'transparent', color: isActive ? '#002147' : 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'left', transition: '0.2s' });
