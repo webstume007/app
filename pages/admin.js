@@ -23,7 +23,7 @@ export default function AdminDashboard() {
     const [teachers, setTeachers] = useState([]);
     const [baseSchedule, setBaseSchedule] = useState([]);
     const [exceptions, setExceptions] = useState([]);
-    const [roster, setRoster] = useState([]);
+    const [roster, setRoster] = useState([]); // Now pulls from 'students' table
     const [attendanceSessions, setAttendanceSessions] = useState([]);
     const [pointSchedules, setPointSchedules] = useState([]);
 
@@ -32,7 +32,7 @@ export default function AdminDashboard() {
     const [scheduleSubTab, setScheduleSubTab] = useState('base'); 
     
     // Filters for Modules
-    const [filterSem, setFilterSem] = useState('');
+    const [filterSem, setFilterSem] = useState(''); // Used interchangeably with 'session'
     const [filterSec, setFilterSec] = useState('');
     const [filterDay, setFilterDay] = useState('ALL');
 
@@ -44,7 +44,8 @@ export default function AdminDashboard() {
     const [pointForm, setPointForm] = useState({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
 
     const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
-    const [studentForm, setStudentForm] = useState({ id: null, student_name: '', roll_number: '', semester: '', section: '' });
+    // Updated for new students table schema
+    const [studentForm, setStudentForm] = useState({ original_reg: null, student_name: '', registration_number: '', session: '', section: '' });
 
     const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
     const [attendanceEditData, setAttendanceEditData] = useState({ session: null, recordsMap: {}, students: [] });
@@ -55,6 +56,7 @@ export default function AdminDashboard() {
 
     const [globalAlertMsg, setGlobalAlertMsg] = useState('');
     const fileInputRef = useRef(null);
+    const pointsFileInputRef = useRef(null); // Ref for Point Schedules CSV
 
     // Extracted Dropdown Data
     const availableSemesters = [...new Set(baseSchedule.map(x => x.semester))].filter(Boolean).sort();
@@ -102,7 +104,7 @@ export default function AdminDashboard() {
                 supabase.from('teacher_profiles').select('*'),
                 supabase.from('base_schedule').select('*'),
                 supabase.from('schedule_exceptions').select('*'),
-                supabase.from('class_roster').select('*').order('roll_number', { ascending: true }),
+                supabase.from('students').select('*').order('registration_number', { ascending: true }), // Switched to students table
                 supabase.from('attendance_sessions').select('*, teacher_profiles(name), auth_users:submitted_by(email)'),
                 supabase.from('point_schedules').select('*')
             ]);
@@ -131,19 +133,14 @@ export default function AdminDashboard() {
     };
 
     // ==========================================
-    // 3. MODULE FUNCTIONS: USERS (WITH APPROVAL LOGIC)
+    // 3. MODULE FUNCTIONS: USERS
     // ==========================================
     
     const approveUser = async (table, id) => {
         setActionLoading(true);
-        // Added error catching to see why it was failing before
         const { error } = await supabase.from(table).update({ is_approved: true }).eq('id', id);
-        
-        if (error) {
-            alert("Failed to approve user. Error: " + error.message);
-        } else {
-            await fetchAllData();
-        }
+        if (error) alert("Failed to approve user. Error: " + error.message);
+        else await fetchAllData();
         setActionLoading(false);
     };
 
@@ -178,7 +175,7 @@ export default function AdminDashboard() {
                 semester: userEditForm.semester, 
                 section: userEditForm.section, 
                 phone: userEditForm.phone, 
-                is_approved: true // Automatically approves upon edit
+                is_approved: true
             };
         } else {
             payload = { 
@@ -190,9 +187,8 @@ export default function AdminDashboard() {
         }
 
         const { error } = await supabase.from(table).update(payload).eq('id', userEditForm.id);
-        if (error) {
-            alert("Error saving: " + error.message);
-        } else {
+        if (error) alert("Error saving: " + error.message);
+        else {
             setIsUserEditModalOpen(false);
             await fetchAllData();
         }
@@ -241,19 +237,26 @@ export default function AdminDashboard() {
     };
 
     // ==========================================
-    // 5. MODULE FUNCTIONS: ACADEMIC RECORDS 
+    // 5. MODULE FUNCTIONS: ACADEMIC RECORDS (STUDENTS)
     // ==========================================
     const saveStudent = async (e) => {
         e.preventDefault();
         setActionLoading(true);
-        const payload = { ...studentForm };
-        delete payload.id;
+        const payload = { 
+            registration_number: studentForm.registration_number,
+            student_name: studentForm.student_name,
+            session: studentForm.session,
+            section: studentForm.section
+        };
 
-        if (studentForm.id) await supabase.from('class_roster').update(payload).eq('id', studentForm.id);
-        else await supabase.from('class_roster').insert([payload]);
+        // UPSERT handles both new creations and updates natively based on PK
+        const { error } = await supabase.from('students').upsert([payload]);
         
-        setIsStudentModalOpen(false);
-        await fetchAllData();
+        if(error) alert("Error: " + error.message);
+        else {
+            setIsStudentModalOpen(false);
+            await fetchAllData();
+        }
         setActionLoading(false);
     };
 
@@ -261,7 +264,7 @@ export default function AdminDashboard() {
         const file = e.target.files[0];
         if (!file) return;
         if (!filterSem || !filterSec) {
-            alert("Please select a Semester and Section from the dropdowns first before importing CSV.");
+            alert("Please select a Semester/Session and Section from the dropdowns first before importing CSV.");
             e.target.value = null;
             return;
         }
@@ -274,24 +277,25 @@ export default function AdminDashboard() {
                 const rows = text.split('\n').map(r => r.split(','));
                 const payloads = [];
                 
-                let startIndex = rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
+                // Flexible header detection
+                let startIndex = rows[0].join('').toLowerCase().includes('regist') || rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
 
                 for(let i = startIndex; i < rows.length; i++) {
                     const row = rows[i];
                     if (row.length >= 2) {
-                        const roll = row[0].trim();
+                        const reg = row[0].trim();
                         const name = row[1].trim();
-                        if (roll && name) {
-                            payloads.push({ student_name: name, roll_number: roll, semester: filterSem, section: filterSec });
+                        if (reg && name) {
+                            payloads.push({ student_name: name, registration_number: reg, session: filterSem, section: filterSec });
                         }
                     }
                 }
 
                 if (payloads.length > 0) {
-                    const { error } = await supabase.from('class_roster').insert(payloads);
+                    const { error } = await supabase.from('students').upsert(payloads);
                     if (error) alert("Error importing: " + error.message);
                     else {
-                        alert(`Successfully imported ${payloads.length} students!`);
+                        alert(`Successfully imported/updated ${payloads.length} students!`);
                         await fetchAllData();
                     }
                 } else {
@@ -313,11 +317,12 @@ export default function AdminDashboard() {
         
         const { data: records } = await supabase.from('attendance_records').select('*').eq('session_id', session.id);
         
-        const { data: students } = await supabase.from('class_roster')
+        // Fetch students from the new table using session mapping
+        const { data: students } = await supabase.from('students')
             .select('*')
-            .eq('semester', base.semester)
+            .eq('session', base.semester) // Mapping base_schedule 'semester' to students 'session'
             .eq('section', base.section)
-            .order('roll_number', { ascending: true });
+            .order('registration_number', { ascending: true });
 
         const recordsMap = {};
         if (records) {
@@ -326,7 +331,7 @@ export default function AdminDashboard() {
         
         if (students) {
             students.forEach(s => {
-                if (!recordsMap[s.id]) recordsMap[s.id] = 'Absent';
+                if (!recordsMap[s.registration_number]) recordsMap[s.registration_number] = 'Absent';
             });
         }
 
@@ -335,10 +340,10 @@ export default function AdminDashboard() {
         setActionLoading(false);
     };
 
-    const handleAttendanceStatusChange = (studentId, status) => {
+    const handleAttendanceStatusChange = (studentReg, status) => {
         setAttendanceEditData(prev => ({
             ...prev,
-            recordsMap: { ...prev.recordsMap, [studentId]: status }
+            recordsMap: { ...prev.recordsMap, [studentReg]: status }
         }));
     };
 
@@ -350,8 +355,8 @@ export default function AdminDashboard() {
         
         const payloads = students.map(s => ({
             session_id: session.id,
-            student_id: s.id,
-            status: recordsMap[s.id]
+            student_id: s.registration_number,
+            status: recordsMap[s.registration_number]
         }));
 
         const { error } = await supabase.from('attendance_records').insert(payloads);
@@ -366,7 +371,7 @@ export default function AdminDashboard() {
     };
 
     // ==========================================
-    // 6. MODULE FUNCTIONS: INFRASTRUCTURE
+    // 6. MODULE FUNCTIONS: INFRASTRUCTURE (ROUTES)
     // ==========================================
     const savePointSchedule = async (e) => {
         e.preventDefault();
@@ -385,6 +390,55 @@ export default function AdminDashboard() {
         await supabase.from('point_schedules').delete().eq('id', id);
         await fetchAllData();
         setActionLoading(false);
+    };
+
+    const handlePointsCSVUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            setActionLoading(true);
+            try {
+                const text = event.target.result;
+                const rows = text.split('\n').map(r => r.split(','));
+                const payloads = [];
+                
+                // Assume first row is header if it contains 'route'
+                let startIndex = rows[0].join('').toLowerCase().includes('route') ? 1 : 0;
+
+                for(let i = startIndex; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length >= 2) {
+                        const routeStr = row[0].trim();
+                        const timeStr = row[1].trim();
+                        // Handle potential 3rd column for is_saturday boolean
+                        const isSatStr = row.length > 2 ? row[2].trim().toLowerCase() : 'false';
+                        const isSat = isSatStr === 'true' || isSatStr === '1' || isSatStr === 'yes' || isSatStr === 'y';
+
+                        if (routeStr && timeStr) {
+                            payloads.push({ route: routeStr, departure_time: timeStr, is_saturday: isSat });
+                        }
+                    }
+                }
+
+                if (payloads.length > 0) {
+                    const { error } = await supabase.from('point_schedules').insert(payloads);
+                    if (error) alert("Error importing routes: " + error.message);
+                    else {
+                        alert(`Successfully imported ${payloads.length} routes!`);
+                        await fetchAllData();
+                    }
+                } else {
+                    alert("No valid data found in CSV.");
+                }
+            } catch (err) {
+                alert("Failed to parse Routes CSV.");
+            }
+            setActionLoading(false);
+            e.target.value = null;
+        };
+        reader.readAsText(file);
     };
 
     const sendGlobalAlert = async (e) => {
@@ -465,7 +519,15 @@ export default function AdminDashboard() {
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'overview' && (
                     <div style={{ animation: 'fadeIn 0.3s' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                            <div style={kpiCard}>
+                                <div style={kpiTitle}>Total Students</div>
+                                <div style={kpiValue}>{roster.length}</div>
+                            </div>
+                            <div style={kpiCard}>
+                                <div style={kpiTitle}>Total Sections</div>
+                                <div style={kpiValue}>{availableSections.length}</div>
+                            </div>
                             <div style={kpiCard}>
                                 <div style={kpiTitle}>Total Class Reps</div>
                                 <div style={kpiValue}>{crs.length}</div>
@@ -601,7 +663,7 @@ export default function AdminDashboard() {
 
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                             <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...inputStyle, flex: 1}}>
-                                <option value="">All Semesters</option>
+                                <option value="">All Sessions/Semesters</option>
                                 {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                             <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...inputStyle, flex: 1}}>
@@ -688,17 +750,17 @@ export default function AdminDashboard() {
                             <h3 style={cardHeader}>Global Roster Index</h3>
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                                 <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...inputStyle, flex:1}}>
-                                    <option value="">Select Sem</option>
+                                    <option value="">Select Session/Sem</option>
                                     {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                                 <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...inputStyle, flex:1}}>
-                                    <option value="">Select Sec</option>
+                                    <option value="">Select Section</option>
                                     {availableSections.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
                                 <button onClick={() => {
-                                    setStudentForm({ id: null, student_name: '', roll_number: '', semester: filterSem || '', section: filterSec || '' });
+                                    setStudentForm({ original_reg: null, student_name: '', registration_number: '', session: filterSem || '', section: filterSec || '' });
                                     setIsStudentModalOpen(true);
                                 }} style={btnStyle('#002147')}>+ Add Student</button>
                                 <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
@@ -709,15 +771,15 @@ export default function AdminDashboard() {
                                 {(!filterSem || !filterSec) ? <p style={{color:'#666', textAlign:'center'}}>Select filters to view roster.</p> : (
                                     <table style={tableStyle}>
                                         <tbody>
-                                            {roster.filter(r => r.semester === filterSem && r.section === filterSec).map(s => (
-                                                <tr key={s.id} style={{borderBottom:'1px solid #eee'}}>
-                                                    <td style={tdStyle}><strong>{s.roll_number}</strong></td>
+                                            {roster.filter(r => r.session === filterSem && r.section === filterSec).map(s => (
+                                                <tr key={s.registration_number} style={{borderBottom:'1px solid #eee'}}>
+                                                    <td style={tdStyle}><strong>{s.registration_number}</strong></td>
                                                     <td style={tdStyle}>{s.student_name}</td>
                                                     <td style={{...tdStyle, textAlign:'right', display:'flex', gap:'5px', justifyContent:'flex-end'}}>
-                                                        <button onClick={() => { setStudentForm(s); setIsStudentModalOpen(true); }} style={{...btnStyle('#007bff'), minWidth:'auto', padding:'5px 10px'}}>Edit</button>
+                                                        <button onClick={() => { setStudentForm({...s, original_reg: s.registration_number}); setIsStudentModalOpen(true); }} style={{...btnStyle('#007bff'), minWidth:'auto', padding:'5px 10px'}}>Edit</button>
                                                         <button onClick={async ()=>{
                                                             if(window.confirm('Delete student?')) {
-                                                                await supabase.from('class_roster').delete().eq('id', s.id);
+                                                                await supabase.from('students').delete().eq('registration_number', s.registration_number);
                                                                 fetchAllData();
                                                             }
                                                         }} style={{...btnStyle('#dc3545'), minWidth:'auto', padding:'5px 10px'}}>X</button>
@@ -797,10 +859,14 @@ export default function AdminDashboard() {
                         <div style={contentCard}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
                                 <h3 style={{ margin: 0 }}>Bus Point Logic Engine</h3>
-                                <button onClick={() => {
-                                    setPointForm({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
-                                    setIsPointModalOpen(true);
-                                }} style={{...btnStyle('#002147'), minWidth: 'auto', padding: '8px 12px'}}>+ Route</button>
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    <input type="file" accept=".csv" ref={pointsFileInputRef} onChange={handlePointsCSVUpload} style={{ display: 'none' }} />
+                                    <button onClick={() => pointsFileInputRef.current.click()} style={{...btnStyle('#28a745'), minWidth: 'auto', padding: '8px 12px'}}>📥 Bulk CSV</button>
+                                    <button onClick={() => {
+                                        setPointForm({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
+                                        setIsPointModalOpen(true);
+                                    }} style={{...btnStyle('#002147'), minWidth: 'auto', padding: '8px 12px'}}>+ Route</button>
+                                </div>
                             </div>
                             
                             <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
@@ -854,7 +920,7 @@ export default function AdminDashboard() {
                                     </div>
                                     <input type="text" placeholder="Department" required value={userEditForm.department} onChange={e=>setUserEditForm({...userEditForm, department:e.target.value})} style={inputStyle} />
                                     <div style={{display:'flex', gap:'10px'}}>
-                                        <input type="text" placeholder="Semester (e.g. 3RD)" required value={userEditForm.semester} onChange={e=>setUserEditForm({...userEditForm, semester:e.target.value})} style={{...inputStyle, flex:1}} />
+                                        <input type="text" placeholder="Session/Sem (e.g. 3RD)" required value={userEditForm.semester} onChange={e=>setUserEditForm({...userEditForm, semester:e.target.value})} style={{...inputStyle, flex:1}} />
                                         <input type="text" placeholder="Section (e.g. A)" required value={userEditForm.section} onChange={e=>setUserEditForm({...userEditForm, section:e.target.value})} style={{...inputStyle, flex:1}} />
                                     </div>
                                 </>
@@ -883,8 +949,8 @@ export default function AdminDashboard() {
                         <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>{baseForm.id ? 'Edit Base Lecture' : 'Force Add Lecture'}</h3>
                         <form onSubmit={saveBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div style={{display:'flex', gap:'10px'}}>
-                                <input type="text" placeholder="Semester (e.g. 3RD)" required value={baseForm.semester} onChange={e=>setBaseForm({...baseForm, semester:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
-                                <input type="text" placeholder="Section (e.g. BSAI-A)" required value={baseForm.section} onChange={e=>setBaseForm({...baseForm, section:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
+                                <input type="text" placeholder="Session/Sem (e.g. Spring 2026)" required value={baseForm.semester} onChange={e=>setBaseForm({...baseForm, semester:e.target.value})} style={{...inputStyle, flex:1}} />
+                                <input type="text" placeholder="Section (e.g. 1E)" required value={baseForm.section} onChange={e=>setBaseForm({...baseForm, section:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
                             </div>
                             <input type="text" placeholder="Course Name" required value={baseForm.course} onChange={e=>setBaseForm({...baseForm, course:e.target.value})} style={inputStyle} />
                             <input type="text" placeholder="Teacher Name" required value={baseForm.teacher} onChange={e=>setBaseForm({...baseForm, teacher:e.target.value})} style={inputStyle} />
@@ -939,13 +1005,22 @@ export default function AdminDashboard() {
             {isStudentModalOpen && (
                 <div style={modalBackdrop}>
                     <div style={modalContent}>
-                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>{studentForm.id ? 'Edit Student' : 'Add Student'}</h3>
+                        <h3 style={{ marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>{studentForm.original_reg ? 'Edit Student' : 'Add Student'}</h3>
                         <form onSubmit={saveStudent} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <div style={{display:'flex', gap:'10px'}}>
-                                <input type="text" placeholder="Sem (e.g. 3RD)" required value={studentForm.semester} onChange={e=>setStudentForm({...studentForm, semester:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
-                                <input type="text" placeholder="Sec (e.g. A)" required value={studentForm.section} onChange={e=>setStudentForm({...studentForm, section:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
+                                <input type="text" placeholder="Session/Sem (e.g. Spring 2026)" required value={studentForm.session} onChange={e=>setStudentForm({...studentForm, session:e.target.value})} style={{...inputStyle, flex:1}} />
+                                <input type="text" placeholder="Sec (e.g. 1E)" required value={studentForm.section} onChange={e=>setStudentForm({...studentForm, section:e.target.value.toUpperCase()})} style={{...inputStyle, flex:1}} />
                             </div>
-                            <input type="text" placeholder="Roll Number (e.g. FA23-BSE-001)" required value={studentForm.roll_number} onChange={e=>setStudentForm({...studentForm, roll_number:e.target.value})} style={inputStyle} />
+                            <input 
+                                type="text" 
+                                placeholder="Registration No. (e.g. FA23-BSE-001)" 
+                                required 
+                                value={studentForm.registration_number} 
+                                onChange={e=>setStudentForm({...studentForm, registration_number:e.target.value})} 
+                                style={inputStyle} 
+                                disabled={studentForm.original_reg !== null} // Prevent changing Primary Key once created
+                            />
+                            {studentForm.original_reg && <span style={{fontSize: '0.75rem', color: '#666', marginTop: '-10px'}}>*Registration number cannot be edited. Delete and recreate if incorrect.</span>}
                             <input type="text" placeholder="Student Full Name" required value={studentForm.student_name} onChange={e=>setStudentForm({...studentForm, student_name:e.target.value})} style={inputStyle} />
                             
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
@@ -969,15 +1044,15 @@ export default function AdminDashboard() {
                         <div style={{ overflowY: 'auto', flexGrow: 1, paddingRight: '5px' }}>
                             {attendanceEditData.students.length === 0 ? <p style={{color:'#666'}}>No students in roster for this section.</p> : (
                                 attendanceEditData.students.map((student) => {
-                                    const currentStatus = attendanceEditData.recordsMap[student.id];
+                                    const currentStatus = attendanceEditData.recordsMap[student.registration_number];
                                     return (
-                                        <div key={student.id} style={{ border: '1px solid #eee', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f8f9fa' }}>
-                                            <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>{student.roll_number} - {student.student_name}</div>
+                                        <div key={student.registration_number} style={{ border: '1px solid #eee', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f8f9fa' }}>
+                                            <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#000' }}>{student.registration_number} - {student.student_name}</div>
                                             <div style={{ display: 'flex', gap: '5px' }}>
                                                 {['Present', 'Absent', 'Leave'].map(status => (
                                                     <button
                                                         key={status}
-                                                        onClick={() => handleAttendanceStatusChange(student.id, status)}
+                                                        onClick={() => handleAttendanceStatusChange(student.registration_number, status)}
                                                         style={{
                                                             flex: 1, padding: '8px', borderRadius: '5px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
                                                             background: currentStatus === status 
