@@ -206,20 +206,32 @@ export default function Dashboard() {
                 return; 
             }
 
-            // FIX: Bypassing the strict semester/session text match. 
-            // We now strictly pull everything linked to this CR's unique Section (e.g. "1E")
-            
-            // 1. Fetch Students by Section
+            // =========================================================================
+            // THE FIX: DYNAMICALLY CALCULATE SEMESTER & SECTION FROM "3RD-3M"
+            // =========================================================================
+            const rawSection = profileData.section || ''; // e.g. "3RD-3M"
+            let calcSemester = profileData.semester; // Fallback to DB column if exists
+            let baseSec = rawSection; // e.g. "3M"
+
+            if (rawSection.includes('-')) {
+                const parts = rawSection.split('-');
+                if (!calcSemester) calcSemester = parts[0]; // Extract "3RD"
+                baseSec = parts.slice(1).join('-'); // Extract "3M"
+            }
+            // =========================================================================
+
+            // 1. Fetch Students (checking for either '3RD-3M' or '3M' to guarantee a match)
             const { data: rosterData } = await supabase.from('students')
                 .select('*')
-                .eq('section', profileData.section)
+                .or(`section.eq.${rawSection},section.eq.${baseSec}`)
                 .order('registration_number');
             setRoster(rosterData || []);
 
-            // 2. Fetch Base Schedule by Section
+            // 2. Fetch Base Schedule using the calculated semester & raw section
             const { data: scheduleData } = await supabase.from('base_schedule')
                 .select('*')
-                .eq('section', profileData.section);
+                .eq('semester', calcSemester)
+                .eq('section', rawSection);
             setBaseSchedule(scheduleData || []);
             
             const { data: allBaseSchedules } = await supabase.from('base_schedule').select('room, teacher, course');
@@ -234,10 +246,11 @@ export default function Dashboard() {
                 setTeacherCourseMap(tMap);
             }
             
-            // 3. Fetch Announcements by Section
+            // 3. Fetch Announcements using the calculated semester & raw section
             const { data: annData } = await supabase.from('class_announcements')
                 .select('*')
-                .eq('section', profileData.section)
+                .eq('semester', calcSemester)
+                .eq('section', rawSection)
                 .order('created_at', { ascending: false });
             setAnnouncements(annData || []);
 
@@ -348,8 +361,16 @@ export default function Dashboard() {
 
     const submitAnnouncement = async (e) => {
         e.preventDefault();
+
+        // Calculate missing parameters dynamically
+        const rawSection = profile.section || ''; 
+        let calcSemester = profile.semester; 
+        if (!calcSemester && rawSection.includes('-')) {
+            calcSemester = rawSection.split('-')[0];
+        }
+
         const payload = {
-            semester: profile.semester, // Kept for data integrity 
+            semester: calcSemester,
             section: profile.section,
             type: announcementForm.type,
             subject: announcementForm.subject,
@@ -424,7 +445,16 @@ export default function Dashboard() {
 
     const handleAddStudent = async (e) => {
         e.preventDefault();
-        const { error } = await supabase.from('students').insert([{ student_name: newStudent.name, registration_number: newStudent.roll, session: profile.semester, section: profile.section }]);
+        const rawSection = profile.section || ''; 
+        let calcSemester = profile.semester; 
+        let baseSec = rawSection;
+        if (rawSection.includes('-')) {
+            const parts = rawSection.split('-');
+            if (!calcSemester) calcSemester = parts[0]; 
+            baseSec = parts.slice(1).join('-'); 
+        }
+
+        const { error } = await supabase.from('students').insert([{ student_name: newStudent.name, registration_number: newStudent.roll, session: calcSemester, section: baseSec }]);
         if (error) alert("Error: " + error.message);
         else { setNewStudent({ name: '', roll: '' }); fetchProfileAndSchedule(session.user.id); }
     };
@@ -439,6 +469,15 @@ export default function Dashboard() {
         const file = e.target.files[0];
         if (!file) return;
 
+        const rawSection = profile.section || ''; 
+        let calcSemester = profile.semester; 
+        let baseSec = rawSection;
+        if (rawSection.includes('-')) {
+            const parts = rawSection.split('-');
+            if (!calcSemester) calcSemester = parts[0]; 
+            baseSec = parts.slice(1).join('-'); 
+        }
+
         const reader = new FileReader();
         reader.onload = async (event) => {
             try {
@@ -452,7 +491,7 @@ export default function Dashboard() {
                     if (row.length >= 2) {
                         const reg = row[0].trim();
                         const name = row[1].trim();
-                        if (reg && name) { payloads.push({ student_name: name, registration_number: reg, session: profile.semester, section: profile.section }); }
+                        if (reg && name) { payloads.push({ student_name: name, registration_number: reg, session: calcSemester, section: baseSec }); }
                     }
                 }
 
@@ -526,7 +565,13 @@ export default function Dashboard() {
 
     const submitBaseSchedule = async (e) => {
         e.preventDefault(); setIsBaseModalOpen(false); 
-        const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.semester, section: profile.section };
+        const rawSection = profile.section || ''; 
+        let calcSemester = profile.semester; 
+        if (!calcSemester && rawSection.includes('-')) {
+            calcSemester = rawSection.split('-')[0];
+        }
+
+        const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: calcSemester, section: profile.section };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
         fetchProfileAndSchedule(session.user.id);
@@ -611,7 +656,7 @@ export default function Dashboard() {
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                         <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>Semester {profile?.semester} | Section {profile?.section}</strong></p>
+                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>Section {profile?.section}</strong></p>
                     </div>
                 </div>
 
