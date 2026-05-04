@@ -207,16 +207,14 @@ export default function Dashboard() {
                 return; 
             }
 
-            // NEW: Updated to fetch from 'students' using session & section
-            const { data: rosterData } = await supabase.from('students').select('*').eq('session', profileData.session).eq('section', profileData.section).order('registration_number');
+            // FIX: Restored to profileData.semester to match your existing data
+            const { data: rosterData } = await supabase.from('students').select('*').eq('session', profileData.semester).eq('section', profileData.section).order('registration_number');
             setRoster(rosterData || []);
 
-            // Fetch Schedule Data
-            // Note: Since base_schedule previously used 'semester', ensure it's aligned. Using profileData.session
-            const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.session).eq('section', profileData.section);
+            // FIX: Restored to profileData.semester to match your existing data
+            const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('semester', profileData.semester).eq('section', profileData.section);
             setBaseSchedule(scheduleData || []);
             
-            // Fetch all department rooms for the global dropdown & map teacher courses
             const { data: allBaseSchedules } = await supabase.from('base_schedule').select('room, teacher, course');
             if (allBaseSchedules) {
                 const deptRooms = [...new Set(allBaseSchedules.map(x => x.room))].filter(Boolean).sort();
@@ -229,7 +227,8 @@ export default function Dashboard() {
                 setTeacherCourseMap(tMap);
             }
             
-            const { data: annData } = await supabase.from('class_announcements').select('*').eq('semester', profileData.session).eq('section', profileData.section).order('created_at', { ascending: false });
+            // FIX: Restored to profileData.semester to match your existing data
+            const { data: annData } = await supabase.from('class_announcements').select('*').eq('semester', profileData.semester).eq('section', profileData.section).order('created_at', { ascending: false });
             setAnnouncements(annData || []);
 
             if (scheduleData) {
@@ -309,7 +308,6 @@ export default function Dashboard() {
         let present = 0, total = 0;
         allSessionsData.forEach(session => {
             if (subjectFilter !== 'ALL' && session.course !== subjectFilter) return;
-            // NEW: Using registration_number instead of student_id
             const record = session.records.find(r => r.student_id === studentReg);
             if (record) {
                 total++;
@@ -341,7 +339,7 @@ export default function Dashboard() {
     const submitAnnouncement = async (e) => {
         e.preventDefault();
         const payload = {
-            semester: profile.session, // Using session for new DB schema
+            semester: profile.semester, // FIX: Restored to profile.semester
             section: profile.section,
             type: announcementForm.type,
             subject: announcementForm.subject,
@@ -359,7 +357,6 @@ export default function Dashboard() {
                 ? `📢 UPDATED ASSIGNMENT: ${payload.subject} - ${payload.topics}. Due: ${payload.deadline_date}`
                 : `📢 UPDATED MESSAGE: ${payload.topics} - Section ${profile.section}`;
                 
-            // Update Notification instantly
             await supabase.from('notifications').update({ message: notifMsg }).eq('message', oldAnnMsg);
             alert("Announcement updated and class notified!");
         } else {
@@ -417,8 +414,8 @@ export default function Dashboard() {
 
     const handleAddStudent = async (e) => {
         e.preventDefault();
-        // Insert into NEW students table
-        const { error } = await supabase.from('students').insert([{ student_name: newStudent.name, registration_number: newStudent.roll, session: profile.session, section: profile.section }]);
+        // FIX: Mapping profile.semester to the session column in the students table
+        const { error } = await supabase.from('students').insert([{ student_name: newStudent.name, registration_number: newStudent.roll, session: profile.semester, section: profile.section }]);
         if (error) alert("Error: " + error.message);
         else { setNewStudent({ name: '', roll: '' }); fetchProfileAndSchedule(session.user.id); }
     };
@@ -446,7 +443,8 @@ export default function Dashboard() {
                     if (row.length >= 2) {
                         const reg = row[0].trim();
                         const name = row[1].trim();
-                        if (reg && name) { payloads.push({ student_name: name, registration_number: reg, session: profile.session, section: profile.section }); }
+                        // FIX: Mapping profile.semester to the session column
+                        if (reg && name) { payloads.push({ student_name: name, registration_number: reg, session: profile.semester, section: profile.section }); }
                     }
                 }
 
@@ -520,7 +518,8 @@ export default function Dashboard() {
 
     const submitBaseSchedule = async (e) => {
         e.preventDefault(); setIsBaseModalOpen(false); 
-        const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.session, section: profile.section };
+        // FIX: Restored semester variable here
+        const payload = { course: baseForm.course, teacher: baseForm.teacher, room: baseForm.room, day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, semester: profile.semester, section: profile.section };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
         fetchProfileAndSchedule(session.user.id);
@@ -608,9 +607,8 @@ export default function Dashboard() {
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                         <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.session} Session | Section {profile?.section}</strong></p>
+                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.semester} Semester | Section {profile?.section}</strong></p>
                     </div>
-                    {/* Overall Attendance Display Removed as requested */}
                 </div>
 
                 {/* TABS (Responsive) */}
