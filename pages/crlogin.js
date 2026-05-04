@@ -11,7 +11,7 @@ export default function Dashboard() {
     const [roster, setRoster] = useState([]); 
     const [loading, setLoading] = useState(true);
     
-    // --- NEW: GATEKEEPER STATE ---
+    // --- GATEKEEPER STATE ---
     const [isPendingApproval, setIsPendingApproval] = useState(false);
 
     // --- RESPONSIVE & SIDEBAR STATES ---
@@ -206,7 +206,7 @@ export default function Dashboard() {
                 return; 
             }
 
-            // 1. Fetch Students using Session and Section directly
+            // 1. Fetch Students using strict session & section
             const { data: rosterData } = await supabase.from('students')
                 .select('*')
                 .eq('session', profileData.session)
@@ -214,7 +214,7 @@ export default function Dashboard() {
                 .order('registration_number');
             setRoster(rosterData || []);
 
-            // 2. Fetch Base Schedule using Session and Section
+            // 2. Fetch Base Schedule using strict session & section
             const { data: scheduleData } = await supabase.from('base_schedule')
                 .select('*')
                 .eq('session', profileData.session)
@@ -233,7 +233,7 @@ export default function Dashboard() {
                 setTeacherCourseMap(tMap);
             }
             
-            // 3. Fetch Announcements using Session and Section
+            // 3. Fetch Announcements using strict session & section
             const { data: annData } = await supabase.from('class_announcements')
                 .select('*')
                 .eq('session', profileData.session)
@@ -348,6 +348,7 @@ export default function Dashboard() {
 
     const submitAnnouncement = async (e) => {
         e.preventDefault();
+
         const payload = {
             session: profile.session, 
             section: profile.section,
@@ -611,7 +612,7 @@ export default function Dashboard() {
                 <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                         <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.session} Session | Section {profile?.section}</strong></p>
+                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
                     </div>
                 </div>
 
