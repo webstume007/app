@@ -564,7 +564,7 @@ export default function Home() {
             <div style={tabBar}>
                 {['class', 'room', 'teacher', 'announcements'].map(tab => (
                     <button key={tab} onClick={() => { setCurrentTab(tab); setShowAlerts(false); }} style={tabBtn(currentTab === tab)}>
-                        {tab === 'class' ? '📅 SCHED' : tab === 'room' ? '🚪 ROOMS' : tab === 'teacher' ? '👨‍🏫 TEACHERS' : '📢 NEWS'}
+                        {tab === 'class' ? '📅 SCHED' : tab === 'room' ? '🚪 ROOMS' : tab === 'teacher' ? '👨‍🏫 TEACHERS' : '📢 UPDATES'}
                         {tab === 'announcements' && activeAssignments.length > 0 && <span style={newsRedDot}></span>}
                     </button>
                 ))}
