@@ -2,6 +2,34 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
+// Helper function to dynamically calculate Semester based on Session text and Current Date
+const getSemesterFromSession = (session) => {
+    if (!session) return "";
+    const match = session.match(/20\d{2}/);
+    if (!match) return session; 
+
+    const startYear = parseInt(match[0], 10);
+    const isSpringStart = session.toLowerCase().includes('spring') || session.toLowerCase().includes('sp');
+    
+    const d = new Date();
+    const currYear = d.getFullYear();
+    const currMonth = d.getMonth(); // 0 = Jan, 11 = Dec
+    
+    let semestersPassed = (currYear - startYear) * 2;
+    
+    // Fall sessions start around August (Month index 7)
+    if (currMonth >= 7) semestersPassed += 1;
+    if (isSpringStart) semestersPassed += 1;
+    
+    if (semestersPassed <= 0) return "1ST";
+    
+    const suffixes = ["TH", "ST", "ND", "RD"];
+    const v = semestersPassed % 100;
+    const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
+    
+    return `${semestersPassed}${suffix}`;
+};
+
 export default function Home() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [rawData, setRawData] = useState([]);
@@ -59,7 +87,6 @@ export default function Home() {
         const savedSelection = localStorage.getItem('iub_user_selection');
         if (savedSelection) {
             const parsed = JSON.parse(savedSelection);
-            // Backward compatibility for old cache
             if (parsed.semester && !parsed.session) parsed.session = parsed.semester;
             setUserSection(parsed);
             setIsFirstVisit(false);
@@ -103,12 +130,10 @@ export default function Home() {
                     }
                 }
             })
-            // Listen for direct INSERTS on class_announcements (Strict Session Match)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'class_announcements' }, (payload) => {
                 if (payload.new.section === userSection.section && payload.new.session === userSection.session) {
                     setAnnouncements(prev => [payload.new, ...prev].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
                     
-                    // Trigger instant pop-up notification for the specific section
                     if (Notification.permission === "granted") {
                         const title = payload.new.type === 'assignment' ? "New Assignment Posted!" : "New Class Announcement";
                         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -143,6 +168,20 @@ export default function Home() {
             setDeferredPrompt(e);
         });
     }, []);
+
+    // 4. INVALID CACHE RECOVERY (Revert old/wrong selection logic gracefully)
+    useEffect(() => {
+        if (!loading && !isFirstVisit && userSection && userSection.section !== 'GUEST' && rawData.length > 0) {
+            // Verify if the current session/section combo actually exists in the DB
+            const isValid = rawData.some(c => c.session === userSection.session && c.section === userSection.section);
+            if (!isValid) {
+                // Wipe invalid/old configurations and send user to first visit select screen
+                localStorage.removeItem('iub_user_selection');
+                setUserSection(null);
+                setIsFirstVisit(true);
+            }
+        }
+    }, [loading, isFirstVisit, userSection, rawData]);
 
     const fetchLiveSchedule = async () => {
         const [baseRes, excRes, notifRes, pointsRes, annRes, teachersRes] = await Promise.all([
@@ -393,7 +432,8 @@ export default function Home() {
                                     <div style={{ color: '#555', fontSize: '0.8rem' }}>
                                         {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
                                         {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
-                                        <span>👥 {cls.section}</span>
+                                        {/* Display calculated dynamic semester along with section */}
+                                        <span>👥 {getSemesterFromSession(cls.session)}-{cls.section}</span>
                                     </div>
                                     
                                     {status && (
@@ -471,8 +511,10 @@ export default function Home() {
                         const secs = getSectionsForSession(e.target.value);
                         secDropdown.innerHTML = '<option value="">-- Select Section --</option>' + secs.map(s => `<option value="${s}">${s}</option>`).join('');
                     }}>
-                        <option value="">-- Select Session --</option>
-                        {availableSessions.map(s => <option key={s} value={s}>{s}</option>)}
+                        <option value="">-- Select Semester --</option>
+                        {availableSessions.map(s => (
+                            <option key={s} value={s}>{getSemesterFromSession(s)} Semester ({s})</option>
+                        ))}
                     </select>
 
                     <select id="initSec" style={selectStyle}>
@@ -484,7 +526,7 @@ export default function Home() {
                             const sem = document.getElementById('initSession').value;
                             const sec = document.getElementById('initSec').value;
                             if (sem && sec) handleInitialSelection(sem, sec);
-                            else alert("Please select both Session and Section");
+                            else alert("Please select both Semester and Section");
                         }} style={bigBtn}>Show My Schedule</button>
                         
                         <div style={{color: '#999', fontSize: '0.8rem'}}>— OR —</div>
@@ -508,7 +550,7 @@ export default function Home() {
 
             <header style={headerStyle}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>
-                    {userSection?.section === 'GUEST' ? '🎓 GUEST' : `🎓 ${userSection?.section} (${userSection?.session})`}
+                    {userSection?.section === 'GUEST' ? '🎓 GUEST' : `🎓 ${getSemesterFromSession(userSection?.session)} Semester • ${userSection?.section}`}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
