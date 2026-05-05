@@ -5,17 +5,15 @@ export default function AttendanceSheet({ lecture, onClose, profile, existingSes
     const [attendance, setAttendance] = useState({});
     const [loading, setLoading] = useState(true);
     
-    // Add an initialized lock to stop React from resetting the state on background re-renders
+    // This lock prevents background dashboard refreshes from resetting your clicks
     const [initialized, setInitialized] = useState(false);
 
     useEffect(() => {
-        // If we already loaded, or if students haven't arrived from the dashboard yet, do nothing.
         if (initialized || !students || students.length === 0) return;
 
         const loadRecords = async () => {
             const initialAtt = {};
 
-            // 1. If editing, fetch existing records from attendance_records
             if (existingSession) {
                 const { data: recordsData } = await supabase
                     .from('attendance_records')
@@ -24,32 +22,33 @@ export default function AttendanceSheet({ lecture, onClose, profile, existingSes
                 
                 if (recordsData) {
                     recordsData.forEach(record => {
-                        // Crucial: Track using the internal UUID (student_id), not registration_number
+                        // Track using registration_number
                         initialAtt[record.student_id] = record.status;
                     });
                 }
                 
-                // Fallback: Default to Present if a new student was added after this session was created
+                // Fallback: Default to Present if a new student was added after this session
                 students.forEach(s => {
-                    if (!initialAtt[s.id]) {
-                        initialAtt[s.id] = 'Present';
+                    if (!initialAtt[s.registration_number]) {
+                        initialAtt[s.registration_number] = 'Present';
                     }
                 });
             } else {
-                // 2. Default to Present if new session
-                students.forEach(s => initialAtt[s.id] = 'Present');
+                // Default to Present if new session
+                students.forEach(s => initialAtt[s.registration_number] = 'Present');
             }
             
             setAttendance(initialAtt);
-            setInitialized(true); // Lock it so it doesn't run again!
+            setInitialized(true); 
             setLoading(false);
         };
 
         loadRecords();
-    }, [existingSession, students, initialized]); // Added initialized to dependencies
+    }, [existingSession, students, initialized]); 
 
-    const handleMark = (studentId, status) => {
-        setAttendance(prev => ({ ...prev, [studentId]: status }));
+    // Uses the unique registration number to mark exactly one student
+    const handleMark = (regNum, status) => {
+        setAttendance(prev => ({ ...prev, [regNum]: status }));
     };
 
     const handleSubmit = async () => {
@@ -78,11 +77,11 @@ export default function AttendanceSheet({ lecture, onClose, profile, existingSes
             await supabase.from('attendance_records').delete().eq('session_id', sessionId);
         }
 
-        // 3. Insert new records - USING UUIDs (student.id)
+        // 3. Insert new records matching your DB schema (using registration_number)
         const records = students.map(student => ({
             session_id: sessionId,
-            student_id: student.id, // Fixed: Sending UUID to the database
-            status: attendance[student.id]
+            student_id: student.registration_number, 
+            status: attendance[student.registration_number]
         }));
 
         const { error: recordsError } = await supabase.from('attendance_records').insert(records);
@@ -108,22 +107,21 @@ export default function AttendanceSheet({ lecture, onClose, profile, existingSes
                 <div style={{ overflowY: 'auto', flexGrow: 1, paddingRight: '5px' }}>
                     {loading ? <p>Loading records...</p> : !students || students.length === 0 ? <p>No students found. Add them in the Manage Students tab.</p> : (
                         students.map((student) => (
-                            <div key={student.id} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f9f9f9' }}>
+                            <div key={student.registration_number} style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '8px', marginBottom: '10px', background: '#f9f9f9' }}>
                                 <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
-                                    {/* UI shows Registration Number, but buttons use UUID under the hood */}
                                     {student.registration_number} - {student.student_name}
                                 </div>
                                 <div style={{ display: 'flex', gap: '5px' }}>
                                     {['Present', 'Absent', 'Leave'].map(status => (
                                         <button
                                             key={status}
-                                            onClick={() => handleMark(student.id, status)} // Passing UUID
+                                            onClick={() => handleMark(student.registration_number, status)}
                                             style={{
                                                 flex: 1, padding: '8px', borderRadius: '5px', border: 'none', fontWeight: 'bold', cursor: 'pointer',
-                                                background: attendance[student.id] === status 
+                                                background: attendance[student.registration_number] === status 
                                                     ? (status === 'Present' ? '#28a745' : status === 'Absent' ? '#dc3545' : '#ffc107') 
                                                     : '#e9ecef',
-                                                color: attendance[student.id] === status && status !== 'Leave' ? 'white' : '#333'
+                                                color: attendance[student.registration_number] === status && status !== 'Leave' ? 'white' : '#333'
                                             }}
                                         >
                                             {status}
