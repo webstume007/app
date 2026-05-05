@@ -765,7 +765,7 @@ export default function Home() {
             </div>
 
             <footer style={footerStyle}>
-                Made with ❤️ by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin</a>
+                Made with ❤️ by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin | Nazakat | Muntaha | Waleeja — 3RD 3M</a> 
             </footer>
         </div>
     );
