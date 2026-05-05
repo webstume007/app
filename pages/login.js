@@ -12,14 +12,14 @@ export default function Auth() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [department, setDepartment] = useState('BSAI');
-    const [semester, setSemester] = useState('3RD');
+    
+    // --- CHANGED: Semester replaced with Session ---
+    const [academicSession, setAcademicSession] = useState(''); 
     const [section, setSection] = useState('');
     const [phone, setPhone] = useState('');
 
-    // --- NEW: State for Sections from Database ---
     const [availableSections, setAvailableSections] = useState([]);
 
-    // --- NEW: Fetch sections when the page loads ---
     useEffect(() => {
         const fetchSections = async () => {
             const { data } = await supabase.from('base_schedule').select('section');
@@ -41,6 +41,10 @@ export default function Auth() {
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    // --- CHANGED: Forces the verification email to redirect back to the login page ---
+                    emailRedirectTo: `${window.location.origin}/login` 
+                }
             });
 
             if (authError) {
@@ -59,7 +63,7 @@ export default function Auth() {
                             first_name: firstName,
                             last_name: lastName,
                             department: department,
-                            semester: semester,
+                            session: academicSession, // --- CHANGED: Saving as session in DB ---
                             section: section,
                             phone: phone
                         }
@@ -69,6 +73,8 @@ export default function Auth() {
                     setMessage(`Profile Error: ${profileError.message}`);
                 } else {
                     setMessage('Signup successful! Please check your email to verify your account.');
+                    // --- CHANGED: Instantly switch back to Login view (email and password stay filled) ---
+                    setIsSignUp(false); 
                 }
             }
         } else {
@@ -81,7 +87,8 @@ export default function Auth() {
             if (error) {
                 setMessage(`Error: ${error.message}`);
             } else {
-                setMessage('Login successful! Redirecting to CR Login Homepage...');
+                setMessage('Login successful! Redirecting to CR Dashboard...');
+                // --- Redirects to your new dashboard route ---
                 window.location.href = '/crlogin'; 
             }
         }
@@ -101,18 +108,17 @@ export default function Auth() {
                         <input type="text" placeholder="First Name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} style={inputStyle} />
                         <input type="text" placeholder="Last Name" required value={lastName} onChange={(e) => setLastName(e.target.value)} style={inputStyle} />
                         <input type="text" placeholder="Department (e.g., BSAI)" required value={department} onChange={(e) => setDepartment(e.target.value)} style={inputStyle} />
-                        <select required value={semester} onChange={(e) => setSemester(e.target.value)} style={inputStyle}>
-                            <option value="1ST">1st Semester</option>
-                            <option value="2ND">2nd Semester</option>
-                            <option value="3RD">3rd Semester</option>
-                            <option value="4TH">4th Semester</option>
-                            <option value="5TH">5th Semester</option>
-                            <option value="6TH">6th Semester</option>
-                            <option value="7TH">7th Semester</option>
-                            <option value="8TH">8th Semester</option>
-                        </select>
                         
-                        {/* --- CHANGED: Section Input replaced with Dropdown --- */}
+                        {/* --- CHANGED: Replaced Semester dropdown with Session text input --- */}
+                        <input 
+                            type="text" 
+                            placeholder="Session (e.g., 2022-2026)" 
+                            required 
+                            value={academicSession} 
+                            onChange={(e) => setAcademicSession(e.target.value)} 
+                            style={inputStyle} 
+                        />
+                        
                         <select 
                             required 
                             value={section} 
@@ -137,7 +143,7 @@ export default function Auth() {
                 </button>
             </form>
 
-            {message && <p style={{ marginTop: '15px', color: message.includes('Error') ? 'red' : 'green', textAlign: 'center', fontSize: '0.9rem' }}>{message}</p>}
+            {message && <p style={{ marginTop: '15px', color: message.includes('Error') ? 'red' : 'green', textAlign: 'center', fontSize: '0.9rem', padding: '10px', background: message.includes('Error') ? '#f8d7da' : '#d4edda', borderRadius: '5px' }}>{message}</p>}
 
             <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem' }}>
                 {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
