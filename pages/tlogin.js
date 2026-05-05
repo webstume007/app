@@ -40,13 +40,13 @@ export default function TeacherLoginAndDashboard() {
     // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
     const [availableCourses, setAvailableCourses] = useState([]);
-    const [availableSemesters, setAvailableSemesters] = useState([]);
+    const [availableSessions, setAvailableSessions] = useState([]); // Changed from Semesters
     const [availableSections, setAvailableSections] = useState([]);
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
     const [isManualRoom, setIsManualRoom] = useState(false);
-    const [isManualSemester, setIsManualSemester] = useState(false);
+    const [isManualSession, setIsManualSession] = useState(false); // Changed from Semester
     const [isManualSection, setIsManualSection] = useState(false);
 
     // --- TAB STATES ---
@@ -74,7 +74,7 @@ export default function TeacherLoginAndDashboard() {
     const [newEndTime, setNewEndTime] = useState('9:30 AM');
     const [newRoom, setNewRoom] = useState('');
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
-    const [baseForm, setBaseForm] = useState({ id: null, semester: '', section: '', course: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
+    const [baseForm, setBaseForm] = useState({ id: null, session: '', section: '', course: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
     const timeSlots = [];
@@ -279,17 +279,17 @@ export default function TeacherLoginAndDashboard() {
         setBaseSchedule(scheduleData || []);
         
         // Populate all Dropdowns
-        const { data: allData } = await supabase.from('base_schedule').select('room, course, semester, section');
+        const { data: allData } = await supabase.from('base_schedule').select('room, course, session, section');
         if (allData) {
             setAvailableRooms([...new Set(allData.map(x => x.room))].filter(Boolean).sort());
             setAvailableCourses([...new Set(allData.map(x => x.course))].filter(Boolean).sort());
-            setAvailableSemesters([...new Set(allData.map(x => x.semester))].filter(Boolean).sort());
+            setAvailableSessions([...new Set(allData.map(x => x.session))].filter(Boolean).sort());
             setAvailableSections([...new Set(allData.map(x => x.section))].filter(Boolean).sort());
         }
 
         // Fetch Students for the classes this teacher teaches
         if (scheduleData && scheduleData.length > 0) {
-            const uniqueGroups = [...new Set(scheduleData.map(s => JSON.stringify({ session: s.semester, section: s.section })))].map(str => JSON.parse(str));
+            const uniqueGroups = [...new Set(scheduleData.map(s => JSON.stringify({ session: s.session, section: s.section })))].map(str => JSON.parse(str));
             let allStudents = [];
             for (const group of uniqueGroups) {
                 const { data: students } = await supabase.from('students').select('*').eq('session', group.session).eq('section', group.section);
@@ -320,7 +320,7 @@ export default function TeacherLoginAndDashboard() {
                     ...s,
                     course: base?.course,
                     section: base?.section,
-                    semester: base?.semester,
+                    session: base?.session,
                     day: base?.day,
                     baseLecture: base,
                     records: allRecords.filter(r => r.session_id === s.id)
@@ -584,10 +584,10 @@ export default function TeacherLoginAndDashboard() {
         if (cls) {
             setBaseForm({ ...cls, start_time: convertTo12Hour(cls.start_time), end_time: convertTo12Hour(cls.end_time) });
             setIsManualCourse(!availableCourses.includes(cls.course)); setIsManualRoom(!availableRooms.includes(cls.room));
-            setIsManualSemester(!availableSemesters.includes(cls.semester)); setIsManualSection(!availableSections.includes(cls.section));
+            setIsManualSession(!availableSessions.includes(cls.session)); setIsManualSection(!availableSections.includes(cls.section));
         } else {
-            setBaseForm({ id: null, semester: '', section: '', course: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
-            setIsManualCourse(false); setIsManualRoom(false); setIsManualSemester(false); setIsManualSection(false);
+            setBaseForm({ id: null, session: '', section: '', course: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
+            setIsManualCourse(false); setIsManualRoom(false); setIsManualSession(false); setIsManualSection(false);
         }
         setIsBaseModalOpen(true);
     };
@@ -598,7 +598,7 @@ export default function TeacherLoginAndDashboard() {
         const payload = { 
             course: baseForm.course, teacher: profile.name, room: baseForm.room, 
             day: baseForm.day, start_time: baseForm.start_time, end_time: baseForm.end_time, 
-            semester: baseForm.semester, section: baseForm.section 
+            session: baseForm.session, section: baseForm.section 
         };
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
@@ -770,7 +770,7 @@ export default function TeacherLoginAndDashboard() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {cls.section} ({cls.semester}) | Room {cls.room}</div>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {cls.section} ({cls.session}) | Room {cls.room}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
@@ -818,7 +818,7 @@ export default function TeacherLoginAndDashboard() {
                                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                                 <div>
                                                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{session.course}</div>
-                                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {session.section} ({session.semester})</div>
+                                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {session.section} ({session.session})</div>
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
                                                     <div style={{ color: '#002147', fontWeight: '900' }}>{session.session_date}</div>
@@ -973,7 +973,7 @@ export default function TeacherLoginAndDashboard() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Sec: {cls.section} | Sem: {cls.semester} | Room: {cls.room}</div>
+                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Sec: {cls.section} | Session: {cls.session} | Room: {cls.room}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
@@ -996,8 +996,9 @@ export default function TeacherLoginAndDashboard() {
             {activeAttendanceLecture && (
                 <AttendanceSheet 
                     lecture={activeAttendanceLecture} 
-                    profile={{ name: profile.name, isTeacher: true, section: activeAttendanceLecture.section, semester: activeAttendanceLecture.semester }}
+                    profile={{ name: profile.name, isTeacher: true, section: activeAttendanceLecture.section, session: activeAttendanceLecture.session }}
                     existingSession={activeAttendanceLecture.attendanceSession}
+                    students={roster.filter(s => s.section === activeAttendanceLecture.section && s.session === activeAttendanceLecture.session)}
                     onClose={(didUpdate) => {
                         setActiveAttendanceLecture(null);
                         if (didUpdate) fetchProfileAndSchedule(profile.name);
@@ -1034,7 +1035,7 @@ export default function TeacherLoginAndDashboard() {
                     <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto' }}>
                         <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {isManualSemester ? <input type="text" placeholder="Semester (e.g. Spring 2026)..." required value={baseForm.semester} onChange={(e) => setBaseForm({...baseForm, semester: e.target.value})} style={inputStyle} /> : <select required value={baseForm.semester} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSemester(true); setBaseForm({...baseForm, semester: ''}); } else setBaseForm({...baseForm, semester: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Semester --</option>{availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualSession ? <input type="text" placeholder="Session (e.g. Spring 2026)..." required value={baseForm.session} onChange={(e) => setBaseForm({...baseForm, session: e.target.value})} style={inputStyle} /> : <select required value={baseForm.session} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSession(true); setBaseForm({...baseForm, session: ''}); } else setBaseForm({...baseForm, session: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Session --</option>{availableSessions.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualSection ? <input type="text" placeholder="Section (e.g. 1E)..." required value={baseForm.section} onChange={(e) => setBaseForm({...baseForm, section: e.target.value})} style={inputStyle} /> : <select required value={baseForm.section} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSection(true); setBaseForm({...baseForm, section: ''}); } else setBaseForm({...baseForm, section: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Section --</option>{availableSections.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} /> : <select required value={baseForm.course} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } else setBaseForm({...baseForm, course: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Subject --</option>{availableCourses.map(c => <option key={c} value={c}>{c}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualRoom ? <input type="text" placeholder="Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } else setBaseForm({...baseForm, room: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
