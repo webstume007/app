@@ -1050,6 +1050,8 @@ export default function Dashboard() {
                 <AttendanceSheet 
                     lecture={activeAttendanceLecture} 
                     profile={profile}
+                    roster={roster}
+                    students={roster}
                     existingSession={activeAttendanceLecture.attendanceSession}
                     onClose={(didUpdate) => {
                         setActiveAttendanceLecture(null);
