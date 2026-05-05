@@ -12,23 +12,30 @@ export default function Auth() {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [department, setDepartment] = useState('BSAI');
-    
-    // --- CHANGED: Semester replaced with Session ---
     const [academicSession, setAcademicSession] = useState(''); 
     const [section, setSection] = useState('');
     const [phone, setPhone] = useState('');
 
+    // --- Dropdown States ---
+    const [availableSessions, setAvailableSessions] = useState([]);
     const [availableSections, setAvailableSections] = useState([]);
+    
+    // --- Manual Entry Toggles ---
+    const [isManualSession, setIsManualSession] = useState(false);
+    const [isManualSection, setIsManualSection] = useState(false);
 
     useEffect(() => {
-        const fetchSections = async () => {
-            const { data } = await supabase.from('base_schedule').select('section');
+        const fetchDropdownData = async () => {
+            // Fetch both session and section from base_schedule to populate dropdowns
+            const { data } = await supabase.from('base_schedule').select('session, section');
             if (data) {
-                const uniqueSections = [...new Set(data.map(item => item.section))].sort();
+                const uniqueSessions = [...new Set(data.map(item => item.session).filter(Boolean))].sort();
+                const uniqueSections = [...new Set(data.map(item => item.section).filter(Boolean))].sort();
+                setAvailableSessions(uniqueSessions);
                 setAvailableSections(uniqueSections);
             }
         };
-        fetchSections();
+        fetchDropdownData();
     }, []);
 
     const handleAuth = async (e) => {
@@ -42,7 +49,6 @@ export default function Auth() {
                 email,
                 password,
                 options: {
-                    // --- CHANGED: Forces the verification email to redirect back to the login page ---
                     emailRedirectTo: `${window.location.origin}/login` 
                 }
             });
@@ -63,7 +69,7 @@ export default function Auth() {
                             first_name: firstName,
                             last_name: lastName,
                             department: department,
-                            session: academicSession, // --- CHANGED: Saving as session in DB ---
+                            session: academicSession, 
                             section: section,
                             phone: phone
                         }
@@ -73,8 +79,7 @@ export default function Auth() {
                     setMessage(`Profile Error: ${profileError.message}`);
                 } else {
                     setMessage('Signup successful! Please check your email to verify your account.');
-                    // --- CHANGED: Instantly switch back to Login view (email and password stay filled) ---
-                    setIsSignUp(false); 
+                    setIsSignUp(false); // Instantly switch to Login view
                 }
             }
         } else {
@@ -88,7 +93,6 @@ export default function Auth() {
                 setMessage(`Error: ${error.message}`);
             } else {
                 setMessage('Login successful! Redirecting to CR Dashboard...');
-                // --- Redirects to your new dashboard route ---
                 window.location.href = '/crlogin'; 
             }
         }
@@ -109,27 +113,69 @@ export default function Auth() {
                         <input type="text" placeholder="Last Name" required value={lastName} onChange={(e) => setLastName(e.target.value)} style={inputStyle} />
                         <input type="text" placeholder="Department (e.g., BSAI)" required value={department} onChange={(e) => setDepartment(e.target.value)} style={inputStyle} />
                         
-                        {/* --- CHANGED: Replaced Semester dropdown with Session text input --- */}
-                        <input 
-                            type="text" 
-                            placeholder="Session (e.g., 2022-2026)" 
-                            required 
-                            value={academicSession} 
-                            onChange={(e) => setAcademicSession(e.target.value)} 
-                            style={inputStyle} 
-                        />
+                        {/* --- SESSION FIELD --- */}
+                        {isManualSession ? (
+                            <input 
+                                type="text" 
+                                placeholder="Type Session Manually (e.g., 2022-2026)" 
+                                required 
+                                value={academicSession} 
+                                onChange={(e) => setAcademicSession(e.target.value)} 
+                                style={{...inputStyle, border: '2px solid #007bff'}} 
+                            />
+                        ) : (
+                            <select 
+                                required 
+                                value={academicSession} 
+                                onChange={(e) => {
+                                    if (e.target.value === 'MANUAL') {
+                                        setIsManualSession(true);
+                                        setAcademicSession('');
+                                    } else {
+                                        setAcademicSession(e.target.value);
+                                    }
+                                }} 
+                                style={inputStyle}
+                            >
+                                <option value="">-- Select Session --</option>
+                                {availableSessions.map((sess) => (
+                                    <option key={sess} value={sess}>{sess}</option>
+                                ))}
+                                <option value="MANUAL">➕ Add Manually</option>
+                            </select>
+                        )}
                         
-                        <select 
-                            required 
-                            value={section} 
-                            onChange={(e) => setSection(e.target.value)} 
-                            style={inputStyle}
-                        >
-                            <option value="">-- Select Your Section --</option>
-                            {availableSections.map((sec) => (
-                                <option key={sec} value={sec}>{sec}</option>
-                            ))}
-                        </select>
+                        {/* --- SECTION FIELD --- */}
+                        {isManualSection ? (
+                            <input 
+                                type="text" 
+                                placeholder="Type Section Manually (e.g., A)" 
+                                required 
+                                value={section} 
+                                onChange={(e) => setSection(e.target.value)} 
+                                style={{...inputStyle, border: '2px solid #007bff'}} 
+                            />
+                        ) : (
+                            <select 
+                                required 
+                                value={section} 
+                                onChange={(e) => {
+                                    if (e.target.value === 'MANUAL') {
+                                        setIsManualSection(true);
+                                        setSection('');
+                                    } else {
+                                        setSection(e.target.value);
+                                    }
+                                }} 
+                                style={inputStyle}
+                            >
+                                <option value="">-- Select Section --</option>
+                                {availableSections.map((sec) => (
+                                    <option key={sec} value={sec}>{sec}</option>
+                                ))}
+                                <option value="MANUAL">➕ Add Manually</option>
+                            </select>
+                        )}
 
                         <input type="tel" placeholder="Phone Number" required value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
                     </>
@@ -138,16 +184,23 @@ export default function Auth() {
                 <input type="email" placeholder="Email" required value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
                 <input type="password" placeholder="Password" required value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
 
-                <button type="submit" disabled={loading} style={{ background: '#F2A900', color: '#002147', padding: '12px', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>
-                    {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Log In')}
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    {isSignUp && (isManualSession || isManualSection) && (
+                        <button type="button" onClick={() => { setIsManualSession(false); setIsManualSection(false); setAcademicSession(''); setSection(''); }} style={{ background: '#eee', color: '#333', padding: '12px', border: 'none', borderRadius: '5px', cursor: 'pointer', marginTop: '10px', flex: 1 }}>
+                            Cancel Manual
+                        </button>
+                    )}
+                    <button type="submit" disabled={loading} style={{ background: '#F2A900', color: '#002147', padding: '12px', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', flex: 2 }}>
+                        {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Log In')}
+                    </button>
+                </div>
             </form>
 
-            {message && <p style={{ marginTop: '15px', color: message.includes('Error') ? 'red' : 'green', textAlign: 'center', fontSize: '0.9rem', padding: '10px', background: message.includes('Error') ? '#f8d7da' : '#d4edda', borderRadius: '5px' }}>{message}</p>}
+            {message && <p style={{ marginTop: '15px', color: message.includes('Error') ? 'red' : '#155724', textAlign: 'center', fontSize: '0.9rem', padding: '10px', background: message.includes('Error') ? '#f8d7da' : '#d4edda', borderRadius: '5px' }}>{message}</p>}
 
             <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem' }}>
                 {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-                <button onClick={() => { setIsSignUp(!isSignUp); setMessage(''); }} style={{ background: 'none', border: 'none', color: '#002147', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}>
+                <button onClick={() => { setIsSignUp(!isSignUp); setMessage(''); setIsManualSession(false); setIsManualSection(false); }} style={{ background: 'none', border: 'none', color: '#002147', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}>
                     {isSignUp ? 'Log In' : 'Sign Up'}
                 </button>
             </p>
@@ -160,5 +213,7 @@ const inputStyle = {
     border: '1px solid #ddd',
     borderRadius: '5px',
     fontSize: '1rem',
-    outline: 'none'
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box'
 };
