@@ -550,7 +550,7 @@ export default function Home() {
 
             <header style={headerStyle}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>
-                    {userSection?.section === 'GUEST' ? '🎓 GUEST' : `🎓 ${getSemesterFromSession(userSection?.session)} Semester • ${userSection?.section}`}
+                    {userSection?.section === 'GUEST' ? '🎓 GUEST' : `🎓 ${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
