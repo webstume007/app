@@ -571,6 +571,14 @@ export default function Dashboard() {
         ? ['weekly', 'attendance', 'announcements'] 
         : ['weekly', 'permanent', 'students', 'attendance', 'announcements'];
 
+    // --- ONGOING CLASSES FILTER FOR GLOBAL BANNER ---
+    const ongoingClasses = schedule.filter(cls => {
+        if (cls.day !== currentDay || cls.isCancelled) return false;
+        const startMins = parseTime(cls.start_time);
+        const endMins = parseTime(cls.end_time);
+        return currentMins >= startMins && currentMins <= endMins;
+    });
+
     return (
         <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
             <Head>
@@ -615,6 +623,53 @@ export default function Dashboard() {
                         <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
                     </div>
                 </div>
+
+                {/* ================= ONGOING LECTURES GLOBAL BANNER ================= */}
+                {ongoingClasses.length > 0 && (
+                    <div style={{ marginBottom: '20px' }}>
+                        {ongoingClasses.map(ongoingClass => {
+                            const sessionToday = ongoingClass.attendanceSession;
+                            let canEdit = false;
+                            
+                            if (sessionToday) {
+                                const sessionTime = new Date(sessionToday.created_at).getTime();
+                                const now = new Date().getTime();
+                                const diffMins = (now - sessionTime) / 60000;
+                                if (diffMins <= 30 && sessionToday.status === 'pending') canEdit = true;
+                            }
+
+                            return (
+                                <div key={`global-ongoing-${ongoingClass.id}`} style={{ background: '#28a745', padding: '15px 20px', borderRadius: '8px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(40, 167, 69, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                                    <div style={{ color: 'white' }}>
+                                        <h3 style={{ margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}>
+                                            <span style={{ animation: 'pulse 2s infinite' }}>🔴</span> Ongoing Lecture: {ongoingClass.course}
+                                        </h3>
+                                        <p style={{ margin: 0, fontSize: '0.95rem', opacity: 0.9 }}>
+                                            {convertTo12Hour(ongoingClass.start_time)} - {convertTo12Hour(ongoingClass.end_time)} | Room {ongoingClass.room}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        {!sessionToday && (
+                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '10px 20px', background: 'white', color: '#28a745', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                                                📝 Mark Attendance
+                                            </button>
+                                        )}
+                                        {sessionToday && canEdit && (
+                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                                                ✏️ Edit Attendance (Time Remaining)
+                                            </button>
+                                        )}
+                                        {sessionToday && !canEdit && (
+                                            <button disabled style={{ padding: '10px 20px', background: '#e9ecef', color: '#6c757d', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'not-allowed' }}>
+                                                🔒 Locked ({sessionToday.status === 'approved' ? 'Approved' : 'Pending'})
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
 
                 <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                     {visibleTabs.includes('weekly') && <button onClick={() => setActiveTab('weekly')} style={tabStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>}
