@@ -844,7 +844,7 @@ export default function Home() {
                                         
                                         <select value={selectedRollInput} onChange={e => setSelectedRollInput(e.target.value)} style={selectStyle}>
                                             <option value="">-- Select Roll No --</option>
-                                            {studentsData
+                                            {sectionStudents
                                                 .filter(s => (s.registration_number || "").toLowerCase().includes(attSearch.toLowerCase()))
                                                 .map(s => <option key={s.registration_number} value={s.registration_number}>{s.registration_number} - {s.student_name}</option>)
                                             }
