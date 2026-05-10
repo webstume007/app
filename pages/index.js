@@ -129,7 +129,6 @@ export default function Home() {
     }, []);
 
     const fetchLiveSchedule = async () => {
-        // Fetching all relevant DB data
         const [baseRes, excRes, notifRes, pointsRes, annRes, teachersRes, studentsRes, attSessRes, attRecRes] = await Promise.all([
             supabase.from('base_schedule').select('*'),
             supabase.from('schedule_exceptions').select('*'), 
@@ -224,6 +223,7 @@ export default function Home() {
     const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
     const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
     
+    // Strict Database Logic for Students
     const sectionStudents = studentsData.filter(s => s.section === userSection?.section && s.session === userSection?.session);
 
     // --- ATTENDANCE LOGIC ---
@@ -484,9 +484,9 @@ export default function Home() {
                 </div>
             )}
 
-            {/* MOBILE TAB BAR */}
+            {/* MOBILE TAB BAR - Rooms & Teachers Removed from Mobile Nav View strictly */}
             <div className="mobile-nav" style={tabBar}>
-                {availableTabs.map(tab => (
+                {availableTabs.filter(tab => tab.id !== 'room' && tab.id !== 'teacher').map(tab => (
                     <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
                         {tab.label}
                     </button>
@@ -637,6 +637,34 @@ export default function Home() {
                                         {selectedRoom && renderClassCards(getFilteredClasses('room', selectedRoom), 'room')}
                                     </div>
                                 )}
+
+                                {roomSubTab === 'free' && (
+                                    <div style={whiteCard}>
+                                        <h4 style={{ marginTop: 0, fontSize: '0.9rem', color: '#555' }}>Strictly finds rooms freed by cancellation</h4>
+                                        <select value={freeDay} onChange={e => setFreeDay(e.target.value)} style={selectStyle}>
+                                            {days.map(d => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <select value={freeStart} onChange={e => setFreeStart(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
+                                                <option value="" disabled>Start Time</option>
+                                                {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                            </select>
+                                            <select value={freeEnd} onChange={e => setFreeEnd(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
+                                                <option value="" disabled>End Time</option>
+                                                {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                            </select>
+                                        </div>
+                                        <button onClick={searchFreeRooms} style={searchBtn}>SEARCH FREE ROOMS</button>
+
+                                        {searchedFreeRooms !== null && (
+                                            <div style={{ marginTop: '15px' }}>
+                                                {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
+                                                    <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
+                                                )) : <div style={emptyState}>No rooms were cancelled during this time slot.</div>}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </>
                         )}
 
@@ -679,9 +707,24 @@ export default function Home() {
                                     getFilteredAnnouncements().map(ann => {
                                         const isExpanded = expandedAssignmentId === ann.id;
                                         const deadlineDate = ann.deadline_date ? new Date(ann.deadline_date) : null;
+                                        
+                                        let timeRemainingDisplay = null;
+                                        let isExpired = false;
+
                                         if (deadlineDate && ann.deadline_time) {
                                             const dm = parseTime(ann.deadline_time);
                                             deadlineDate.setHours(Math.floor(dm / 60), dm % 60, 0, 0);
+                                            
+                                            const diffMs = deadlineDate - currentTime;
+                                            
+                                            if (diffMs > 0) {
+                                                const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                                const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+                                                const mins = Math.floor((diffMs / 1000 / 60) % 60);
+                                                timeRemainingDisplay = `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
+                                            } else {
+                                                isExpired = true;
+                                            }
                                         }
 
                                         // Badge Type Configuration
@@ -712,8 +755,10 @@ export default function Home() {
                                                 <h4 style={{ margin: '0 0 5px 0', fontSize: '1.05rem', color: '#000' }}>{ann.topics}</h4>
                                                 
                                                 {ann.type === 'assignment' && deadlineDate && (
-                                                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: (deadlineDate - currentTime) > 0 ? '#28a745' : '#dc3545', marginTop: '5px' }}>
-                                                        {(deadlineDate - currentTime) > 0 ? `⏳ Due ${deadlineDate.toLocaleDateString()}` : `❌ Deadline Passed`}
+                                                    <div style={{ marginTop: '10px' }}>
+                                                        <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '8px 12px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'inline-block' }}>
+                                                            {isExpired ? `❌ Deadline Passed` : `⏳ Time Remaining: ${timeRemainingDisplay}`}
+                                                        </div>
                                                     </div>
                                                 )}
 
@@ -722,12 +767,6 @@ export default function Home() {
                                                     <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #eee', animation: 'fadeIn 0.2s ease' }}>
                                                         <div style={{ fontSize: '0.75rem', color: '#999', marginBottom: '8px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
                                                         <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#444', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
-                                                        
-                                                        {ann.type === 'assignment' && deadlineDate && (
-                                                            <div style={{ background: (deadlineDate - currentTime) < 0 ? '#f8d7da' : '#fff3cd', color: (deadlineDate - currentTime) < 0 ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'inline-block' }}>
-                                                                Due: {deadlineDate.toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 )}
                                             </div>
