@@ -38,6 +38,9 @@ const getWeekKey = (dateStr) => {
     return `Week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 };
 
+// --- SAFE TEXT HELPER TO FIX SILENT DB MISMATCHES ---
+const safeText = (str) => (str || "").toString().trim().toLowerCase();
+
 export default function Home() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [rawData, setRawData] = useState([]);
@@ -302,8 +305,11 @@ export default function Home() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    // Extract dynamic dropdown data natively matching the new schema
-    const availableSessions = [...new Set(rawData.map(x => x.session))].filter(Boolean).sort();
+    // Semester Order sorting (1st, 2nd, 3rd)
+    const availableSessions = [...new Set(rawData.map(x => x.session))]
+        .filter(Boolean)
+        .sort((a, b) => parseInt(getSemesterFromSession(a)) - parseInt(getSemesterFromSession(b)));
+
     const getSectionsForSession = (sess) => [...new Set(rawData.filter(x => x.session === sess).map(x => x.section))].sort();
     
     const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
@@ -384,11 +390,9 @@ export default function Home() {
         localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
     };
 
-    // STRICT SECTION & SESSION ISOLATION
-    const targetSemester = getSemesterFromSession(userSection?.session);
-    
-    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && (a.session === userSection?.session || getSemesterFromSession(a.session) === targetSemester));
-    const sectionStudents = studentsData.filter(s => s.section === userSection?.section && (s.session === userSection?.session || getSemesterFromSession(s.session) === targetSemester));
+    // STRICT SECTION & SESSION ISOLATION (Using safeText to fix fetch mismatches)
+    const relevantAnnouncements = announcements.filter(a => safeText(a.section) === safeText(userSection?.section) && safeText(a.session) === safeText(userSection?.session));
+    const sectionStudents = studentsData.filter(s => safeText(s.section) === safeText(userSection?.section) && safeText(s.session) === safeText(userSection?.session));
 
     // Updates Filter Logic
     const getFilteredAnnouncements = () => {
@@ -438,7 +442,7 @@ export default function Home() {
     const getFilteredClasses = (filterKey, filterValue) => {
         let classes = rawData.filter(c => c[filterKey] === filterValue);
         if (filterKey === 'section') {
-            classes = classes.filter(c => c.session === userSection?.session);
+            classes = classes.filter(c => safeText(c.session) === safeText(userSection?.session));
         }
         if (selectedDay !== 'ALL') {
             classes = classes.filter(c => c.day === selectedDay);
@@ -452,7 +456,7 @@ export default function Home() {
 
     // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
-        const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
+        const myClasses = rawData.filter(c => safeText(c.section) === safeText(userSection?.section) && safeText(c.session) === safeText(userSection?.session));
         const mySubjects = [...new Set(myClasses.map(c => c.course))];
         
         let validSessions = attSessions.filter(sess => myClasses.some(c => c.id === sess.base_schedule_id));
@@ -472,7 +476,7 @@ export default function Home() {
             let totalCount = 0;
 
             subSessions.forEach(sess => {
-                const record = attRecords.find(r => r.session_id === sess.id && r.student_id === myRollNumber);
+                const record = attRecords.find(r => r.session_id === sess.id && safeText(r.student_id) === safeText(myRollNumber));
                 if (record) {
                     totalCount++;
                     if (record.status === 'Present' || record.status === 'Leave') presentCount++;
@@ -489,7 +493,7 @@ export default function Home() {
             const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short' });
             const weekKey = getWeekKey(sess.session_date);
             const courseName = myClasses.find(c => c.id === sess.base_schedule_id)?.course;
-            const record = attRecords.find(r => r.session_id === sess.id && r.student_id === myRollNumber);
+            const record = attRecords.find(r => r.session_id === sess.id && safeText(r.student_id) === safeText(myRollNumber));
 
             if (!datesMap[weekKey]) datesMap[weekKey] = {};
             if (!datesMap[weekKey][dateStr]) datesMap[weekKey][dateStr] = {};
@@ -838,7 +842,7 @@ export default function Home() {
                                         <select value={selectedRollInput} onChange={e => setSelectedRollInput(e.target.value)} style={selectStyle}>
                                             <option value="">-- Select Roll No --</option>
                                             {sectionStudents
-                                                .filter(s => s.registration_number.toLowerCase().includes(attSearch.toLowerCase()))
+                                                .filter(s => (s.registration_number || "").toLowerCase().includes(attSearch.toLowerCase()))
                                                 .map(s => <option key={s.registration_number} value={s.registration_number}>{s.registration_number} - {s.student_name}</option>)
                                             }
                                         </select>
