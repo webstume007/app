@@ -217,6 +217,26 @@ export default function Home() {
     }, [loading, isFirstVisit, userSection, rawData]);
 
     const fetchLiveSchedule = async () => {
+        // Retrieve the latest selection directly from localStorage for accurate targeted fetching
+        const savedSelection = localStorage.getItem('iub_user_selection');
+        let activeSession = null;
+        let activeSection = null;
+        
+        if (savedSelection) {
+            const parsed = JSON.parse(savedSelection);
+            activeSession = parsed.session || parsed.semester;
+            activeSection = parsed.section;
+        }
+
+        // --- SERVER-SIDE FILTERING TO BYPASS THE 1000-ROW LIMIT ---
+        let studentsPromise = Promise.resolve({ data: [] });
+        if (activeSession && activeSection && activeSection !== 'GUEST') {
+            studentsPromise = supabase.from('students')
+                .select('*')
+                .eq('session', activeSession)
+                .eq('section', activeSection);
+        }
+
         const [baseRes, excRes, notifRes, pointsRes, annRes, teachersRes, studentsRes, attSessRes, attRecRes] = await Promise.all([
             supabase.from('base_schedule').select('*'),
             supabase.from('schedule_exceptions').select('*'), 
@@ -224,7 +244,7 @@ export default function Home() {
             supabase.from('point_schedules').select('*'),
             supabase.from('class_announcements').select('*').order('created_at', { ascending: false }),
             supabase.from('teacher_profiles').select('name, phone'),
-            supabase.from('students').select('*'),
+            studentsPromise, // Requesting only the filtered students here
             supabase.from('attendance_sessions').select('*'),
             supabase.from('attendance_records').select('*')
         ]);
@@ -248,6 +268,7 @@ export default function Home() {
         localStorage.setItem('iub_user_selection', JSON.stringify(selection));
         setUserSection(selection);
         setIsFirstVisit(false);
+        fetchLiveSchedule(); // Trigger a new fetch so the targeted students are pulled down
     };
 
     const handleGuestSelection = () => {
