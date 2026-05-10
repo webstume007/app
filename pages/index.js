@@ -38,6 +38,16 @@ const getWeekKey = (dateStr) => {
     return `Week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 };
 
+// --- Custom SVGs for UI ---
+const SVGS = {
+    tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
+    cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
+    minus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg>,
+    hourglass: <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"></path></svg>,
+    chevronDown: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+    chevronUp: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>
+};
+
 export default function Home() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [rawData, setRawData] = useState([]);
@@ -93,6 +103,7 @@ export default function Home() {
     const [selectedRollInput, setSelectedRollInput] = useState('');
     const [attFilter, setAttFilter] = useState('Last Month');
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
+    const [selectedAttSubject, setSelectedAttSubject] = useState(''); // NEW STATE for Subject Lookup
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const filterDays = ["ALL", ...days];
@@ -204,7 +215,7 @@ export default function Home() {
         });
     }, []);
 
-    // 4. INVALID CACHE RECOVERY (Revert old/wrong selection logic gracefully)
+    // 4. INVALID CACHE RECOVERY
     useEffect(() => {
         if (!loading && !isFirstVisit && userSection && userSection.section !== 'GUEST' && rawData.length > 0) {
             const isValid = rawData.some(c => c.session === userSection.session && c.section === userSection.section);
@@ -217,7 +228,6 @@ export default function Home() {
     }, [loading, isFirstVisit, userSection, rawData]);
 
     const fetchLiveSchedule = async () => {
-        // Retrieve the latest selection directly from localStorage for accurate targeted fetching
         const savedSelection = localStorage.getItem('iub_user_selection');
         let activeSession = null;
         let activeSection = null;
@@ -228,7 +238,6 @@ export default function Home() {
             activeSection = parsed.section;
         }
 
-        // --- SERVER-SIDE FILTERING TO BYPASS THE 1000-ROW LIMIT ---
         let studentsPromise = Promise.resolve({ data: [] });
         if (activeSession && activeSection && activeSection !== 'GUEST') {
             studentsPromise = supabase.from('students')
@@ -244,7 +253,7 @@ export default function Home() {
             supabase.from('point_schedules').select('*'),
             supabase.from('class_announcements').select('*').order('created_at', { ascending: false }),
             supabase.from('teacher_profiles').select('name, phone'),
-            studentsPromise, // Requesting only the filtered students here
+            studentsPromise,
             supabase.from('attendance_sessions').select('*'),
             supabase.from('attendance_records').select('*')
         ]);
@@ -268,7 +277,7 @@ export default function Home() {
         localStorage.setItem('iub_user_selection', JSON.stringify(selection));
         setUserSection(selection);
         setIsFirstVisit(false);
-        fetchLiveSchedule(); // Trigger a new fetch so the targeted students are pulled down
+        fetchLiveSchedule();
     };
 
     const handleGuestSelection = () => {
@@ -323,7 +332,6 @@ export default function Home() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    // Extract dynamic dropdown data natively matching the new schema
     const availableSessions = [...new Set(rawData.map(x => x.session))]
         .filter(Boolean)
         .sort((a, b) => {
@@ -511,41 +519,50 @@ export default function Home() {
             return { subject: sub, pct, total: totalCount };
         }).filter(stat => stat.total > 0);
 
-        const datesMap = {};
-        validSessions.sort((a, b) => new Date(b.session_date) - new Date(a.session_date)).forEach(sess => {
-            const dateObj = new Date(sess.session_date);
-            const dateStr = dateObj.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short' });
-            const weekKey = getWeekKey(sess.session_date);
-            const courseName = myClasses.find(c => c.id === sess.base_schedule_id)?.course;
-            const record = attRecords.find(r => r.session_id === sess.id && r.student_id === myRollNumber);
-
-            if (!datesMap[weekKey]) datesMap[weekKey] = {};
-            if (!datesMap[weekKey][dateStr]) datesMap[weekKey][dateStr] = {};
-            
-            datesMap[weekKey][dateStr][courseName] = record ? record.status : '-';
-        });
-
-        return { subjectStats, datesMap, mySubjects };
+        return { subjectStats, validSessions, mySubjects, myClasses };
     };
 
-    const CircularProgress = ({ percentage, subject }) => {
-        const isLow = percentage < 80;
-        const color = isLow ? '#dc3545' : '#28a745';
-        const bg = `conic-gradient(${color} ${percentage}%, #e9ecef ${percentage}%)`;
+    // --- NEW ATTENDANCE UI COMPONENTS ---
+    const CircularProgress = ({ percentage, subject, isOverall = false }) => {
+        const radius = isOverall ? 42 : 32;
+        const circumference = 2 * Math.PI * radius;
+        const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+        let color = '#28a745'; // Green
+        if (percentage < 50) color = '#dc3545'; // Red
+        else if (percentage < 80) color = '#ffc107'; // Yellow
+
+        const size = isOverall ? 100 : 80;
+
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ width: '55px', height: '55px', borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: '45px', height: '45px', borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem', color: '#002147' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
+                <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx="50" cy="50" r={radius} stroke="#e9ecef" strokeWidth="8" fill="transparent" />
+                        <circle cx="50" cy="50" r={radius} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }} />
+                    </svg>
+                    <span style={{ position: 'absolute', fontWeight: 'bold', fontSize: isOverall ? '1.1rem' : '0.9rem', color: '#002147' }}>
                         {Math.round(percentage)}%
-                    </div>
+                    </span>
                 </div>
-                <div style={{ fontSize: '0.75rem', marginTop: '8px', fontWeight: 'bold', color: '#555', textAlign: 'center', maxWidth: '70px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontSize: isOverall ? '0.85rem' : '0.75rem', marginTop: '8px', fontWeight: 'bold', color: '#555', textAlign: 'center', maxWidth: isOverall ? '100px' : '80px', lineHeight: '1.2' }}>
                     {subject}
                 </div>
             </div>
-        )
+        );
     };
 
+    const StatusBadge = ({ status }) => {
+        let bg = '#d4edda', color = '#155724', icon = SVGS.tick;
+        if (status === 'Absent') { bg = '#f8d7da'; color = '#721c24'; icon = SVGS.cross; }
+        else if (status === 'Leave') { bg = '#e2e8f0'; color = '#334155'; icon = SVGS.minus; }
+
+        return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: bg, color: color, padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                {icon} {status}
+            </span>
+        );
+    };
 
     // --- RENDER COMPONENT HELPERS ---
     const renderClassCards = (scheduleList, displayContext) => {
@@ -590,7 +607,6 @@ export default function Home() {
                                     <div style={{ color: '#555', fontSize: '0.8rem' }}>
                                         {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
                                         {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
-                                        {/* Display calculated dynamic semester along with section */}
                                         <span>👥 {getSemesterFromSession(cls.session)}-{cls.section}</span>
                                     </div>
                                     
@@ -698,7 +714,6 @@ export default function Home() {
 
     const isGuestUser = userSection?.section === 'GUEST';
 
-    // Desktop Tabs logic
     const allTabs = [
         { id: 'class', label: '📅 SCHEDULE' },
         { id: 'attendance', label: '✅ ATTENDANCE' },
@@ -726,6 +741,7 @@ export default function Home() {
                     .mobile-nav { display: none !important; }
                     .hamburger-btn { display: none !important; }
                 }
+                .scroll-hide::-webkit-scrollbar { display: none; }
             `}</style>
 
             <header style={headerStyle}>
@@ -740,7 +756,6 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* DESKTOP NAV BAR */}
                 <div className="desktop-nav">
                     {availableTabs.map(tab => (
                         <div 
@@ -769,7 +784,6 @@ export default function Home() {
                 </div>
             </header>
 
-            {/* SIDEBAR OVERLAY */}
             {isSidebarOpen && (
                 <div style={sidebarOverlay} onClick={() => setIsSidebarOpen(false)}>
                     <div style={sidebarMenu} onClick={e => e.stopPropagation()}>
@@ -789,7 +803,6 @@ export default function Home() {
                 </div>
             )}
 
-            {/* MOBILE TAB BAR - Hide Room and Teacher strictly on mobile per prompt */}
             <div className="mobile-nav" style={tabBar}>
                 {availableTabs.filter(tab => tab.id !== 'room' && tab.id !== 'teacher').map(tab => (
                     <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
@@ -851,10 +864,10 @@ export default function Home() {
                             </>
                         )}
 
-                        {/* ATTENDANCE TAB */}
+                        {/* ======================= NEW ATTENDANCE TAB ======================= */}
                         {currentTab === 'attendance' && !isGuestUser && (
                             <div style={whiteCard}>
-                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '15px'}}>Student Attendance</h4>
+                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px'}}>Student Attendance</h4>
                                 
                                 {!myRollNumber ? (
                                     <>
@@ -877,65 +890,113 @@ export default function Home() {
                                     </>
                                 ) : (
                                     <>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '15px', borderBottom: '1px solid #eee' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                             <div>
-                                                <div style={{ fontWeight: 'bold', color: '#002147' }}>{myRollNumber}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#666' }}>{studentsData.find(s=>s.registration_number === myRollNumber)?.student_name}</div>
+                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '1.1rem' }}>{myRollNumber}</div>
+                                                <div style={{ fontSize: '0.8rem', color: '#666' }}>{studentsData.find(s=>s.registration_number === myRollNumber)?.student_name}</div>
                                             </div>
                                         </div>
 
-                                        <div style={{ display: 'flex', gap: '5px', marginBottom: '20px' }}>
-                                            {['Last Week', 'Last Month', 'All'].map(f => (
-                                                <button key={f} onClick={() => setAttFilter(f)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '5px', border: '1px solid #dee2e6', background: attFilter === f ? '#002147' : '#fff', color: attFilter === f ? '#F2A900' : '#555' }}>{f}</button>
-                                            ))}
-                                        </div>
-
                                         {(() => {
-                                            const { subjectStats, datesMap, mySubjects } = getFilteredAttendance();
-                                            
+                                            const { subjectStats, validSessions, mySubjects, myClasses } = getFilteredAttendance();
                                             if (subjectStats.length === 0) return <div style={emptyState}>No attendance records found for this period.</div>;
+
+                                            // Calc Overall %
+                                            let totalPres = 0, totalClasses = 0;
+                                            subjectStats.forEach(s => {
+                                                totalClasses += s.total;
+                                                totalPres += (s.pct / 100) * s.total;
+                                            });
+                                            const overallPct = totalClasses === 0 ? 0 : (totalPres / totalClasses) * 100;
+
+                                            // Get Last 7 Days Sessions
+                                            const nowMs = new Date().getTime();
+                                            const last7DaysSessions = validSessions.filter(s => (nowMs - new Date(s.session_date).getTime()) <= 7 * 24 * 60 * 60 * 1000).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
 
                                             return (
                                                 <>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-around', margin: '20px 0', flexWrap: 'wrap', gap: '15px' }}>
-                                                        {subjectStats.map(stat => (
-                                                            <CircularProgress key={stat.subject} percentage={stat.pct} subject={stat.subject} />
-                                                        ))}
+                                                    {/* SECTION 1: Overall & Subjects Circles */}
+                                                    <div style={{ marginBottom: '30px', padding: '15px', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+                                                            <CircularProgress percentage={overallPct} subject="OVERALL ATTENDANCE" isOverall={true} />
+                                                        </div>
+                                                        <div style={{ height: '1px', background: '#dee2e6', margin: '15px 0' }}></div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '10px' }}>
+                                                            {subjectStats.map(stat => (
+                                                                <CircularProgress key={stat.subject} percentage={stat.pct} subject={stat.subject} />
+                                                            ))}
+                                                        </div>
                                                     </div>
 
-                                                    {Object.entries(datesMap).map(([week, daysData]) => (
-                                                        <div key={week} style={{ marginBottom: '20px', overflow: 'hidden', borderRadius: '10px', border: '1px solid #dee2e6', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
-                                                            <div style={{ background: '#f8f9fa', padding: '10px 15px', fontWeight: 'bold', color: '#002147', borderBottom: '1px solid #dee2e6', fontSize: '0.85rem' }}>
-                                                                📅 {week}
-                                                            </div>
-                                                            <div style={{ overflowX: 'auto' }}>
-                                                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.8rem' }}>
-                                                                    <thead>
-                                                                        <tr style={{ color: '#555' }}>
-                                                                            <th style={{ padding: '10px', width: '30%', textAlign: 'left', borderBottom: '1px solid #eee' }}>Date</th>
-                                                                            {mySubjects.map(sub => (
-                                                                                <th key={sub} style={{ padding: '10px', whiteSpace: 'nowrap', borderBottom: '1px solid #eee', fontWeight: 'normal' }}>
-                                                                                    {sub.length > 10 ? sub.substring(0, 10) + '..' : sub}
-                                                                                </th>
-                                                                            ))}
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {Object.entries(daysData).map(([dateStr, subjects]) => (
-                                                                            <tr key={dateStr} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                                                                <td style={{ padding: '12px 10px', textAlign: 'left', fontWeight: 'bold', color: '#333' }}>{dateStr}</td>
-                                                                                {mySubjects.map(sub => {
-                                                                                    const status = subjects[sub];
-                                                                                    const icon = status === 'Present' ? '✅' : status === 'Absent' ? '❌' : status === 'Leave' ? '🛌' : '-';
-                                                                                    return <td key={sub} style={{ padding: '12px 10px' }}>{icon}</td>
-                                                                                })}
+                                                    {/* SECTION 2: Last Week Attendance Table */}
+                                                    <div style={{ marginBottom: '30px' }}>
+                                                        <h3 style={{ fontSize: '1rem', color: '#002147', borderBottom: '2px solid #F2A900', paddingBottom: '5px', marginBottom: '15px' }}>Last Week Attendance</h3>
+                                                        <div style={{ overflowX: 'auto' }}>
+                                                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                                                                <tbody>
+                                                                    {mySubjects.map(sub => {
+                                                                        const subClassIds = myClasses.filter(c => c.course === sub).map(c => c.id);
+                                                                        const subSess = last7DaysSessions.filter(s => subClassIds.includes(s.base_schedule_id));
+                                                                        if(subSess.length === 0) return null;
+
+                                                                        return (
+                                                                            <tr key={sub} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                                                                <td style={{ padding: '12px 10px', fontWeight: 'bold', color: '#444', minWidth: '120px' }}>{sub}</td>
+                                                                                <td style={{ padding: '12px 10px', display: 'flex', gap: '8px', overflowX: 'auto' }} className="scroll-hide">
+                                                                                    {subSess.map(sess => {
+                                                                                        const rec = attRecords.find(r => r.session_id === sess.id && r.student_id === myRollNumber);
+                                                                                        const status = rec ? rec.status : 'Absent';
+                                                                                        const dateStr = new Date(sess.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric' }).replace('/', '-'); // Outputs "5-6"
+                                                                                        
+                                                                                        return (
+                                                                                            <div key={sess.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', padding: '6px', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '65px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                                                                                <span style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'bold', marginBottom: '5px' }}>{dateStr}</span>
+                                                                                                <StatusBadge status={status} />
+                                                                                            </div>
+                                                                                        )
+                                                                                    })}
+                                                                                </td>
                                                                             </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </tbody>
+                                                            </table>
                                                         </div>
-                                                    ))}
+                                                    </div>
+
+                                                    {/* SECTION 3: Check Specified Subject */}
+                                                    <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+                                                        <h3 style={{ fontSize: '1rem', color: '#002147', marginBottom: '10px' }}>Check Subject History</h3>
+                                                        <select value={selectedAttSubject} onChange={e => setSelectedAttSubject(e.target.value)} style={selectStyle}>
+                                                            <option value="">-- Select Subject --</option>
+                                                            {mySubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                                                        </select>
+
+                                                        {selectedAttSubject && (
+                                                            <div style={{ marginTop: '10px' }}>
+                                                                {(() => {
+                                                                    const specificClassIds = myClasses.filter(c => c.course === selectedAttSubject).map(c => c.id);
+                                                                    const specificSessions = validSessions.filter(s => specificClassIds.includes(s.base_schedule_id)).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
+                                                                    
+                                                                    if(specificSessions.length === 0) return <div style={emptyState}>No records found.</div>;
+
+                                                                    return specificSessions.map(sess => {
+                                                                        const rec = attRecords.find(r => r.session_id === sess.id && r.student_id === myRollNumber);
+                                                                        const status = rec ? rec.status : 'Absent';
+                                                                        const dateStr = new Date(sess.session_date).toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+                                                                        
+                                                                        return (
+                                                                            <div key={sess.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#fff', borderRadius: '8px', marginBottom: '8px', border: '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                                                                                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#444' }}>{dateStr}</span>
+                                                                                <StatusBadge status={status} />
+                                                                            </div>
+                                                                        )
+                                                                    });
+                                                                })()}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
                                                 </>
                                             )
                                         })()}
@@ -1025,13 +1086,28 @@ export default function Home() {
                             </div>
                         )}
 
+                        {/* ======================= NEW UPDATES / ANNOUNCEMENTS TAB ======================= */}
                         {currentTab === 'announcements' && !isGuestUser && (
                             <div>
-                                <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', background: '#f8f9fa', padding: '6px', borderRadius: '8px' }}>
                                     {['Last Week', 'Last 15 Days', 'Last Month', 'All'].map(f => (
-                                        <button key={f} onClick={() => setUpdatesFilter(f)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '5px', border: '1px solid #dee2e6', background: updatesFilter === f ? '#002147' : '#fff', color: updatesFilter === f ? '#F2A900' : '#555' }}>{f}</button>
+                                        <button 
+                                            key={f} 
+                                            onClick={() => setUpdatesFilter(f)} 
+                                            style={{ 
+                                                flex: 1, padding: '10px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '5px', border: 'none', 
+                                                background: updatesFilter === f ? '#002147' : '#fff', 
+                                                color: updatesFilter === f ? '#F2A900' : '#555',
+                                                boxShadow: updatesFilter === f ? '0 2px 5px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {f}
+                                        </button>
                                     ))}
                                 </div>
+                                {updatesFilter === 'Last Week' && <div style={{fontSize: '0.7rem', color: '#888', marginBottom: '15px', paddingLeft: '5px'}}>* Showing records from today to previous 7 days</div>}
+                                {updatesFilter !== 'Last Week' && <div style={{marginBottom: '15px'}}></div>}
 
                                 {getFilteredAnnouncements().length === 0 ? (
                                     <div style={emptyState}>No updates found for the selected filter.</div>
@@ -1060,36 +1136,43 @@ export default function Home() {
                                         }
 
                                         return (
-                                            <div 
-                                                key={ann.id} 
-                                                onClick={() => setExpandedAssignmentId(isExpanded ? null : ann.id)}
-                                                style={{ cursor: 'pointer', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: `5px solid #007bff`, transition: 'background 0.2s' }}
-                                            >
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#666', textTransform: 'uppercase' }}>
-                                                        {ann.subject}
-                                                    </span>
-                                                    <span style={{ color: '#002147', fontWeight: 'bold', fontSize: '1.2rem', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>
-                                                        ▼
-                                                    </span>
-                                                </div>
-
-                                                <h4 style={{ margin: '0 0 5px 0', fontSize: '1.05rem', color: '#000' }}>{ann.topics}</h4>
+                                            <div key={ann.id} style={{ display: 'flex', background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', border: '1px solid #eee' }}>
+                                                <div style={{ width: '6px', background: '#3b82f6' }}></div> {/* Left Blue Accent */}
                                                 
-                                                {ann.type === 'assignment' && deadlineDate && (
-                                                    <div style={{ marginTop: '10px' }}>
-                                                        <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '8px 12px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'inline-block' }}>
-                                                            {isExpired ? `❌ Deadline Passed` : `⏳ Time Remaining: ${timeRemainingDisplay}`}
+                                                <div style={{ flex: 1, padding: '15px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                                                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' }}>
+                                                            {ann.subject}
+                                                        </span>
+                                                        {ann.type === 'assignment' && (
+                                                            <span style={{ background: '#F2A900', color: '#002147', fontSize: '0.7rem', fontWeight: '900', padding: '4px 10px', borderRadius: '20px' }}>
+                                                                ASSIGNMENT
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <h4 style={{ margin: '0 0 15px 0', fontSize: '1.2rem', color: '#000', fontWeight: 'bold' }}>{ann.topics}</h4>
+                                                    
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                                        {ann.type === 'assignment' && deadlineDate ? (
+                                                            <div style={{ background: isExpired ? '#f8d7da' : '#c2364c', color: isExpired ? '#721c24' : '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '6px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                                {!isExpired && SVGS.hourglass}
+                                                                {isExpired ? `❌ Passed` : `Time Remaining: ${timeRemainingDisplay}`}
+                                                            </div>
+                                                        ) : <div></div>}
+
+                                                        <div onClick={() => setExpandedAssignmentId(isExpanded ? null : ann.id)} style={{ cursor: 'pointer', color: '#000', padding: '5px' }}>
+                                                            {isExpanded ? SVGS.chevronUp : SVGS.chevronDown}
                                                         </div>
                                                     </div>
-                                                )}
 
-                                                {isExpanded && (
-                                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #eee', animation: 'fadeIn 0.2s ease' }}>
-                                                        <div style={{ fontSize: '0.75rem', color: '#999', marginBottom: '8px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
-                                                        <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#444', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
-                                                    </div>
-                                                )}
+                                                    {isExpanded && (
+                                                        <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #f0f0f0', animation: 'fadeIn 0.2s ease' }}>
+                                                            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '8px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
+                                                            <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{ann.details}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         )
                                     })
