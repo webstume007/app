@@ -48,6 +48,7 @@ export default function Home() {
 
     // Active View States
     const [currentTab, setCurrentTab] = useState('class'); 
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [roomSubTab, setRoomSubTab] = useState('schedule'); 
     const [selectedDay, setSelectedDay] = useState(() => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -69,6 +70,12 @@ export default function Home() {
     const [selectedTeacher, setSelectedTeacher] = useState('');
     const [roomSearch, setRoomSearch] = useState('');
     const [selectedRoom, setSelectedRoom] = useState('');
+
+    // New Attendance & Update Filter States
+    const [attSearch, setAttSearch] = useState('');
+    const [selectedRoll, setSelectedRoll] = useState('');
+    const [attFilter, setAttFilter] = useState('All');
+    const [updatesFilter, setUpdatesFilter] = useState('All');
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const filterDays = ["ALL", ...days];
@@ -169,13 +176,11 @@ export default function Home() {
         });
     }, []);
 
-    // 4. INVALID CACHE RECOVERY (Revert old/wrong selection logic gracefully)
+    // 4. INVALID CACHE RECOVERY
     useEffect(() => {
         if (!loading && !isFirstVisit && userSection && userSection.section !== 'GUEST' && rawData.length > 0) {
-            // Verify if the current session/section combo actually exists in the DB
             const isValid = rawData.some(c => c.session === userSection.session && c.section === userSection.section);
             if (!isValid) {
-                // Wipe invalid/old configurations and send user to first visit select screen
                 localStorage.removeItem('iub_user_selection');
                 setUserSection(null);
                 setIsFirstVisit(true);
@@ -252,7 +257,6 @@ export default function Home() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    // Extract dynamic dropdown data natively matching the new schema
     const availableSessions = [...new Set(rawData.map(x => x.session))].filter(Boolean).sort();
     const getSectionsForSession = (sess) => [...new Set(rawData.filter(x => x.session === sess).map(x => x.section))].sort();
     
@@ -334,8 +338,19 @@ export default function Home() {
         localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
     };
 
-    // STRICT SECTION & SESSION ISOLATION FOR ANNOUNCEMENTS
     const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.session === userSection?.session);
+
+    // Updates Filter Logic
+    const getFilteredAnnouncements = () => {
+        let filtered = relevantAnnouncements;
+        if (updatesFilter !== 'All') {
+            const now = new Date();
+            const daysMap = { 'Last Week': 7, 'Last 15 Days': 15, 'Last Month': 30 };
+            const ms = daysMap[updatesFilter] * 24 * 60 * 60 * 1000;
+            filtered = filtered.filter(a => (now - new Date(a.created_at)) <= ms);
+        }
+        return filtered;
+    };
 
     const activeAssignments = relevantAnnouncements.filter(ann => {
         if (ann.type !== 'assignment' || !ann.deadline_date || !ann.deadline_time) return false;
@@ -370,15 +385,11 @@ export default function Home() {
         return `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
     };
 
-    // Strict Filter Logic for Students
     const getFilteredClasses = (filterKey, filterValue) => {
         let classes = rawData.filter(c => c[filterKey] === filterValue);
-        
-        // If getting student's own schedule, strictly enforce the Session to avoid cross-term leakage
         if (filterKey === 'section') {
             classes = classes.filter(c => c.session === userSection?.session);
         }
-
         if (selectedDay !== 'ALL') {
             classes = classes.filter(c => c.day === selectedDay);
         }
@@ -389,13 +400,12 @@ export default function Home() {
     const teacherSchedule = getFilteredClasses('teacher', selectedTeacher);
     const roomSchedule = getFilteredClasses('room', selectedRoom);
 
-    // --- RENDER COMPONENT HELPERS ---
     const renderClassCards = (scheduleList, displayContext) => {
         if (displayContext === 'class' && userSection?.section === 'GUEST') {
             return (
                 <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
                     <p style={{fontSize: '1.2rem'}}>👤 Guest Mode Active</p>
-                    <p>You can search for Teacher schedules and Free Rooms above.</p>
+                    <p>Open the Sidebar Menu to search for Teacher schedules and Free Rooms.</p>
                     <p>To view a personalized class schedule, click <b>"Change Section"</b> in the top right corner.</p>
                 </div>
             );
@@ -420,8 +430,6 @@ export default function Home() {
                         const points = getNearestPoints(cls); 
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
-
-                        // STRICT SECTION ISOLATION FOR ASSIGNMENTS IN LECTURE CARDS
                         const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
 
                         return (
@@ -432,7 +440,6 @@ export default function Home() {
                                     <div style={{ color: '#555', fontSize: '0.8rem' }}>
                                         {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
                                         {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
-                                        {/* Display calculated dynamic semester along with section */}
                                         <span>👥 {getSemesterFromSession(cls.session)}-{cls.section}</span>
                                     </div>
                                     
@@ -549,11 +556,18 @@ export default function Home() {
             </Head>
 
             <header style={headerStyle}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>
-                    {userSection?.section === 'GUEST' ? '🎓 GUEST' : `🎓 ${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#F2A900">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
+                    </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>
+                        {userSection?.section === 'GUEST' ? '🎓 GUEST' : `🎓 ${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`}
+                    </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
+                    <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.4rem' }} onClick={() => setShowAlerts(!showAlerts)}>
                         🔔
                         {relevantNotifs.length > 0 && <span style={redDot}></span>}
                     </div>
@@ -561,10 +575,33 @@ export default function Home() {
                 </div>
             </header>
 
+            {/* SIDEBAR OVERLAY */}
+            {isSidebarOpen && (
+                <div style={sidebarOverlay} onClick={() => setIsSidebarOpen(false)}>
+                    <div style={sidebarMenu} onClick={e => e.stopPropagation()}>
+                        <div style={{ padding: '20px', borderBottom: '1px solid #eee', marginBottom: '10px' }}>
+                            <h3 style={{ margin: 0, color: '#002147' }}>Menu Options</h3>
+                        </div>
+                        {['class', 'attendance', 'announcements', 'room', 'teacher'].map(tab => (
+                            <button 
+                                key={tab} 
+                                onClick={() => { setCurrentTab(tab); setIsSidebarOpen(false); setShowAlerts(false); }} 
+                                style={sidebarBtn(currentTab === tab)}
+                            >
+                                {tab === 'class' ? '📅 Schedule' : 
+                                 tab === 'attendance' ? '✅ Attendance' :
+                                 tab === 'announcements' ? '📢 Updates' :
+                                 tab === 'room' ? '🚪 Rooms' : '👨‍🏫 Teachers'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div style={tabBar}>
-                {['class', 'room', 'teacher', 'announcements'].map(tab => (
+                {['class', 'attendance', 'announcements'].map(tab => (
                     <button key={tab} onClick={() => { setCurrentTab(tab); setShowAlerts(false); }} style={tabBtn(currentTab === tab)}>
-                        {tab === 'class' ? '📅 SCHED' : tab === 'room' ? '🚪 ROOMS' : tab === 'teacher' ? '👨‍🏫 TEACHERS' : '📢 UPDATES'}
+                        {tab === 'class' ? '📅 SCHEDULE' : tab === 'attendance' ? '✅ ATTENDANCE' : '📢 UPDATES'}
                         {tab === 'announcements' && activeAssignments.length > 0 && <span style={newsRedDot}></span>}
                     </button>
                 ))}
@@ -620,6 +657,73 @@ export default function Home() {
                                 </div>
                                 {renderClassCards(mySchedule, 'class')}
                             </>
+                        )}
+
+                        {/* NEW ATTENDANCE TAB */}
+                        {currentTab === 'attendance' && (
+                            <div style={whiteCard}>
+                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '15px'}}>Student Attendance</h4>
+                                <input type="text" placeholder="🔍 Search Roll No (e.g. FA21...)" value={attSearch} onChange={e => setAttSearch(e.target.value)} style={searchInput} />
+                                
+                                {/* Placeholder Roll Numbers since no direct backend table provided for demo */}
+                                <select value={selectedRoll} onChange={e => setSelectedRoll(e.target.value)} style={selectStyle}>
+                                    <option value="">-- Select Roll No --</option>
+                                    {['FA22-BSAI-001', 'FA22-BSAI-002', 'FA22-BSAI-014', 'FA22-BSAI-034']
+                                        .filter(r => r.toLowerCase().includes(attSearch.toLowerCase()))
+                                        .map(r => <option key={r} value={r}>{r}</option>)
+                                    }
+                                </select>
+
+                                {selectedRoll && (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-around', margin: '20px 0' }}>
+                                            {['AI', 'Maths', 'Web'].map(sub => (
+                                                <div key={sub} style={{ textAlign: 'center' }}>
+                                                    <div style={{ width: '55px', height: '55px', borderRadius: '50%', border: '4px solid #28a745', color: '#002147', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold', margin: '0 auto' }}>
+                                                        85%
+                                                    </div>
+                                                    <div style={{ fontSize: '0.75rem', marginTop: '5px', fontWeight: 'bold', color: '#555' }}>{sub}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                                            {['Last Week', 'Last Month', 'All'].map(f => (
+                                                <button key={f} onClick={() => setAttFilter(f)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '5px', border: '1px solid #dee2e6', background: attFilter === f ? '#002147' : '#fff', color: attFilter === f ? '#F2A900' : '#555' }}>{f}</button>
+                                            ))}
+                                        </div>
+
+                                        {/* Mobile Optimized Table */}
+                                        <div style={{ overflow: 'hidden', borderRadius: '8px', border: '1px solid #eee' }}>
+                                            <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.8rem' }}>
+                                                <thead>
+                                                    <tr style={{ background: '#f8f9fa', color: '#002147' }}>
+                                                        <th style={{ padding: '10px 5px', width: '35%', textAlign: 'left' }}>Date</th>
+                                                        <th style={{ padding: '10px 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>AI</th>
+                                                        <th style={{ padding: '10px 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Maths</th>
+                                                        <th style={{ padding: '10px 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Web</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {/* Dummy data rendering based on the prompt's layout request */}
+                                                    {[
+                                                        { d: 'Mon 12', ai: '✅', m: '✅', web: '❌' },
+                                                        { d: 'Tue 13', ai: '✅', m: '🛌', web: '✅' },
+                                                        { d: 'Wed 14', ai: '❌', m: '✅', web: '✅' }
+                                                    ].map((row, i) => (
+                                                        <tr key={i} style={{ borderTop: '1px solid #eee' }}>
+                                                            <td style={{ padding: '10px 5px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 'bold', color: '#555' }}>{row.d}</td>
+                                                            <td style={{ padding: '10px 2px' }}>{row.ai}</td>
+                                                            <td style={{ padding: '10px 2px' }}>{row.m}</td>
+                                                            <td style={{ padding: '10px 2px' }}>{row.web}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         )}
 
                         {currentTab === 'room' && (
@@ -709,59 +813,89 @@ export default function Home() {
                                     <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
                                         <p style={{fontSize: '1.2rem'}}>👤 Guest Mode Active</p>
                                         <p>Announcements and assignments are specific to class sections.</p>
-                                        <p>Please select a section to view its announcements.</p>
+                                        <p>Please select a section to view its updates.</p>
                                     </div>
-                                ) : relevantAnnouncements.length === 0 ? (
-                                    <div style={emptyState}>No announcements posted for Section {userSection.section}.</div>
                                 ) : (
-                                    relevantAnnouncements.map(ann => {
-                                        let timeRemainingDisplay = null;
-                                        let isExpired = false;
+                                    <>
+                                        <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                                            {['Last Week', 'Last 15 Days', 'Last Month', 'All'].map(f => (
+                                                <button key={f} onClick={() => setUpdatesFilter(f)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '5px', border: '1px solid #dee2e6', background: updatesFilter === f ? '#002147' : '#fff', color: updatesFilter === f ? '#F2A900' : '#555' }}>{f}</button>
+                                            ))}
+                                        </div>
 
-                                        if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
-                                            const deadlineDate = new Date(ann.deadline_date);
-                                            const deadlineMins = parseTime(ann.deadline_time);
-                                            deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
-                                            
-                                            const diffMs = deadlineDate - currentTime;
-                                            
-                                            if (diffMs > 0) {
-                                                const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                                                const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-                                                const mins = Math.floor((diffMs / 1000 / 60) % 60);
-                                                timeRemainingDisplay = `⏳ ${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m remaining`;
-                                            } else {
-                                                isExpired = true;
-                                                timeRemainingDisplay = `❌ Deadline Passed`;
-                                            }
-                                        }
+                                        {getFilteredAnnouncements().length === 0 ? (
+                                            <div style={emptyState}>No updates found for the selected filter.</div>
+                                        ) : (
+                                            getFilteredAnnouncements().map(ann => {
+                                                let timeRemainingDisplay = null;
+                                                let isExpired = false;
 
-                                        return (
-                                            <div key={ann.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: ann.type === 'assignment' ? '5px solid #F2A900' : '5px solid #007bff', opacity: isExpired ? 0.6 : 1 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', background: '#eee', padding: '3px 8px', borderRadius: '12px', color: '#555', textTransform: 'uppercase' }}>
-                                                        {ann.subject} • {ann.type}
-                                                    </span>
-                                                    <span style={{ fontSize: '0.75rem', color: '#999' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
-                                                </div>
-                                                <h4 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#000' }}>{ann.topics}</h4>
-                                                <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#444', whiteSpace: 'pre-wrap' }}>{ann.details}</p>
-                                                
-                                                {ann.type === 'assignment' && (
-                                                    <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
-                                                        <span>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</span>
-                                                        <span>{timeRemainingDisplay}</span>
+                                                if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
+                                                    const deadlineDate = new Date(ann.deadline_date);
+                                                    const deadlineMins = parseTime(ann.deadline_time);
+                                                    deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
+                                                    
+                                                    const diffMs = deadlineDate - currentTime;
+                                                    
+                                                    if (diffMs > 0) {
+                                                        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                                        const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+                                                        const mins = Math.floor((diffMs / 1000 / 60) % 60);
+                                                        timeRemainingDisplay = `⏳ ${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m remaining`;
+                                                    } else {
+                                                        isExpired = true;
+                                                        timeRemainingDisplay = `❌ Deadline Passed`;
+                                                    }
+                                                }
+
+                                                return (
+                                                    <div key={ann.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: ann.type === 'assignment' ? '5px solid #F2A900' : '5px solid #007bff', opacity: isExpired ? 0.6 : 1 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                                            {/* Small down button on left top */}
+                                                            <button 
+                                                                onClick={() => setExpandedAssignmentId(expandedAssignmentId === ann.id ? null : ann.id)}
+                                                                style={{ background: '#f0f2f5', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#002147', fontWeight: 'bold' }}
+                                                            >
+                                                                {expandedAssignmentId === ann.id ? '▲' : '▼'}
+                                                            </button>
+
+                                                            <div style={{ flex: 1 }}>
+                                                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#666', textTransform: 'uppercase' }}>
+                                                                    {ann.subject} {ann.type !== 'assignment' ? '• Announcement' : ''}
+                                                                </span>
+                                                                <h4 style={{ margin: '3px 0 5px 0', fontSize: '1rem', color: '#000' }}>{ann.topics}</h4>
+                                                                
+                                                                {ann.type === 'assignment' && (
+                                                                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: isExpired ? '#dc3545' : '#28a745' }}>
+                                                                        {timeRemainingDisplay}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Expanded Details View */}
+                                                        {expandedAssignmentId === ann.id && (
+                                                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #eee' }}>
+                                                                <div style={{ fontSize: '0.75rem', color: '#999', marginBottom: '8px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
+                                                                <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#444', whiteSpace: 'pre-wrap' }}>{ann.details}</p>
+                                                                
+                                                                {ann.type === 'assignment' && (
+                                                                    <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'inline-block' }}>
+                                                                        Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        )
-                                    })
+                                                )
+                                            })
+                                        )}
+                                    </>
                                 )}
                             </div>
                         )}
                     </>
                 )}
-
             </div>
 
             <footer style={footerStyle}>
@@ -775,12 +909,12 @@ export default function Home() {
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
 const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
 const bigBtn = { width: '100%', padding: '15px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const headerStyle = { background: 'linear-gradient(90deg, #002147 0%, #003366 100%)', color: '#F2A900', padding: '18px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 4px 15px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
 const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
 const redDot = { position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
 const newsRedDot = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: 'red', borderRadius: '50%' };
-const tabBar = { display: 'flex', background: '#fff', padding: '6px', gap: '4px', position: 'sticky', top: '55px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, minWidth: '75px', padding: '10px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#fff' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', position: 'relative' });
+const tabBar = { display: 'flex', background: '#fff', padding: '8px 6px', gap: '4px', position: 'sticky', top: '65px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, minWidth: '95px', padding: '12px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', position: 'relative', transition: 'background 0.2s' });
 const subTabBtn = (active) => ({ flex: 1, padding: '10px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' });
 const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px', WebkitOverflowScrolling: 'touch' };
 const dayBtnStyle = (active) => ({ flex: 1, minWidth: '45px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' });
@@ -800,3 +934,8 @@ const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', 
 const notifBannerStyle = { background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900', gap: '10px' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' };
 const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '8px 12px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold', justifyContent: 'flex-start' };
+
+// Sidebar Styles
+const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeIn 0.2s ease' };
+const sidebarMenu = { width: '260px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '15px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '5px solid #F2A900' : '5px solid transparent', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee' });
