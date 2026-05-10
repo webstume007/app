@@ -303,7 +303,14 @@ export default function Home() {
     };
 
     // Extract dynamic dropdown data natively matching the new schema
-    const availableSessions = [...new Set(rawData.map(x => x.session))].filter(Boolean).sort();
+    const availableSessions = [...new Set(rawData.map(x => x.session))]
+        .filter(Boolean)
+        .sort((a, b) => {
+            const semA = parseInt(getSemesterFromSession(a)) || 99;
+            const semB = parseInt(getSemesterFromSession(b)) || 99;
+            return semA - semB;
+        });
+
     const getSectionsForSession = (sess) => [...new Set(rawData.filter(x => x.session === sess).map(x => x.section))].sort();
     
     const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
@@ -385,10 +392,8 @@ export default function Home() {
     };
 
     // STRICT SECTION & SESSION ISOLATION
-    const targetSemester = getSemesterFromSession(userSection?.session);
-    
-    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && (a.session === userSection?.session || getSemesterFromSession(a.session) === targetSemester));
-    const sectionStudents = studentsData.filter(s => s.section === userSection?.section && (s.session === userSection?.session || getSemesterFromSession(s.session) === targetSemester));
+    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.session === userSection?.session);
+    const sectionStudents = studentsData.filter(s => s.section === userSection?.section && s.session === userSection?.session);
 
     // Updates Filter Logic
     const getFilteredAnnouncements = () => {
@@ -492,7 +497,7 @@ export default function Home() {
             const record = attRecords.find(r => r.session_id === sess.id && r.student_id === myRollNumber);
 
             if (!datesMap[weekKey]) datesMap[weekKey] = {};
-            if (!datesMap[weekKey][dateStr]) datesMap[weekKey][dateStr] = {};
+            if (!datesMap[weekKey][dateStr]) datesMap[weekKey] = {};
             
             datesMap[weekKey][dateStr][courseName] = record ? record.status : '-';
         });
