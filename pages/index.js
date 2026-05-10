@@ -88,7 +88,7 @@ export default function Home() {
     const [roomSearch, setRoomSearch] = useState('');
     const [selectedRoom, setSelectedRoom] = useState('');
 
-    // New Attendance & Update Filter States
+    // Attendance & Update Filter States
     const [attSearch, setAttSearch] = useState('');
     const [selectedRollInput, setSelectedRollInput] = useState('');
     const [attFilter, setAttFilter] = useState('Last Month');
@@ -112,7 +112,6 @@ export default function Home() {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
-    const isMobile = windowWidth < 768;
 
     // 1. INITIAL LOAD
     useEffect(() => {
@@ -237,7 +236,6 @@ export default function Home() {
         setAnnouncements(annRes.data || []);
         setTeachersData(teachersRes.data || []);
         
-        // Populate new attendance states
         setStudentsData(studentsRes.data || []);
         setAttSessions(attSessRes.data || []);
         setAttRecords(attRecRes.data || []);
@@ -250,7 +248,6 @@ export default function Home() {
         localStorage.setItem('iub_user_selection', JSON.stringify(selection));
         setUserSection(selection);
         setIsFirstVisit(false);
-        setCurrentTab('class');
     };
 
     const handleGuestSelection = () => {
@@ -387,7 +384,7 @@ export default function Home() {
         localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
     };
 
-    // STRICT SECTION & SESSION ISOLATION FOR ANNOUNCEMENTS & STUDENTS
+    // STRICT SECTION & SESSION ISOLATION
     const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.session === userSection?.session);
     const sectionStudents = studentsData.filter(s => s.section === userSection?.section && s.session === userSection?.session);
 
@@ -436,15 +433,11 @@ export default function Home() {
         return `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
     };
 
-    // Strict Filter Logic for Students
     const getFilteredClasses = (filterKey, filterValue) => {
         let classes = rawData.filter(c => c[filterKey] === filterValue);
-        
-        // If getting student's own schedule, strictly enforce the Session to avoid cross-term leakage
         if (filterKey === 'section') {
             classes = classes.filter(c => c.session === userSection?.session);
         }
-
         if (selectedDay !== 'ALL') {
             classes = classes.filter(c => c.day === selectedDay);
         }
@@ -455,7 +448,7 @@ export default function Home() {
     const teacherSchedule = getFilteredClasses('teacher', selectedTeacher);
     const roomSchedule = getFilteredClasses('room', selectedRoom);
 
-    // --- ATTENDANCE FILTER LOGIC ---
+    // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
         const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         const mySubjects = [...new Set(myClasses.map(c => c.course))];
@@ -648,7 +641,7 @@ export default function Home() {
                     }}>
                         <option value="">-- Select Semester --</option>
                         {availableSessions.map(s => (
-                            <option key={s} value={s}>{getSemesterFromSession(s)} Semester ({s})</option>
+                            <option key={s} value={s}>{getSemesterFromSession(s)} Semester</option>
                         ))}
                     </select>
 
@@ -674,7 +667,7 @@ export default function Home() {
     }
 
     const isGuestUser = userSection?.section === 'GUEST';
-    
+
     // Desktop Tabs logic
     const allTabs = [
         { id: 'class', label: '📅 SCHEDULE' },
@@ -694,7 +687,7 @@ export default function Home() {
                 <link rel="manifest" href="/manifest.json" />
                 <link rel="apple-touch-icon" href="/icon-192x192.png" />
             </Head>
-            
+
             <style>{`
                 .desktop-nav { display: none; }
                 .mobile-nav { display: flex; }
@@ -737,7 +730,7 @@ export default function Home() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     {!isGuestUser && (
-                        <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.4rem' }} onClick={() => setShowAlerts(!showAlerts)}>
+                        <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
                             🔔
                             {relevantNotifs.length > 0 && <span style={redDot}></span>}
                         </div>
@@ -1036,10 +1029,10 @@ export default function Home() {
                                             }
                                         }
 
-                                        let badgeColor = '#007bff';
+                                        let badgeColor = '#002147';
                                         let badgeText = 'Notice';
-                                        if (ann.type === 'assignment') { badgeColor = '#dc3545'; badgeText = 'Assignment'; }
-                                        if (ann.type?.toLowerCase().includes('quiz')) { badgeColor = '#6f42c1'; badgeText = 'Quiz'; }
+                                        if (ann.type === 'assignment') { badgeText = 'Assignment'; }
+                                        if (ann.type?.toLowerCase().includes('quiz')) { badgeText = 'Quiz'; }
 
                                         return (
                                             <div 
@@ -1048,7 +1041,7 @@ export default function Home() {
                                                 style={{ cursor: 'pointer', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: `5px solid ${badgeColor}`, transition: 'background 0.2s' }}
                                             >
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                                    <span style={{ background: '#002147', color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                                    <span style={{ background: badgeColor, color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
                                                         {badgeText}
                                                     </span>
                                                     <span style={{ color: '#002147', fontWeight: 'bold', fontSize: '1.2rem', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>
@@ -1096,7 +1089,7 @@ export default function Home() {
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
 const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
 const bigBtn = { width: '100%', padding: '15px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer' };
-const headerStyle = { background: 'linear-gradient(90deg, #002147 0%, #003366 100%)', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 4px 15px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
 const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
 const redDot = { position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
 const newsRedDot = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: 'red', borderRadius: '50%' };
