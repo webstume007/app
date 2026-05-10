@@ -431,7 +431,7 @@ export default function Home() {
         let filtered = relevantAnnouncements;
         if (updatesFilter !== 'All') {
             const now = new Date();
-            const daysMap = { 'Last Week': 7, 'Last 15 Days': 15, 'Last Month': 30 };
+            const daysMap = { 'Last Week': 7, '15 Days': 15, 'Last Month': 30 };
             const ms = daysMap[updatesFilter] * 24 * 60 * 60 * 1000;
             filtered = filtered.filter(a => (now - new Date(a.created_at)) <= ms);
         }
@@ -1090,7 +1090,7 @@ export default function Home() {
                         {currentTab === 'announcements' && !isGuestUser && (
                             <div>
                                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', background: '#f8f9fa', padding: '6px', borderRadius: '8px' }}>
-                                    {['Last Week', 'Last 15 Days', 'Last Month', 'All'].map(f => (
+                                    {['Last Week', '15 Days', 'Last Month', 'All'].map(f => (
                                         <button 
                                             key={f} 
                                             onClick={() => setUpdatesFilter(f)} 
