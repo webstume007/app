@@ -303,15 +303,7 @@ export default function Home() {
     };
 
     // Extract dynamic dropdown data natively matching the new schema
-    // Added semantic sorting logic so 1ST semester comes before 2ND semester, etc.
-    const availableSessions = [...new Set(rawData.map(x => x.session))]
-        .filter(Boolean)
-        .sort((a, b) => {
-            const semA = parseInt(getSemesterFromSession(a)) || 99;
-            const semB = parseInt(getSemesterFromSession(b)) || 99;
-            return semA - semB;
-        });
-
+    const availableSessions = [...new Set(rawData.map(x => x.session))].filter(Boolean).sort();
     const getSectionsForSession = (sess) => [...new Set(rawData.filter(x => x.session === sess).map(x => x.section))].sort();
     
     const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
@@ -393,12 +385,10 @@ export default function Home() {
     };
 
     // STRICT SECTION & SESSION ISOLATION
-    const norm = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const currentSessionNorm = norm(userSection?.session);
-    const currentSectionNorm = norm(userSection?.section);
-
-    const relevantAnnouncements = announcements.filter(a => norm(a.section) === currentSectionNorm && norm(a.session) === currentSessionNorm);
-    const sectionStudents = studentsData.filter(s => norm(s.section) === currentSectionNorm && norm(s.session) === currentSessionNorm);
+    const targetSemester = getSemesterFromSession(userSection?.session);
+    
+    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && (a.session === userSection?.session || getSemesterFromSession(a.session) === targetSemester));
+    const sectionStudents = studentsData.filter(s => s.section === userSection?.section && (s.session === userSection?.session || getSemesterFromSession(s.session) === targetSemester));
 
     // Updates Filter Logic
     const getFilteredAnnouncements = () => {
@@ -462,7 +452,7 @@ export default function Home() {
 
     // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
-        const myClasses = rawData.filter(c => norm(c.section) === currentSectionNorm && norm(c.session) === currentSessionNorm);
+        const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         const mySubjects = [...new Set(myClasses.map(c => c.course))];
         
         let validSessions = attSessions.filter(sess => myClasses.some(c => c.id === sess.base_schedule_id));
@@ -1093,7 +1083,7 @@ export default function Home() {
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
 const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
 const bigBtn = { width: '100%', padding: '15px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '18px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
 const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
 const redDot = { position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
 const newsRedDot = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: 'red', borderRadius: '50%' };
