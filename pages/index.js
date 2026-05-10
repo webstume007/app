@@ -303,7 +303,15 @@ export default function Home() {
     };
 
     // Extract dynamic dropdown data natively matching the new schema
-    const availableSessions = [...new Set(rawData.map(x => x.session))].filter(Boolean).sort();
+    // Added semantic sorting logic so 1ST semester comes before 2ND semester, etc.
+    const availableSessions = [...new Set(rawData.map(x => x.session))]
+        .filter(Boolean)
+        .sort((a, b) => {
+            const semA = parseInt(getSemesterFromSession(a)) || 99;
+            const semB = parseInt(getSemesterFromSession(b)) || 99;
+            return semA - semB;
+        });
+
     const getSectionsForSession = (sess) => [...new Set(rawData.filter(x => x.session === sess).map(x => x.section))].sort();
     
     const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
@@ -385,8 +393,12 @@ export default function Home() {
     };
 
     // STRICT SECTION & SESSION ISOLATION
-    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.session === userSection?.session);
-    const sectionStudents = studentsData.filter(s => s.section === userSection?.section && s.session === userSection?.session);
+    const norm = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const currentSessionNorm = norm(userSection?.session);
+    const currentSectionNorm = norm(userSection?.section);
+
+    const relevantAnnouncements = announcements.filter(a => norm(a.section) === currentSectionNorm && norm(a.session) === currentSessionNorm);
+    const sectionStudents = studentsData.filter(s => norm(s.section) === currentSectionNorm && norm(s.session) === currentSessionNorm);
 
     // Updates Filter Logic
     const getFilteredAnnouncements = () => {
@@ -450,7 +462,7 @@ export default function Home() {
 
     // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
-        const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
+        const myClasses = rawData.filter(c => norm(c.section) === currentSectionNorm && norm(c.session) === currentSessionNorm);
         const mySubjects = [...new Set(myClasses.map(c => c.course))];
         
         let validSessions = attSessions.filter(sess => myClasses.some(c => c.id === sess.base_schedule_id));
@@ -1029,29 +1041,21 @@ export default function Home() {
                                             }
                                         }
 
-                                        let badgeColor = '#002147';
-                                        let badgeText = 'Notice';
-                                        if (ann.type === 'assignment') { badgeText = 'Assignment'; }
-                                        if (ann.type?.toLowerCase().includes('quiz')) { badgeText = 'Quiz'; }
-
                                         return (
                                             <div 
                                                 key={ann.id} 
                                                 onClick={() => setExpandedAssignmentId(isExpanded ? null : ann.id)}
-                                                style={{ cursor: 'pointer', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: `5px solid ${badgeColor}`, transition: 'background 0.2s' }}
+                                                style={{ cursor: 'pointer', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: `5px solid #007bff`, transition: 'background 0.2s' }}
                                             >
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                                    <span style={{ background: badgeColor, color: 'white', padding: '4px 12px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                                                        {badgeText}
+                                                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#666', textTransform: 'uppercase' }}>
+                                                        {ann.subject}
                                                     </span>
                                                     <span style={{ color: '#002147', fontWeight: 'bold', fontSize: '1.2rem', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }}>
                                                         ▼
                                                     </span>
                                                 </div>
 
-                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginBottom: '2px' }}>
-                                                    {ann.subject}
-                                                </div>
                                                 <h4 style={{ margin: '0 0 5px 0', fontSize: '1.05rem', color: '#000' }}>{ann.topics}</h4>
                                                 
                                                 {ann.type === 'assignment' && deadlineDate && (
