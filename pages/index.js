@@ -43,6 +43,7 @@ const SVGS = {
     alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>,
     door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
     userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
+    bus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 11h8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM8 19v2a1 1 0 01-2 0v-2M18 19v2a1 1 0 01-2 0v-2"></path></svg>
 };
 
 export default function Home() {
@@ -102,6 +103,9 @@ export default function Home() {
     const [attFilter, setAttFilter] = useState('All'); 
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
     const [selectedAttSubject, setSelectedAttSubject] = useState(''); 
+
+    // Transport Tab State
+    const [isSatTransport, setIsSatTransport] = useState(false);
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const filterDays = ["ALL", ...days];
@@ -216,7 +220,7 @@ export default function Home() {
                         const msg = `⏰ DEADLINE ALERT: Only 2 hours left for ${ann.subject} Assignment (${ann.topics}).`;
                         
                         setNotifications(prev => [{ id: Date.now(), message: msg, created_at: new Date().toISOString() }, ...prev]);
-                        setShowAlerts(true); // Automatically slide in the alert window
+                        setShowAlerts(true); 
                         
                         if (Notification.permission === "granted") {
                             new Notification("Assignment Due Soon!", { body: msg, icon: "/icon.png" });
@@ -261,7 +265,6 @@ export default function Home() {
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
-                // To keep this lightweight, we simply reset the loaded states so they fetch fresh on next render
                 setLoadedRooms(new Set());
                 setLoadedTeachers(new Set());
                 fetchLiveSchedule();
@@ -285,7 +288,6 @@ export default function Home() {
     const fetchAllRows = async (table, select = '*') => {
         let all = []; let from = 0; const step = 1000;
         while(true) {
-            // .order('id') absolutely prevents missed rows across pagination limits
             const { data, error } = await supabase.from(table).select(select).order('id', { ascending: true }).range(from, from + step - 1);
             if (error || !data || data.length === 0) break;
             all = [...all, ...data];
@@ -305,13 +307,11 @@ export default function Home() {
         }
         const savedRoll = localStorage.getItem('iub_my_roll');
 
-        // 1. Fetch System Metadata to populate Dropdowns dynamically and safely
         const { data: baseMeta } = await fetchAllRows('base_schedule', 'id, session, section, room, teacher');
         const uniqueSessions = [...new Set(baseMeta.map(x => x.session))].filter(Boolean);
         const uniqueRooms = [...new Set(baseMeta.map(x => x.room))].filter(Boolean).sort();
         setDropdownMeta({ sessions: uniqueSessions, rooms: uniqueRooms, baseMeta: baseMeta });
 
-        // 2. Fetch specific payloads to save bandwidth
         let baseReq = Promise.resolve({ data: [] });
         let studentsReq = Promise.resolve({ data: [] });
         let annReq = Promise.resolve({ data: [] });
@@ -327,7 +327,7 @@ export default function Home() {
             supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
             supabase.from('point_schedules').select('*'),
             supabase.from('teacher_profiles').select('name, phone'),
-            fetchAllRows('contacts'), // Very small table, fetch all safely
+            fetchAllRows('contacts'), 
             studentsReq,
             annReq
         ]);
@@ -367,6 +367,7 @@ export default function Home() {
         localStorage.setItem('iub_user_selection', JSON.stringify(selection));
         setUserSection(selection);
         setIsFirstVisit(false);
+        setLoading(true);
         fetchLiveSchedule();
     };
 
@@ -383,7 +384,6 @@ export default function Home() {
         if (window.confirm(`Are you sure ${selectedRollInput} is your registration number?`)) {
             localStorage.setItem('iub_my_roll', selectedRollInput);
             setMyRollNumber(selectedRollInput);
-            
             const { data } = await supabase.from('attendance_records').select('*').eq('student_id', selectedRollInput);
             if (data) setAttRecords(data);
         }
@@ -432,7 +432,6 @@ export default function Home() {
 
     const getSectionsForSession = (sess) => [...new Set(dropdownMeta.baseMeta.filter(x => x.session === sess).map(x => x.section))].sort();
     
-    // Merge teachers from designated table and any new ones manually entered in base_schedule
     const allTeachers = [...new Set([
         ...teachersData.map(x => x.name), 
         ...dropdownMeta.baseMeta.map(x => x.teacher)
@@ -449,29 +448,11 @@ export default function Home() {
         return null; 
     };
 
-    const getNearestPoints = (cls) => {
-        if (!pointsData || pointsData.length === 0) return { up: '--:--', down: '--:--' };
-        const isSat = cls.day === 'SAT';
-        const clsStartMins = parseTime(cls.start_time);
-        const clsEndMins = parseTime(cls.end_time);
-
-        const targetUpMins = clsStartMins - 30;
-        const validUp = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins).sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
-        const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
-
-        const targetDownMins = clsEndMins;
-        const validDown = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
-        const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
-
-        return { up: bestUp, down: bestDown };
-    };
-
     const searchFreeRooms = async () => {
         const sVal = parseTime(freeStart);
         const eVal = parseTime(freeEnd);
         if (sVal >= eVal) return alert("End time must be after start time");
 
-        // Specific DB call so we don't need rawData to have the whole university loaded
         const { data: dayClasses } = await supabase.from('base_schedule').select('*').eq('day', freeDay);
         if (!dayClasses) return;
 
@@ -580,7 +561,6 @@ export default function Home() {
 
         const subjectStats = mySubjects.map(sub => {
             const subClassIds = myClasses.filter(c => c.course === sub).map(c => c.id);
-            // Circle Percentages are perfectly linked to allValidSessions to ensure Whole Record calculation
             const subSessions = allValidSessions.filter(s => subClassIds.includes(s.base_schedule_id));
             
             let presentCount = 0;
@@ -661,7 +641,6 @@ export default function Home() {
                     <div style={dayHeaderStrip}>{day}</div>
                     {dayClasses.map((cls, idx) => {
                         const status = getStatusStyles(cls);
-                        const points = getNearestPoints(cls); 
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
 
@@ -677,7 +656,6 @@ export default function Home() {
                             if (teacherFromProfiles && teacherFromProfiles.phone) teacherContactNumber = teacherFromProfiles.phone;
                         }
 
-                        // Finds CR Contact perfectly dynamically based on the current lecture's session and section
                         const crContact = contactsData.find(c => 
                             c.role && c.role.toLowerCase().includes('cr') && 
                             c.session?.trim().toLowerCase() === cls.session?.trim().toLowerCase() && 
@@ -721,7 +699,7 @@ export default function Home() {
                                 )}
 
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
-                                    <div className="expand-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
+                                    <div className="collapse-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
                                         {activeSubjectAssignments.map(ann => (
                                             <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px dashed #fde68a' }}>
                                                 <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem' }}>📝 {ann.topics}</div>
@@ -734,22 +712,8 @@ export default function Home() {
                                     </div>
                                 )}
 
-                                <div style={pointStripStyle}>
-                                    <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
-                                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2L4 10h5v12h6V10h5L12 2z"/></svg>
-                                            {points.up}
-                                        </span>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#007bff"><path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/></svg>
-                                            {points.down}
-                                        </span>
-                                    </div>
-                                </div>
-
                                 {isContactExpanded && (
-                                    <div className="expand-anim" style={{ padding: '12px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
+                                    <div className="collapse-anim" style={{ padding: '12px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {teacherContactNumber ? (
                                                 <a href={generateWaLink(teacherContactNumber, `Salam Sir/Mam ${cls.teacher}`)} target="_blank" rel="noreferrer" style={contactBtnStyle}>
@@ -783,7 +747,22 @@ export default function Home() {
         }
     };
 
-    if (loading) return <div style={centerStyle}>Loading System Data...</div>;
+    if (loading) {
+        return (
+            <div style={{ ...welcomeBg, flexDirection: 'column', gap: '20px' }}>
+                <Head><title>Loading | IUB Assistant</title></Head>
+                <div className="custom-spinner"></div>
+                <h2 style={{ color: '#F2A900', margin: 0, fontSize: '1.2rem', animation: 'pulseText 1.5s infinite ease-in-out' }}>
+                    Fetching IUB Data...
+                </h2>
+                <style>{`
+                    .custom-spinner { width: 45px; height: 45px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #F2A900; border-radius: 50%; animation: spin 1s linear infinite; }
+                    @keyframes spin { to { transform: rotate(360deg); } }
+                    @keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                `}</style>
+            </div>
+        );
+    }
 
     if (isFirstVisit) {
         return (
@@ -827,12 +806,15 @@ export default function Home() {
 
     const allTabs = [
         { id: 'class', label: 'SCHEDULE', icon: SVGS.calendar },
-        { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.clipboardCheck },
-        { id: 'announcements', label: 'UPDATES', icon: SVGS.megaphone },
+        { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
+        { id: 'announcements', label: 'UPDATES', icon: SVGS.updates },
         { id: 'room', label: 'ROOMS', icon: SVGS.door },
-        { id: 'teacher', label: 'TEACHERS', icon: SVGS.userTie }
+        { id: 'teacher', label: 'TEACHERS', icon: SVGS.userTie },
+        { id: 'transport', label: 'TRANSPORT', icon: SVGS.bus }
     ];
-    const availableTabs = isGuestUser ? allTabs.filter(t => t.id === 'room' || t.id === 'teacher') : allTabs;
+    
+    // Guest doesn't see classes, attendance, or updates
+    const availableTabs = isGuestUser ? allTabs.filter(t => ['room', 'teacher', 'transport'].includes(t.id)) : allTabs;
 
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
@@ -930,7 +912,7 @@ export default function Home() {
             )}
 
             <div className="mobile-nav" style={tabBar}>
-                {availableTabs.filter(tab => tab.id !== 'room' && tab.id !== 'teacher').map(tab => (
+                {availableTabs.filter(tab => tab.id !== 'room' && tab.id !== 'teacher' && tab.id !== 'transport').map(tab => (
                     <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
                         <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
                         {tab.label}
@@ -1096,7 +1078,7 @@ export default function Home() {
                                                         </select>
 
                                                         {selectedAttSubject && (
-                                                            <div className="expand-anim" style={{ marginTop: '8px' }}>
+                                                            <div className="collapse-anim" style={{ marginTop: '8px' }}>
                                                                 {(() => {
                                                                     const specificClassIds = myClasses.filter(c => c.course === selectedAttSubject).map(c => c.id);
                                                                     const specificSessions = allValidSessions.filter(s => specificClassIds.includes(s.base_schedule_id)).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
@@ -1172,7 +1154,7 @@ export default function Home() {
                                         <button onClick={searchFreeRooms} style={searchBtn}>SEARCH FREE ROOMS</button>
 
                                         {searchedFreeRooms !== null && (
-                                            <div className="expand-anim" style={{ marginTop: '12px' }}>
+                                            <div className="collapse-anim" style={{ marginTop: '12px' }}>
                                                 {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
                                                     <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
                                                 )) : <div style={emptyState}>No rooms were cancelled.</div>}
@@ -1288,7 +1270,7 @@ export default function Home() {
                                                     )}
 
                                                     {isExpanded && (
-                                                        <div className="expand-anim" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f0f0f0' }}>
+                                                        <div className="collapse-anim" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f0f0f0' }}>
                                                             <p style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
                                                             
                                                             {ann.type === 'assignment' && deadlineDate && (
@@ -1309,6 +1291,52 @@ export default function Home() {
                                         )
                                     })
                                 )}
+                            </div>
+                        )}
+
+                        {/* ======================= TRANSPORT TAB ======================= */}
+                        {currentTab === 'transport' && (
+                            <div className="expand-anim" style={whiteCard}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#002147' }}>University Transport Timings</h4>
+                                </div>
+                                
+                                <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', background: '#f8f9fa', padding: '5px', borderRadius: '10px' }}>
+                                    <button onClick={() => setIsSatTransport(false)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: !isSatTransport ? '#002147' : '#fff', color: !isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Mon - Fri</button>
+                                    <button onClick={() => setIsSatTransport(true)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: isSatTransport ? '#002147' : '#fff', color: isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Saturday</button>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                    {/* AC to BJC */}
+                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #eee' }}>
+                                        <h5 style={{ margin: '0 0 10px 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            {SVGS.bus} AC ➔ BJC
+                                        </h5>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)).map((p, i) => (
+                                                <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                    {convertTo12Hour(p.departure_time.slice(0,5))}
+                                                </div>
+                                            ))}
+                                            {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* BJC to AC */}
+                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #eee' }}>
+                                        <h5 style={{ margin: '0 0 10px 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '5px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            {SVGS.bus} BJC ➔ AC
+                                        </h5>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)).map((p, i) => (
+                                                <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                    {convertTo12Hour(p.departure_time.slice(0,5))}
+                                                </div>
+                                            ))}
+                                            {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </>
