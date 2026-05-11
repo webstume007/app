@@ -32,8 +32,8 @@ const SVGS = {
     tick: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
     cross: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
     minus: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg>,
-    chevronDown: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
-    chevronUp: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
+    chevronDown: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+    chevronUp: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
     bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
     whatsapp: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>,
     calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
@@ -448,6 +448,23 @@ export default function Home() {
         return null; 
     };
 
+    const getNearestPoints = (cls) => {
+        if (!pointsData || pointsData.length === 0) return { up: '--:--', down: '--:--' };
+        const isSat = cls.day === 'SAT';
+        const clsStartMins = parseTime(cls.start_time);
+        const clsEndMins = parseTime(cls.end_time);
+
+        const targetUpMins = clsStartMins - 30;
+        const validUp = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins).sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
+        const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
+
+        const targetDownMins = clsEndMins;
+        const validDown = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
+        const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
+
+        return { up: bestUp, down: bestDown };
+    };
+
     const searchFreeRooms = async () => {
         const sVal = parseTime(freeStart);
         const eVal = parseTime(freeEnd);
@@ -641,6 +658,7 @@ export default function Home() {
                     <div style={dayHeaderStrip}>{day}</div>
                     {dayClasses.map((cls, idx) => {
                         const status = getStatusStyles(cls);
+                        const points = getNearestPoints(cls); 
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
 
@@ -699,7 +717,7 @@ export default function Home() {
                                 )}
 
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
-                                    <div className="collapse-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
+                                    <div className="expand-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
                                         {activeSubjectAssignments.map(ann => (
                                             <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px dashed #fde68a' }}>
                                                 <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem' }}>📝 {ann.topics}</div>
@@ -712,8 +730,22 @@ export default function Home() {
                                     </div>
                                 )}
 
+                                <div style={pointStripStyle}>
+                                    <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
+                                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2L4 10h5v12h6V10h5L12 2z"/></svg>
+                                            {points.up}
+                                        </span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#007bff"><path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/></svg>
+                                            {points.down}
+                                        </span>
+                                    </div>
+                                </div>
+
                                 {isContactExpanded && (
-                                    <div className="collapse-anim" style={{ padding: '12px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
+                                    <div className="expand-anim" style={{ padding: '12px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                             {teacherContactNumber ? (
                                                 <a href={generateWaLink(teacherContactNumber, `Salam Sir/Mam ${cls.teacher}`)} target="_blank" rel="noreferrer" style={contactBtnStyle}>
@@ -1078,7 +1110,7 @@ export default function Home() {
                                                         </select>
 
                                                         {selectedAttSubject && (
-                                                            <div className="collapse-anim" style={{ marginTop: '8px' }}>
+                                                            <div className="expand-anim" style={{ marginTop: '8px' }}>
                                                                 {(() => {
                                                                     const specificClassIds = myClasses.filter(c => c.course === selectedAttSubject).map(c => c.id);
                                                                     const specificSessions = allValidSessions.filter(s => specificClassIds.includes(s.base_schedule_id)).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
@@ -1154,7 +1186,7 @@ export default function Home() {
                                         <button onClick={searchFreeRooms} style={searchBtn}>SEARCH FREE ROOMS</button>
 
                                         {searchedFreeRooms !== null && (
-                                            <div className="collapse-anim" style={{ marginTop: '12px' }}>
+                                            <div className="expand-anim" style={{ marginTop: '12px' }}>
                                                 {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
                                                     <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
                                                 )) : <div style={emptyState}>No rooms were cancelled.</div>}
@@ -1270,7 +1302,7 @@ export default function Home() {
                                                     )}
 
                                                     {isExpanded && (
-                                                        <div className="collapse-anim" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f0f0f0' }}>
+                                                        <div className="expand-anim" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f0f0f0' }}>
                                                             <p style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
                                                             
                                                             {ann.type === 'assignment' && deadlineDate && (
