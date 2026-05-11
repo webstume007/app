@@ -43,11 +43,18 @@ const SVGS = {
     tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
     cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
     minus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg>,
-    hourglass: <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"></path></svg>,
-    chevronDown: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
-    chevronUp: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
-    bell: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
-    whatsapp: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>
+    chevronDown: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+    chevronUp: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
+    bell: <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    whatsapp: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>,
+    calendar: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/><line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/></svg>,
+    clipboardCheck: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4" strokeWidth="2" strokeLinecap="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" strokeWidth="2" strokeLinecap="round"/></svg>,
+    megaphone: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    door: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    userTie: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
+    clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>,
+    contactBook: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4h16v16H4z" strokeWidth="2"/><path d="M4 8h16M4 16h16M8 4v16" strokeWidth="2"/></svg>
 };
 
 export default function Home() {
@@ -164,7 +171,8 @@ export default function Home() {
         const channel = supabase
             .channel('student-dashboard-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-                if (payload.new.message.includes(userSection.section) || payload.new.message.includes('GLOBAL')) {
+                // Strict isolation checking for notifications
+                if (payload.new.message.includes(`Section ${userSection.section}`) || payload.new.message.includes('GLOBAL')) {
                     setNotifications(prev => [payload.new, ...prev]);
                     
                     if (Notification.permission === "granted") {
@@ -296,7 +304,7 @@ export default function Home() {
 
     const handleRollSelectConfirm = () => {
         if (!selectedRollInput) return;
-        if (window.confirm(`Are you sure ${selectedRollInput} is your roll number? You will not be able to change this later.`)) {
+        if (window.confirm(`Are you sure ${selectedRollInput} is your registration number? You won't be able to easily change this later.`)) {
             localStorage.setItem('iub_my_roll', selectedRollInput);
             setMyRollNumber(selectedRollInput);
         }
@@ -416,7 +424,7 @@ export default function Home() {
     };
 
     const relevantNotifs = notifications.filter(n => 
-        (n.message.includes(userSection?.section) || n.message.includes('GLOBAL')) &&
+        (n.message.includes(`Section ${userSection?.section}`) || n.message.includes('GLOBAL')) &&
         !readNotifIds.includes(n.id)
     );
 
@@ -429,8 +437,9 @@ export default function Home() {
     // STRICT SECTION & SESSION ISOLATION
     const targetSemester = getSemesterFromSession(userSection?.session);
     
-    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && (a.session === userSection?.session || getSemesterFromSession(a.session) === targetSemester));
-    const sectionStudents = studentsData.filter(s => s.section === userSection?.section && (s.session === userSection?.session || getSemesterFromSession(s.session) === targetSemester));
+    // Strict exact match for announcements to prevent crossover
+    const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.session === userSection?.session);
+    const sectionStudents = studentsData.filter(s => s.section === userSection?.section && s.session === userSection?.session);
 
     // Updates Filter Logic
     const getFilteredAnnouncements = () => {
@@ -555,11 +564,11 @@ export default function Home() {
                         <circle cx="50" cy="50" r={radius} stroke="#e9ecef" strokeWidth="8" fill="transparent" />
                         <circle cx="50" cy="50" r={radius} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }} />
                     </svg>
-                    <span style={{ position: 'absolute', fontWeight: 'bold', fontSize: isOverall ? '1.1rem' : '0.9rem', color: '#002147' }}>
+                    <span style={{ position: 'absolute', fontWeight: 'bold', fontSize: isOverall ? '1rem' : '0.85rem', color: '#002147' }}>
                         {Math.round(percentage)}%
                     </span>
                 </div>
-                <div style={{ fontSize: isOverall ? '0.85rem' : '0.75rem', marginTop: '8px', fontWeight: 'bold', color: '#555', textAlign: 'center', maxWidth: isOverall ? '100px' : '80px', lineHeight: '1.2' }}>
+                <div style={{ fontSize: isOverall ? '0.8rem' : '0.7rem', marginTop: '8px', fontWeight: 'bold', color: '#555', textAlign: 'center', maxWidth: isOverall ? '100px' : '80px', lineHeight: '1.2' }}>
                     {subject}
                 </div>
             </div>
@@ -572,7 +581,7 @@ export default function Home() {
         else if (status === 'Leave') { bg = '#e2e8f0'; color = '#334155'; icon = SVGS.minus; }
 
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: bg, color: color, padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: bg, color: color, padding: '4px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold' }}>
                 {icon} {status}
             </span>
         );
@@ -583,9 +592,9 @@ export default function Home() {
         if (displayContext === 'class' && userSection?.section === 'GUEST') {
             return (
                 <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
-                    <p style={{fontSize: '1.2rem'}}>👤 Guest Mode Active</p>
-                    <p>You can search for Teacher schedules and Free Rooms above.</p>
-                    <p>To view a personalized class schedule, click <b>"Change Section"</b> in the menu.</p>
+                    <p style={{fontSize: '1.1rem'}}>👤 Guest Mode Active</p>
+                    <p style={{fontSize: '0.85rem'}}>You can search for Teacher schedules and Free Rooms above.</p>
+                    <p style={{fontSize: '0.85rem'}}>To view a personalized class schedule, click <b>"Change Section"</b> in the menu.</p>
                 </div>
             );
         }
@@ -614,9 +623,9 @@ export default function Home() {
                         const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
                         const isContactExpanded = expandedContactId === cls.id;
 
-                        // Contact Search
-                        const teacherContact = contactsData.find(c => c.role.toLowerCase() === 'teacher' && c.name === cls.teacher);
-                        const crContact = contactsData.find(c => c.role.toLowerCase() === 'cr' && c.session === userSection?.session && c.section === userSection?.section);
+                        // Contact Search (Teacher and CR strictly mapped)
+                        const teacherContact = contactsData.find(c => c.role && c.role.toLowerCase() === 'teacher' && c.name === cls.teacher);
+                        const crContact = contactsData.find(c => c.role && c.role.toLowerCase().includes('cr') && c.session === userSection?.session && c.section === userSection?.section);
 
                         return (
                             <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
@@ -624,16 +633,16 @@ export default function Home() {
                                     onClick={() => setExpandedContactId(isContactExpanded ? null : cls.id)}
                                     style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}`, cursor: 'pointer' }}
                                 >
-                                    <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
-                                    <div style={{ color: '#555', fontSize: '0.8rem' }}>
+                                    <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.8rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '1.05rem', margin: '5px 0' }}>{cls.course}</div>
+                                    <div style={{ color: '#555', fontSize: '0.75rem' }}>
                                         {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
                                         {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
                                         <span>👥 {getSemesterFromSession(cls.session)}-{cls.section}</span>
                                     </div>
                                     
                                     {status && (
-                                        <div style={{ marginTop: '8px', fontSize: '0.75rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>
+                                        <div style={{ marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>
                                             ● {status.label}
                                         </div>
                                     )}
@@ -642,24 +651,31 @@ export default function Home() {
                                 {activeSubjectAssignments.length > 0 && (
                                     <div 
                                         onClick={(e) => { e.stopPropagation(); setExpandedAssignmentId(expandedAssignmentId === cls.id ? null : cls.id); }}
-                                        style={{ background: '#F2A900', color: '#002147', padding: '8px 12px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                        style={{ background: '#fff9e6', borderTop: '1px solid #fde68a', borderLeft: '5px solid #F2A900', padding: '10px 12px', cursor: 'pointer' }}
                                     >
-                                        <span>⚠️ Assignment Pending</span>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            {getTimeRemainingStr(activeSubjectAssignments[0])} 
-                                            {expandedAssignmentId === cls.id ? SVGS.chevronUp : SVGS.chevronDown}
-                                        </span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', border: '1px solid #F2A900', borderRadius: '20px', padding: '3px 8px', fontSize: '0.65rem' }}>
+                                                <span style={{ fontWeight: '900', color: '#b27b00' }}>ASSIGNMENT</span>
+                                                <span style={{ color: '#ccc' }}>|</span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#856404', fontWeight: 'bold' }}>
+                                                    {SVGS.clock} Due: {getTimeRemainingStr(activeSubjectAssignments[0]) || 'Soon'}
+                                                </span>
+                                            </div>
+                                            <div style={{ color: '#b27b00' }}>
+                                                {expandedAssignmentId === cls.id ? SVGS.chevronUp : SVGS.chevronDown}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
-                                    <div className="expand-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '12px' }}>
+                                    <div className="collapse-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 12px 12px' }}>
                                         {activeSubjectAssignments.map(ann => (
-                                            <div key={ann.id} style={{ marginBottom: '10px' }}>
-                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.9rem' }}>📝 {ann.topics}</div>
-                                                <div style={{ color: '#444', fontSize: '0.85rem', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{ann.details}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
-                                                    Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
+                                            <div key={ann.id} style={{ marginBottom: '10px', paddingTop: '10px', borderTop: '1px dashed #fde68a' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.85rem' }}>📝 {ann.topics}</div>
+                                                <div style={{ color: '#444', fontSize: '0.8rem', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{ann.details}</div>
+                                                <div style={{ fontSize: '0.7rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
+                                                    Deadline: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
                                                 </div>
                                             </div>
                                         ))}
@@ -670,29 +686,28 @@ export default function Home() {
                                     <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
                                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2L4 10h5v12h6V10h5L12 2z"/></svg>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2L4 10h5v12h6V10h5L12 2z"/></svg>
                                             {points.up}
                                         </span>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#007bff"><path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/></svg>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#007bff"><path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/></svg>
                                             {points.down}
                                         </span>
                                     </div>
                                 </div>
 
                                 {isContactExpanded && (
-                                    <div className="expand-anim" style={{ padding: '15px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
-                                        {teacherContact && (
+                                    <div className="collapse-anim" style={{ padding: '12px 15px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
+                                        {teacherContact ? (
                                             <a href={generateWaLink(teacherContact.contact, `Salam Sir/Mam ${teacherContact.name}`)} target="_blank" rel="noreferrer" style={contactBtnStyle}>
                                                 {SVGS.whatsapp} Contact Teacher: {teacherContact.name}
                                             </a>
-                                        )}
-                                        {!teacherContact && (
-                                            <div style={{...contactBtnStyle, background: '#ccc', cursor: 'not-allowed'}}>Contact Teacher: Not Available</div>
+                                        ) : (
+                                            <div style={{...contactBtnStyle, background: '#e2e8f0', color: '#64748b', cursor: 'not-allowed', boxShadow: 'none'}}>Contact Teacher: Not Available</div>
                                         )}
                                         
                                         {crContact && (
-                                            <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, marginTop: '10px'}}>
+                                            <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, marginTop: '8px'}}>
                                                 {SVGS.whatsapp} Contact CR: {crContact.name}
                                             </a>
                                         )}
@@ -721,8 +736,8 @@ export default function Home() {
         return (
             <div style={welcomeBg}>
                 <div style={welcomeCard}>
-                    <h2 style={{ color: '#002147', margin: '0 0 10px 0' }}>Welcome to IUB Assistant! 👋</h2>
-                    <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '20px' }}>Select your section for a personalized schedule, or continue as a guest.</p>
+                    <h2 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.3rem' }}>Welcome to IUB Assistant! 👋</h2>
+                    <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: '20px' }}>Select your section for a personalized schedule, or continue as a guest.</p>
 
                     <select id="initSession" style={selectStyle} onChange={(e) => {
                         const secDropdown = document.getElementById('initSec');
@@ -747,7 +762,7 @@ export default function Home() {
                             else alert("Please select both Semester and Section");
                         }} style={bigBtn}>Show My Schedule</button>
                         
-                        <div style={{color: '#999', fontSize: '0.8rem'}}>— OR —</div>
+                        <div style={{color: '#999', fontSize: '0.75rem'}}>— OR —</div>
                         
                         <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
                     </div>
@@ -759,11 +774,11 @@ export default function Home() {
     const isGuestUser = userSection?.section === 'GUEST';
 
     const allTabs = [
-        { id: 'class', label: '📅 SCHEDULE' },
-        { id: 'attendance', label: '✅ ATTENDANCE' },
-        { id: 'announcements', label: '📢 UPDATES' },
-        { id: 'room', label: '🚪 ROOMS' },
-        { id: 'teacher', label: '👨‍🏫 TEACHERS' }
+        { id: 'class', label: 'SCHEDULE', icon: SVGS.calendar },
+        { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.clipboardCheck },
+        { id: 'announcements', label: 'UPDATES', icon: SVGS.megaphone },
+        { id: 'room', label: 'ROOMS', icon: SVGS.door },
+        { id: 'teacher', label: 'TEACHERS', icon: SVGS.userTie }
     ];
     const availableTabs = isGuestUser ? allTabs.filter(t => t.id === 'room' || t.id === 'teacher') : allTabs;
 
@@ -791,12 +806,20 @@ export default function Home() {
                 }
                 .scroll-hide::-webkit-scrollbar { display: none; }
                 
-                @keyframes expandDown {
-                    from { opacity: 0; transform: translateY(-8px); max-height: 0; }
-                    to { opacity: 1; transform: translateY(0); max-height: 500px; }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-5px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
                 .expand-anim {
-                    animation: expandDown 0.3s ease forwards;
+                    animation: fadeIn 0.3s ease forwards;
+                }
+                
+                @keyframes expandDown {
+                    from { opacity: 0; transform: translateY(-5px); max-height: 0; }
+                    to { opacity: 1; transform: translateY(0); max-height: 2000px; }
+                }
+                .collapse-anim {
+                    animation: expandDown 0.4s ease forwards;
                     overflow: hidden;
                 }
             `}</style>
@@ -804,12 +827,12 @@ export default function Home() {
             <header style={headerStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#F2A900">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#F2A900">
                             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                         </svg>
                     </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>
-                        {isGuestUser ? '🎓 GUEST' : `🎓 ${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`}
+                    <div style={{ fontSize: '1.1rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '1.3rem' }}>🎓</span> {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`}
                     </div>
                 </div>
 
@@ -819,13 +842,13 @@ export default function Home() {
                             key={tab.id} 
                             onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
                             style={{
-                                cursor: 'pointer', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.85rem',
+                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.8rem',
                                 background: currentTab === tab.id ? '#F2A900' : 'transparent',
                                 color: currentTab === tab.id ? '#002147' : '#fff',
-                                transition: 'all 0.3s ease'
+                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
                             }}
                         >
-                            {tab.label}
+                            {tab.icon} {tab.label}
                         </div>
                     ))}
                 </div>
@@ -844,8 +867,9 @@ export default function Home() {
             {isSidebarOpen && (
                 <div style={sidebarOverlay} onClick={() => setIsSidebarOpen(false)}>
                     <div style={sidebarMenu} onClick={e => e.stopPropagation()}>
-                        <div style={{ padding: '20px', borderBottom: '1px solid #eee', marginBottom: '10px' }}>
-                            <h3 style={{ margin: 0, color: '#002147' }}>Menu Options</h3>
+                        <div style={{ padding: '20px', borderBottom: '1px solid #eee', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem' }}>Menu Options</h3>
+                            <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
                         {availableTabs.map(tab => (
                             <button 
@@ -853,12 +877,12 @@ export default function Home() {
                                 onClick={() => { setCurrentTab(tab.id); setIsSidebarOpen(false); setShowAlerts(false); }} 
                                 style={sidebarBtn(currentTab === tab.id)}
                             >
-                                {tab.label}
+                                <span style={{ opacity: 0.7 }}>{tab.icon}</span> <span style={{ marginLeft: '10px' }}>{tab.label}</span>
                             </button>
                         ))}
                         
                         <div style={{ marginTop: 'auto', padding: '20px', borderTop: '1px solid #eee' }}>
-                            <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); setIsSidebarOpen(false); }} style={{...changeBtn, width: '100%', background: '#dc3545', color: '#fff', border: 'none', padding: '12px' }}>
+                            <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); setIsSidebarOpen(false); }} style={{...changeBtn, width: '100%', background: '#dc3545', color: '#fff', border: 'none', padding: '12px', fontSize: '0.85rem' }}>
                                 Change Section
                             </button>
                         </div>
@@ -869,6 +893,7 @@ export default function Home() {
             <div className="mobile-nav" style={tabBar}>
                 {availableTabs.filter(tab => tab.id !== 'room' && tab.id !== 'teacher').map(tab => (
                     <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
+                        <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
                         {tab.label}
                         {tab.id === 'announcements' && activeAssignments.length > 0 && <span style={newsRedDot}></span>}
                     </button>
@@ -878,20 +903,20 @@ export default function Home() {
             <div style={{ padding: '10px 15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
 
                 {deferredPrompt && (
-                    <div style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', marginBottom: '15px' }}>
+                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', marginBottom: '15px' }}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
                             <b style={{ display: 'block', marginBottom: '3px' }}>Install App 📱</b>
-                            <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>Add IUB Assistant to your home screen for better performance and reliable notifications.</span>
+                            <span style={{ fontSize: '0.7rem', opacity: 0.9 }}>Add IUB Assistant to your home screen for better performance and reliable notifications.</span>
                         </div>
                         <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
                     </div>
                 )}
 
                 {showNotifBanner && (
-                    <div style={notifBannerStyle}>
+                    <div className="expand-anim" style={notifBannerStyle}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
-                            <b style={{ display: 'block', marginBottom: '3px' }}>Stay Updated! {SVGS.bell}</b>
-                            <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>Allow notifications to get instant alerts for cancelled classes.</span>
+                            <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>Stay Updated! {SVGS.bell}</b>
+                            <span style={{ fontSize: '0.7rem', opacity: 0.9 }}>Allow notifications to get instant alerts for cancelled classes.</span>
                         </div>
                         <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
                     </div>
@@ -900,7 +925,7 @@ export default function Home() {
                 {showAlerts ? (
                     <div className="expand-anim" style={whiteCard}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                            <h4 style={{ margin: 0, fontSize: '1rem', color: '#002147' }}>Alerts & Notifications</h4>
+                            <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#002147' }}>Alerts & Notifications</h4>
                             <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
                         </div>
                         {relevantNotifs.length === 0 ? (
@@ -908,8 +933,8 @@ export default function Home() {
                         ) : (
                             relevantNotifs.map((n, i) => (
                                 <div key={i} style={notifCard}>
-                                    <p style={{ margin: '0 0 5px 0', fontSize: '0.9rem' }}>{n.message}</p>
-                                    <span style={{ fontSize: '0.7rem', color: '#999' }}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem' }}>{n.message}</p>
+                                    <span style={{ fontSize: '0.65rem', color: '#999' }}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             ))
                         )}
@@ -932,11 +957,11 @@ export default function Home() {
                         {/* ======================= NEW ATTENDANCE TAB ======================= */}
                         {currentTab === 'attendance' && !isGuestUser && (
                             <div className="expand-anim" style={whiteCard}>
-                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px'}}>Student Attendance</h4>
+                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1rem'}}>Student Attendance</h4>
                                 
                                 {!myRollNumber ? (
                                     <>
-                                        <div style={{ padding: '15px', background: '#e7f1ff', borderRadius: '8px', borderLeft: '4px solid #007bff', marginBottom: '15px', fontSize: '0.85rem' }}>
+                                        <div style={{ padding: '12px', background: '#e7f1ff', borderRadius: '8px', borderLeft: '4px solid #007bff', marginBottom: '15px', fontSize: '0.8rem', lineHeight: '1.4' }}>
                                             Please select your Registration/Roll Number to view your attendance. This action is permanent.
                                         </div>
                                         <input type="text" placeholder="🔍 Search Roll No (e.g. FA23...)" value={attSearch} onChange={e => setAttSearch(e.target.value)} style={searchInput} />
@@ -957,8 +982,8 @@ export default function Home() {
                                     <>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                             <div>
-                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '1.1rem' }}>{myRollNumber}</div>
-                                                <div style={{ fontSize: '0.8rem', color: '#666' }}>{studentsData.find(s=>s.registration_number === myRollNumber)?.student_name}</div>
+                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '1.05rem' }}>{myRollNumber}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#666' }}>{studentsData.find(s=>s.registration_number === myRollNumber)?.student_name}</div>
                                             </div>
                                         </div>
 
@@ -995,9 +1020,9 @@ export default function Home() {
 
                                                     {/* SECTION 2: Last Week Attendance Table */}
                                                     <div style={{ marginBottom: '30px' }}>
-                                                        <h3 style={{ fontSize: '1rem', color: '#002147', borderBottom: '2px solid #F2A900', paddingBottom: '5px', marginBottom: '15px' }}>Last Week Attendance</h3>
+                                                        <h3 style={{ fontSize: '0.9rem', color: '#002147', borderBottom: '2px solid #F2A900', paddingBottom: '5px', marginBottom: '15px' }}>Last Week Attendance</h3>
                                                         <div style={{ overflowX: 'auto' }}>
-                                                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                                                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                                                                 <tbody>
                                                                     {mySubjects.map(sub => {
                                                                         const subClassIds = myClasses.filter(c => c.course === sub).map(c => c.id);
@@ -1006,16 +1031,16 @@ export default function Home() {
 
                                                                         return (
                                                                             <tr key={sub} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                                                                <td style={{ padding: '12px 10px', fontWeight: 'bold', color: '#444', minWidth: '120px' }}>{sub}</td>
-                                                                                <td style={{ padding: '12px 10px', display: 'flex', gap: '8px', overflowX: 'auto' }} className="scroll-hide">
+                                                                                <td style={{ padding: '10px 8px', fontWeight: 'bold', color: '#444', minWidth: '100px' }}>{sub}</td>
+                                                                                <td style={{ padding: '10px 8px', display: 'flex', gap: '8px', overflowX: 'auto' }} className="scroll-hide">
                                                                                     {subSess.map(sess => {
                                                                                         const rec = attRecords.find(r => r.session_id === sess.id && r.student_id === myRollNumber);
                                                                                         const status = rec ? rec.status : 'Absent';
                                                                                         const dateStr = new Date(sess.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric' }).replace('/', '-'); // Outputs "5-6"
                                                                                         
                                                                                         return (
-                                                                                            <div key={sess.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', padding: '6px', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '65px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                                                                                                <span style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'bold', marginBottom: '5px' }}>{dateStr}</span>
+                                                                                            <div key={sess.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', padding: '6px', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '60px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                                                                                <span style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold', marginBottom: '4px' }}>{dateStr}</span>
                                                                                                 <StatusBadge status={status} />
                                                                                             </div>
                                                                                         )
@@ -1031,17 +1056,17 @@ export default function Home() {
 
                                                     {/* SECTION 3: Check Specified Subject */}
                                                     <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '12px', border: '1px solid #e9ecef' }}>
-                                                        <h3 style={{ fontSize: '1rem', color: '#002147', marginBottom: '10px' }}>Check Subject History</h3>
+                                                        <h3 style={{ fontSize: '0.9rem', color: '#002147', marginBottom: '10px' }}>Check Subject History</h3>
                                                         <select value={selectedAttSubject} onChange={e => setSelectedAttSubject(e.target.value)} style={selectStyle}>
                                                             <option value="">-- Select Subject --</option>
                                                             {mySubjects.map(s => <option key={s} value={s}>{s}</option>)}
                                                         </select>
 
                                                         {selectedAttSubject && (
-                                                            <div className="expand-anim" style={{ marginTop: '10px' }}>
+                                                            <div className="collapse-anim" style={{ marginTop: '10px' }}>
                                                                 {(() => {
                                                                     const specificClassIds = myClasses.filter(c => c.course === selectedAttSubject).map(c => c.id);
-                                                                    // Use allValidSessions to ensure we ignore the Last Week/Month filter here
+                                                                    // Uses allValidSessions (ignoring the Last Week/Month filter to show complete history)
                                                                     const specificSessions = allValidSessions.filter(s => specificClassIds.includes(s.base_schedule_id)).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
                                                                     
                                                                     if(specificSessions.length === 0) return <div style={emptyState}>No records found.</div>;
@@ -1052,8 +1077,8 @@ export default function Home() {
                                                                         const dateStr = new Date(sess.session_date).toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
                                                                         
                                                                         return (
-                                                                            <div key={sess.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#fff', borderRadius: '8px', marginBottom: '8px', border: '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                                                                                <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#444' }}>{dateStr}</span>
+                                                                            <div key={sess.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#fff', borderRadius: '8px', marginBottom: '8px', border: '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                                                                                <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#444' }}>{dateStr}</span>
                                                                                 <StatusBadge status={status} />
                                                                             </div>
                                                                         )
@@ -1079,7 +1104,7 @@ export default function Home() {
                                 </div>
 
                                 {roomSubTab === 'schedule' && (
-                                    <div style={whiteCard}>
+                                    <div className="expand-anim" style={whiteCard}>
                                         <input type="text" placeholder="🔍 Search room..." value={roomSearch} onChange={e => setRoomSearch(e.target.value)} style={searchInput} />
                                         <select value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)} style={selectStyle}>
                                             <option value="">-- Select Room --</option>
@@ -1097,8 +1122,8 @@ export default function Home() {
                                 )}
 
                                 {roomSubTab === 'free' && (
-                                    <div style={whiteCard}>
-                                        <h4 style={{ marginTop: 0, fontSize: '0.9rem', color: '#555' }}>Strictly finds rooms freed by cancellation</h4>
+                                    <div className="expand-anim" style={whiteCard}>
+                                        <h4 style={{ marginTop: 0, fontSize: '0.85rem', color: '#555' }}>Strictly finds rooms freed by cancellation</h4>
                                         <select value={freeDay} onChange={e => setFreeDay(e.target.value)} style={selectStyle}>
                                             {days.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
@@ -1115,7 +1140,7 @@ export default function Home() {
                                         <button onClick={searchFreeRooms} style={searchBtn}>SEARCH FREE ROOMS</button>
 
                                         {searchedFreeRooms !== null && (
-                                            <div className="expand-anim" style={{ marginTop: '15px' }}>
+                                            <div className="collapse-anim" style={{ marginTop: '15px' }}>
                                                 {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
                                                     <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
                                                 )) : <div style={emptyState}>No rooms were cancelled during this time slot.</div>}
@@ -1161,7 +1186,7 @@ export default function Home() {
                                             key={f} 
                                             onClick={() => setUpdatesFilter(f)} 
                                             style={{ 
-                                                flex: 1, padding: '10px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', 
+                                                flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', 
                                                 background: updatesFilter === f ? '#002147' : '#fff', 
                                                 color: updatesFilter === f ? '#F2A900' : '#555',
                                                 boxShadow: updatesFilter === f ? '0 2px 5px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
@@ -1172,7 +1197,7 @@ export default function Home() {
                                         </button>
                                     ))}
                                 </div>
-                                {updatesFilter === 'Last Week' && <div style={{fontSize: '0.7rem', color: '#888', marginBottom: '15px', paddingLeft: '5px'}}>* Showing records from today to previous 7 days</div>}
+                                {updatesFilter === 'Last Week' && <div style={{fontSize: '0.65rem', color: '#888', marginBottom: '15px', paddingLeft: '5px'}}>* Showing records from today to previous 7 days</div>}
                                 {updatesFilter !== 'Last Week' && <div style={{marginBottom: '15px'}}></div>}
 
                                 {getFilteredAnnouncements().length === 0 ? (
@@ -1205,44 +1230,50 @@ export default function Home() {
                                             <div 
                                                 key={ann.id} 
                                                 onClick={() => setExpandedAssignmentId(isExpanded ? null : ann.id)}
-                                                style={{ display: 'flex', background: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.04)', marginBottom: '15px', border: '1px solid #eee', cursor: 'pointer', transition: 'all 0.3s ease' }}
+                                                style={{ display: 'flex', background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '12px', border: '1px solid #eee', cursor: 'pointer', transition: 'all 0.3s ease' }}
                                             >
                                                 <div style={{ width: '6px', background: ann.type === 'assignment' ? '#F2A900' : '#3b82f6' }}></div>
                                                 
-                                                <div style={{ flex: 1, padding: '16px', position: 'relative' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                <div style={{ flex: 1, padding: '14px', position: 'relative' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                            <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                            <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                                 {ann.subject}
                                                             </span>
-                                                            {ann.type === 'assignment' && (
-                                                                <span style={{ background: '#F2A900', color: '#002147', fontSize: '0.65rem', fontWeight: '900', padding: '3px 8px', borderRadius: '20px' }}>
-                                                                    ASSIGNMENT
-                                                                </span>
-                                                            )}
                                                         </div>
                                                         <div style={{ color: '#002147', opacity: 0.6 }}>
                                                             {isExpanded ? SVGS.chevronUp : SVGS.chevronDown}
                                                         </div>
                                                     </div>
 
-                                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '1.05rem', color: '#111827', fontWeight: '800', lineHeight: '1.4' }}>{ann.topics}</h4>
+                                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem', color: '#111827', fontWeight: '800', lineHeight: '1.4' }}>{ann.topics}</h4>
                                                     
+                                                    {!isExpanded && ann.type === 'assignment' && deadlineDate && (
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: isExpired ? '#fef2f2' : '#fff9e6', border: `1px solid ${isExpired ? '#fecaca' : '#F2A900'}`, borderRadius: '20px', padding: '3px 8px', fontSize: '0.65rem', marginTop: '6px' }}>
+                                                            <span style={{ fontWeight: '900', color: isExpired ? '#991b1b' : '#b27b00' }}>ASSIGNMENT</span>
+                                                            <span style={{ color: isExpired ? '#f87171' : '#fde68a' }}>|</span>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isExpired ? '#991b1b' : '#856404', fontWeight: 'bold' }}>
+                                                                {isExpired ? SVGS.alertCircle : SVGS.clock} 
+                                                                {isExpired ? 'Passed' : timeRemainingDisplay}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
                                                     {isExpanded && (
-                                                        <div className="expand-anim" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
-                                                            <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{ann.details}</p>
+                                                        <div className="collapse-anim" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f0f0f0' }}>
+                                                            <p style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{ann.details}</p>
                                                             
                                                             {ann.type === 'assignment' && deadlineDate && (
-                                                                <div style={{ background: isExpired ? '#fef2f2' : '#f0f9ff', border: `1px solid ${isExpired ? '#fecaca' : '#bae6fd'}`, color: isExpired ? '#991b1b' : '#0369a1', fontSize: '0.8rem', padding: '10px 12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                <div style={{ background: isExpired ? '#fef2f2' : '#f0f9ff', border: `1px solid ${isExpired ? '#fecaca' : '#bae6fd'}`, color: isExpired ? '#991b1b' : '#0369a1', fontSize: '0.75rem', padding: '10px 12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                                     <div style={{ fontWeight: 'bold' }}>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</div>
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '600' }}>
-                                                                        {!isExpired && SVGS.hourglass}
+                                                                        {isExpired ? SVGS.alertCircle : SVGS.clock}
                                                                         {isExpired ? `❌ Passed` : `Time Remaining: ${timeRemainingDisplay}`}
                                                                     </div>
                                                                 </div>
                                                             )}
                                                             
-                                                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '10px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
+                                                            <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginTop: '10px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1265,36 +1296,36 @@ export default function Home() {
 
 // STYLES
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
-const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
-const bigBtn = { width: '100%', padding: '15px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer', transition: 'all 0.3s ease' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '18px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
-const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' };
-const redDot = { position: 'absolute', top: '0', right: '0', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
-const newsRedDot = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: 'red', borderRadius: '50%' };
-const tabBar = { background: '#fff', padding: '8px 6px', gap: '6px', position: 'sticky', top: '60px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, minWidth: '95px', padding: '12px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
-const subTabBtn = (active) => ({ flex: 1, padding: '10px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' });
-const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '45px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
-const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '8px 15px', borderRadius: '8px', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', fontSize: '0.85rem' };
-const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
-const searchInput = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const welcomeCard = { background: '#fff', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const bigBtn = { width: '100%', padding: '12px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.9rem' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '5px 8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' };
+const redDot = { position: 'absolute', top: '0', right: '0', width: '8px', height: '8px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
+const newsRedDot = { position: 'absolute', top: '4px', right: '4px', width: '8px', height: '8px', background: 'red', borderRadius: '50%' };
+const tabBar = { background: '#fff', padding: '8px 6px', gap: '6px', position: 'sticky', top: '56px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '70px', padding: '8px 4px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabBtn = (active) => ({ flex: 1, padding: '8px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' });
+const dayFilter = { display: 'flex', gap: '6px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '5px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '6px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.7rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
+const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '6px 12px', borderRadius: '8px', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', fontSize: '0.8rem' };
+const selectStyle = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const searchInput = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
 const cardBase = { padding: '12px', borderRadius: '10px', transition: 'all 0.3s ease' };
-const notifCard = { background: '#fff', padding: '12px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' };
+const notifCard = { background: '#fff', padding: '10px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' };
 const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '15px', borderTop: '4px solid #F2A900', transition: 'all 0.3s ease' };
-const searchBtn = { width: '100%', padding: '14px', background: '#002147', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', boxSizing: 'border-box', transition: 'all 0.3s ease' };
-const markReadBtn = { background: '#e9ecef', border: 'none', padding: '6px 12px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
-const freeRoomItem = { padding: '12px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.85rem', background: '#f0fff4', borderRadius: '5px', marginBottom: '5px' };
-const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#25D366', color: '#fff', padding: '12px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '20px', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
-const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#25D366', color: '#fff', padding: '10px 15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 2px 5px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
-const emptyState = { textAlign: 'center', padding: '30px 10px', color: '#999', fontSize: '0.9rem' };
-const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' };
-const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.9rem', marginTop: 'auto' };
-const notifBannerStyle = { background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900', gap: '10px', transition: 'all 0.3s ease' };
-const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease' };
-const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '8px 12px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold', justifyContent: 'flex-start' };
+const searchBtn = { width: '100%', padding: '12px', background: '#002147', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', boxSizing: 'border-box', transition: 'all 0.3s ease', fontSize: '0.85rem' };
+const markReadBtn = { background: '#e9ecef', border: 'none', padding: '4px 10px', borderRadius: '5px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
+const freeRoomItem = { padding: '10px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.8rem', background: '#f0fff4', borderRadius: '5px', marginBottom: '5px' };
+const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#25D366', color: '#fff', padding: '10px 15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '20px', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease', fontSize: '0.85rem' };
+const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#25D366', color: '#fff', padding: '8px 12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.8rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 2px 5px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
+const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem' };
+const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif', fontSize: '0.9rem' };
+const footerStyle = { textAlign: 'center', padding: '15px 10px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '10px', transition: 'all 0.3s ease' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
+const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '6px 10px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', display: 'flex', alignItems: 'center', fontSize: '0.7rem', fontWeight: 'bold', justifyContent: 'flex-start' };
 
 // Sidebar Styles
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeIn 0.2s ease' };
-const sidebarMenu = { width: '260px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '15px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '5px solid #F2A900' : '5px solid transparent', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
+const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '5px solid #F2A900' : '5px solid transparent', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
