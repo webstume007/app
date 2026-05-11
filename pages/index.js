@@ -30,14 +30,6 @@ const getSemesterFromSession = (session) => {
     return `${semestersPassed}${suffix}`;
 };
 
-// Helper for grouping attendance dates
-const getWeekKey = (dateStr) => {
-    const d = new Date(dateStr);
-    const day = d.getDay() || 7; 
-    d.setDate(d.getDate() - (day - 1));
-    return `Week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-};
-
 // --- Custom SVGs for UI ---
 const SVGS = {
     tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
@@ -45,16 +37,15 @@ const SVGS = {
     minus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg>,
     chevronDown: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
     chevronUp: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
-    bell: <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
     whatsapp: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>,
-    calendar: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/><line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/></svg>,
-    clipboardCheck: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4" strokeWidth="2" strokeLinecap="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" strokeWidth="2" strokeLinecap="round"/></svg>,
-    megaphone: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    door: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    userTie: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
+    calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/><line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/></svg>,
+    clipboardCheck: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4" strokeWidth="2" strokeLinecap="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" strokeWidth="2" strokeLinecap="round"/></svg>,
+    megaphone: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
     clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>,
-    contactBook: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 4h16v16H4z" strokeWidth="2"/><path d="M4 8h16M4 16h16M8 4v16" strokeWidth="2"/></svg>
+    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>
 };
 
 export default function Home() {
@@ -65,22 +56,19 @@ export default function Home() {
     const [pointsData, setPointsData] = useState([]); 
     const [announcements, setAnnouncements] = useState([]); 
     const [teachersData, setTeachersData] = useState([]); 
-    const [contactsData, setContactsData] = useState([]); // NEW STATE for contacts table
+    const [contactsData, setContactsData] = useState([]); 
     const [loading, setLoading] = useState(true);
 
-    // NEW Data States for Attendance
     const [studentsData, setStudentsData] = useState([]);
     const [attSessions, setAttSessions] = useState([]);
     const [attRecords, setAttRecords] = useState([]);
 
-    // Persistence States
     const [userSection, setUserSection] = useState(null);
     const [isFirstVisit, setIsFirstVisit] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date()); 
     const [readNotifIds, setReadNotifIds] = useState([]);
     const [myRollNumber, setMyRollNumber] = useState(null);
 
-    // Active View States
     const [currentTab, setCurrentTab] = useState('class'); 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [roomSubTab, setRoomSubTab] = useState('schedule'); 
@@ -92,24 +80,20 @@ export default function Home() {
     const [showNotifBanner, setShowNotifBanner] = useState(false);
     
     const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
-    const [expandedContactId, setExpandedContactId] = useState(null); // Tracks which lecture is expanded for Contacts
+    const [expandedContactId, setExpandedContactId] = useState(null); 
 
-    // Responsive State
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
-    // Free Room Filters
     const [freeDay, setFreeDay] = useState('MON');
     const [freeStart, setFreeStart] = useState('8:00 AM');
     const [freeEnd, setFreeEnd] = useState('9:00 AM');
     const [searchedFreeRooms, setSearchedFreeRooms] = useState(null);
 
-    // Search & Dropdown States
     const [teacherSearch, setTeacherSearch] = useState('');
     const [selectedTeacher, setSelectedTeacher] = useState('');
     const [roomSearch, setRoomSearch] = useState('');
     const [selectedRoom, setSelectedRoom] = useState('');
 
-    // Attendance & Update Filter States
     const [attSearch, setAttSearch] = useState('');
     const [selectedRollInput, setSelectedRollInput] = useState('');
     const [attFilter, setAttFilter] = useState('Last Month');
@@ -128,14 +112,12 @@ export default function Home() {
         ts += 30;
     }
 
-    // Window Resize Listener
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // 1. INITIAL LOAD
     useEffect(() => {
         const savedSelection = localStorage.getItem('iub_user_selection');
         if (savedSelection) {
@@ -147,9 +129,7 @@ export default function Home() {
         }
 
         const savedReadNotifs = localStorage.getItem('iub_read_notifs');
-        if (savedReadNotifs) {
-            setReadNotifIds(JSON.parse(savedReadNotifs));
-        }
+        if (savedReadNotifs) setReadNotifIds(JSON.parse(savedReadNotifs));
 
         const savedRoll = localStorage.getItem('iub_my_roll');
         if (savedRoll) setMyRollNumber(savedRoll);
@@ -164,23 +144,19 @@ export default function Home() {
         return () => clearInterval(timer);
     }, []);
 
-    // 2. SUPABASE REALTIME LISTENER (Instant Updates)
     useEffect(() => {
         if (!userSection || userSection.section === 'GUEST') return;
 
         const channel = supabase
             .channel('student-dashboard-updates')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-                // Strict isolation checking for notifications
                 if (payload.new.message.includes(`Section ${userSection.section}`) || payload.new.message.includes('GLOBAL')) {
                     setNotifications(prev => [payload.new, ...prev]);
                     
                     if (Notification.permission === "granted") {
                         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                            navigator.serviceWorker.ready.then((registration) => {
-                                registration.showNotification("IUB Update Alert", {
-                                    body: payload.new.message, icon: "/icon.png", vibrate: [200, 100, 200]
-                                });
+                            navigator.serviceWorker.ready.then((reg) => {
+                                reg.showNotification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
                             });
                         } else {
                             new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
@@ -193,16 +169,7 @@ export default function Home() {
                     setAnnouncements(prev => [payload.new, ...prev].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
                     
                     if (Notification.permission === "granted") {
-                        const title = payload.new.type === 'assignment' ? "New Assignment Posted!" : "New Class Announcement";
-                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                            navigator.serviceWorker.ready.then((registration) => {
-                                registration.showNotification(title, {
-                                    body: `${payload.new.subject}: ${payload.new.topics}`, icon: "/icon.png", vibrate: [200, 100, 200]
-                                });
-                            });
-                        } else {
-                            new Notification(title, { body: `${payload.new.subject}: ${payload.new.topics}`, icon: "/icon.png" });
-                        }
+                        new Notification("New Announcement", { body: `${payload.new.subject}: ${payload.new.topics}`, icon: "/icon.png" });
                     }
                 }
             })
@@ -213,31 +180,30 @@ export default function Home() {
         return () => { supabase.removeChannel(channel); };
     }, [userSection]);
 
-    // 3. INITIALIZE SERVICE WORKER
     useEffect(() => {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then((reg) => console.log('SW Registered')).catch((err) => console.error('SW Failed!', err));
+            navigator.serviceWorker.register('/sw.js').then((reg) => console.log('SW Registered')).catch(console.error);
         }
-    }, []);
-
-    useEffect(() => {
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
         });
     }, []);
 
-    // 4. INVALID CACHE RECOVERY
-    useEffect(() => {
-        if (!loading && !isFirstVisit && userSection && userSection.section !== 'GUEST' && rawData.length > 0) {
-            const isValid = rawData.some(c => c.session === userSection.session && c.section === userSection.section);
-            if (!isValid) {
-                localStorage.removeItem('iub_user_selection');
-                setUserSection(null);
-                setIsFirstVisit(true);
-            }
+    // --- Helper to fetch large tables safely (>1000 rows) ---
+    const fetchAllRows = async (table) => {
+        let all = [];
+        let from = 0;
+        const step = 1000;
+        while(true) {
+            const { data, error } = await supabase.from(table).select('*').range(from, from + step - 1);
+            if (error || !data || data.length === 0) break;
+            all = [...all, ...data];
+            if (data.length < step) break;
+            from += step;
         }
-    }, [loading, isFirstVisit, userSection, rawData]);
+        return { data: all };
+    };
 
     const fetchLiveSchedule = async () => {
         const savedSelection = localStorage.getItem('iub_user_selection');
@@ -249,37 +215,52 @@ export default function Home() {
             activeSession = parsed.session || parsed.semester;
             activeSection = parsed.section;
         }
+        
+        const savedRoll = localStorage.getItem('iub_my_roll');
 
-        let studentsPromise = Promise.resolve({ data: [] });
+        // Strictly optimized specific fetches for the user
+        let studentsReq = Promise.resolve({ data: [] });
+        let annReq = Promise.resolve({ data: [] });
+
         if (activeSession && activeSection && activeSection !== 'GUEST') {
-            studentsPromise = supabase.from('students')
-                .select('*')
-                .eq('session', activeSession)
-                .eq('section', activeSection);
+            studentsReq = supabase.from('students').select('*').eq('session', activeSession).eq('section', activeSection);
+            annReq = supabase.from('class_announcements').select('*').eq('session', activeSession).eq('section', activeSection).order('created_at', { ascending: false });
         }
 
-        const [baseRes, excRes, notifRes, pointsRes, annRes, teachersRes, studentsRes, attSessRes, attRecRes, contactsRes] = await Promise.all([
-            supabase.from('base_schedule').select('*'),
-            supabase.from('schedule_exceptions').select('*'), 
-            supabase.from('notifications').select('*').order('created_at', { ascending: false }),
+        const [baseRes, excRes, notifRes, pointsRes, teachersRes, contactsRes, studentsRes, annRes] = await Promise.all([
+            fetchAllRows('base_schedule'),
+            fetchAllRows('schedule_exceptions'),
+            supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(500),
             supabase.from('point_schedules').select('*'),
-            supabase.from('class_announcements').select('*').order('created_at', { ascending: false }),
             supabase.from('teacher_profiles').select('name, phone'),
-            studentsPromise,
-            supabase.from('attendance_sessions').select('*'),
-            supabase.from('attendance_records').select('*'),
-            supabase.from('contacts').select('*')
+            fetchAllRows('contacts'),
+            studentsReq,
+            annReq
         ]);
     
+        // Optimize Attendance session fetches strictly to relevant section IDs to save bandwidth
+        let attSessRes = { data: [] };
+        let attRecRes = { data: [] };
+
+        if (activeSession && activeSection && activeSection !== 'GUEST') {
+            const myBaseIds = (baseRes.data || []).filter(c => c.session === activeSession && c.section === activeSection).map(c => c.id);
+            if (myBaseIds.length > 0) {
+                attSessRes = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', myBaseIds);
+            }
+        }
+
+        if (savedRoll) {
+            attRecRes = await supabase.from('attendance_records').select('*').eq('student_id', savedRoll);
+        }
+
         setRawData(baseRes.data || []);
         setExceptions(excRes.data || []);
         setNotifications(notifRes.data || []);
         setPointsData(pointsRes.data || []); 
-        setAnnouncements(annRes.data || []);
         setTeachersData(teachersRes.data || []);
         setContactsData(contactsRes.data || []);
-        
         setStudentsData(studentsRes.data || []);
+        setAnnouncements(annRes.data || []);
         setAttSessions(attSessRes.data || []);
         setAttRecords(attRecRes.data || []);
 
@@ -302,15 +283,18 @@ export default function Home() {
         setCurrentTab('room');
     };
 
-    const handleRollSelectConfirm = () => {
+    const handleRollSelectConfirm = async () => {
         if (!selectedRollInput) return;
-        if (window.confirm(`Are you sure ${selectedRollInput} is your registration number? You won't be able to easily change this later.`)) {
+        if (window.confirm(`Are you sure ${selectedRollInput} is your registration number?`)) {
             localStorage.setItem('iub_my_roll', selectedRollInput);
             setMyRollNumber(selectedRollInput);
+            
+            // Dynamically specific fetch for attendance
+            const { data } = await supabase.from('attendance_records').select('*').eq('student_id', selectedRollInput);
+            if (data) setAttRecords(data);
         }
     };
 
-    // --- UNIVERSAL TIME PARSER ---
     const parseTime = (t) => {
         if (!t) return 0;
         const match12 = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -346,13 +330,11 @@ export default function Home() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    const availableSessions = [...new Set(rawData.map(x => x.session))]
-        .filter(Boolean)
-        .sort((a, b) => {
-            const semA = parseInt(getSemesterFromSession(a)) || 99;
-            const semB = parseInt(getSemesterFromSession(b)) || 99;
-            return semA - semB;
-        });
+    const availableSessions = [...new Set(rawData.map(x => x.session))].filter(Boolean).sort((a, b) => {
+        const semA = parseInt(getSemesterFromSession(a)) || 99;
+        const semB = parseInt(getSemesterFromSession(b)) || 99;
+        return semA - semB;
+    });
 
     const getSectionsForSession = (sess) => [...new Set(rawData.filter(x => x.session === sess).map(x => x.section))].sort();
     
@@ -362,33 +344,24 @@ export default function Home() {
     const getStatusStyles = (cls) => {
         const todayStr = new Date().toLocaleDateString('en-CA');
         const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
-        
         if (exc?.status === 'cancelled') return { label: `Cancelled on ${exc.exception_date}`, color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
         if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
-
         return null; 
     };
 
     const getNearestPoints = (cls) => {
         if (!pointsData || pointsData.length === 0) return { up: '--:--', down: '--:--' };
-
         const isSat = cls.day === 'SAT';
         const clsStartMins = parseTime(cls.start_time);
         const clsEndMins = parseTime(cls.end_time);
 
         const targetUpMins = clsStartMins - 30;
-        const validUp = pointsData
-            .filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins)
-            .sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
-        
+        const validUp = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins).sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
         const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
 
         const targetDownMins = clsEndMins;
-        const validDown = pointsData
-            .filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins)
-            .sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
-        
+        const validDown = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
         const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
 
         return { up: bestUp, down: bestDown };
@@ -401,18 +374,14 @@ export default function Home() {
 
         const strictlyCancelledClasses = rawData.filter(cls => {
             if (cls.day !== freeDay) return false;
-            const clsS = parseTime(cls.start_time);
-            const clsE = parseTime(cls.end_time);
-            const overlaps = (sVal < clsE && eVal > clsS);
+            const overlaps = (sVal < parseTime(cls.end_time) && eVal > parseTime(cls.start_time));
             if (!overlaps) return false;
-
             const todayStr = new Date().toLocaleDateString('en-CA');
             const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
             return exc?.status === 'cancelled';
         });
 
-        const available = [...new Set(strictlyCancelledClasses.map(c => c.room))];
-        setSearchedFreeRooms(available);
+        setSearchedFreeRooms([...new Set(strictlyCancelledClasses.map(c => c.room))]);
     };
 
     const forceNotificationPermission = async () => {
@@ -434,14 +403,9 @@ export default function Home() {
         localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
     };
 
-    // STRICT SECTION & SESSION ISOLATION
-    const targetSemester = getSemesterFromSession(userSection?.session);
-    
-    // Strict exact match for announcements to prevent crossover
     const relevantAnnouncements = announcements.filter(a => a.section === userSection?.section && a.session === userSection?.session);
     const sectionStudents = studentsData.filter(s => s.section === userSection?.section && s.session === userSection?.session);
 
-    // Updates Filter Logic
     const getFilteredAnnouncements = () => {
         let filtered = relevantAnnouncements;
         if (updatesFilter !== 'All') {
@@ -460,16 +424,6 @@ export default function Home() {
         deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
         return (deadlineDate - currentTime) > 0;
     });
-
-    const getTeacherWhatsAppLink = (teacherName) => {
-        const tInfo = teachersData.find(t => t.name === teacherName);
-        if (tInfo && tInfo.phone) {
-            let p = tInfo.phone.replace(/\D/g, '');
-            if(p.startsWith('0')) p = '92' + p.substring(1);
-            return `https://wa.me/${p}?text=Salam%20${encodeURIComponent(teacherName)}`;
-        }
-        return `https://wa.me/?text=Salam%20${encodeURIComponent(teacherName)}`;
-    };
 
     const generateWaLink = (phone, defaultText) => {
         if(!phone) return `https://wa.me/?text=${encodeURIComponent(defaultText)}`;
@@ -495,12 +449,8 @@ export default function Home() {
 
     const getFilteredClasses = (filterKey, filterValue) => {
         let classes = rawData.filter(c => c[filterKey] === filterValue);
-        if (filterKey === 'section') {
-            classes = classes.filter(c => c.session === userSection?.session);
-        }
-        if (selectedDay !== 'ALL') {
-            classes = classes.filter(c => c.day === selectedDay);
-        }
+        if (filterKey === 'section') classes = classes.filter(c => c.session === userSection?.session);
+        if (selectedDay !== 'ALL') classes = classes.filter(c => c.day === selectedDay);
         return classes; 
     };
 
@@ -545,30 +495,25 @@ export default function Home() {
         return { subjectStats, validSessions, allValidSessions, mySubjects, myClasses };
     };
 
-    // --- NEW ATTENDANCE UI COMPONENTS ---
     const CircularProgress = ({ percentage, subject, isOverall = false }) => {
-        const radius = isOverall ? 42 : 32;
+        const radius = isOverall ? 40 : 30;
         const circumference = 2 * Math.PI * radius;
         const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-        let color = '#28a745'; // Green
-        if (percentage < 50) color = '#dc3545'; // Red
-        else if (percentage < 80) color = '#ffc107'; // Yellow
-
-        const size = isOverall ? 100 : 80;
+        let color = percentage < 50 ? '#dc3545' : percentage < 80 ? '#ffc107' : '#28a745';
+        const size = isOverall ? 90 : 70;
 
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '8px' }}>
                 <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
                         <circle cx="50" cy="50" r={radius} stroke="#e9ecef" strokeWidth="8" fill="transparent" />
                         <circle cx="50" cy="50" r={radius} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }} />
                     </svg>
-                    <span style={{ position: 'absolute', fontWeight: 'bold', fontSize: isOverall ? '1rem' : '0.85rem', color: '#002147' }}>
+                    <span style={{ position: 'absolute', fontWeight: 'bold', fontSize: isOverall ? '1rem' : '0.8rem', color: '#002147' }}>
                         {Math.round(percentage)}%
                     </span>
                 </div>
-                <div style={{ fontSize: isOverall ? '0.8rem' : '0.7rem', marginTop: '8px', fontWeight: 'bold', color: '#555', textAlign: 'center', maxWidth: isOverall ? '100px' : '80px', lineHeight: '1.2' }}>
+                <div style={{ fontSize: isOverall ? '0.75rem' : '0.65rem', marginTop: '6px', fontWeight: 'bold', color: '#555', textAlign: 'center', maxWidth: isOverall ? '90px' : '75px', lineHeight: '1.2' }}>
                     {subject}
                 </div>
             </div>
@@ -581,33 +526,28 @@ export default function Home() {
         else if (status === 'Leave') { bg = '#e2e8f0'; color = '#334155'; icon = SVGS.minus; }
 
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: bg, color: color, padding: '4px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: bg, color: color, padding: '3px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>
                 {icon} {status}
             </span>
         );
     };
 
-    // --- RENDER COMPONENT HELPERS ---
     const renderClassCards = (scheduleList, displayContext) => {
         if (displayContext === 'class' && userSection?.section === 'GUEST') {
             return (
                 <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
-                    <p style={{fontSize: '1.1rem'}}>👤 Guest Mode Active</p>
-                    <p style={{fontSize: '0.85rem'}}>You can search for Teacher schedules and Free Rooms above.</p>
-                    <p style={{fontSize: '0.85rem'}}>To view a personalized class schedule, click <b>"Change Section"</b> in the menu.</p>
+                    <p style={{fontSize: '1rem', fontWeight: 'bold', color: '#002147'}}>👤 Guest Mode Active</p>
+                    <p style={{fontSize: '0.8rem'}}>You can search for Teacher schedules and Free Rooms above.</p>
+                    <p style={{fontSize: '0.8rem'}}>To view a personalized schedule, click <b>"Change Section"</b>.</p>
                 </div>
             );
         }
 
-        if (scheduleList.length === 0) return <div style={emptyState}>No classes scheduled for {selectedDay === 'ALL' ? 'the week' : selectedDay}.</div>;
-
+        if (scheduleList.length === 0) return <div style={emptyState}>No classes scheduled.</div>;
         const daysToRender = selectedDay === 'ALL' ? days : [selectedDay];
 
         return daysToRender.map(day => {
-            const dayClasses = scheduleList
-                .filter(c => c.day === day)
-                .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
-                
+            const dayClasses = scheduleList.filter(c => c.day === day).sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
             if (dayClasses.length === 0) return null;
 
             return (
@@ -619,45 +559,51 @@ export default function Home() {
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
 
-                        // STRICT SECTION ISOLATION FOR ASSIGNMENTS IN LECTURE CARDS
                         const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
                         const isContactExpanded = expandedContactId === cls.id;
 
-                        // Contact Search (Teacher and CR strictly mapped)
-                        const teacherContact = contactsData.find(c => c.role && c.role.toLowerCase() === 'teacher' && c.name === cls.teacher);
-                        const crContact = contactsData.find(c => c.role && c.role.toLowerCase().includes('cr') && c.session === userSection?.session && c.section === userSection?.section);
+                        // Flexible matching to ensure Contact Teacher and CR load correctly
+                        let teacherContactNumber = null;
+                        const teacherFromContacts = contactsData.find(c => c.role && c.role.toLowerCase() === 'teacher' && c.name === cls.teacher);
+                        if (teacherFromContacts && teacherFromContacts.contact) {
+                            teacherContactNumber = teacherFromContacts.contact;
+                        } else {
+                            const teacherFromProfiles = teachersData.find(t => t.name === cls.teacher);
+                            if (teacherFromProfiles && teacherFromProfiles.phone) teacherContactNumber = teacherFromProfiles.phone;
+                        }
+
+                        const crContact = contactsData.find(c => 
+                            c.role && c.role.toLowerCase().includes('cr') && 
+                            c.session?.trim().toLowerCase() === userSection?.session?.trim().toLowerCase() && 
+                            c.section?.trim().toLowerCase() === userSection?.section?.trim().toLowerCase()
+                        );
 
                         return (
-                            <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                            <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid #eee' }}>
                                 <div 
                                     onClick={() => setExpandedContactId(isContactExpanded ? null : cls.id)}
                                     style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}`, cursor: 'pointer' }}
                                 >
-                                    <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.8rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '1.05rem', margin: '5px 0' }}>{cls.course}</div>
-                                    <div style={{ color: '#555', fontSize: '0.75rem' }}>
+                                    <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.75rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '4px 0', color: '#111827' }}>{cls.course}</div>
+                                    <div style={{ color: '#555', fontSize: '0.7rem' }}>
                                         {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
                                         {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
                                         <span>👥 {getSemesterFromSession(cls.session)}-{cls.section}</span>
                                     </div>
-                                    
-                                    {status && (
-                                        <div style={{ marginTop: '8px', fontSize: '0.7rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>
-                                            ● {status.label}
-                                        </div>
-                                    )}
+                                    {status && <div style={{ marginTop: '8px', fontSize: '0.65rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>● {status.label}</div>}
                                 </div>
                                 
                                 {activeSubjectAssignments.length > 0 && (
                                     <div 
                                         onClick={(e) => { e.stopPropagation(); setExpandedAssignmentId(expandedAssignmentId === cls.id ? null : cls.id); }}
-                                        style={{ background: '#fff9e6', borderTop: '1px solid #fde68a', borderLeft: '5px solid #F2A900', padding: '10px 12px', cursor: 'pointer' }}
+                                        style={{ background: '#fff9e6', borderTop: '1px solid #fde68a', borderLeft: '5px solid #F2A900', padding: '8px 12px', cursor: 'pointer' }}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', border: '1px solid #F2A900', borderRadius: '20px', padding: '3px 8px', fontSize: '0.65rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #F2A900', borderRadius: '20px', padding: '2px 8px', fontSize: '0.6rem' }}>
                                                 <span style={{ fontWeight: '900', color: '#b27b00' }}>ASSIGNMENT</span>
                                                 <span style={{ color: '#ccc' }}>|</span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#856404', fontWeight: 'bold' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#856404', fontWeight: 'bold' }}>
                                                     {SVGS.clock} Due: {getTimeRemainingStr(activeSubjectAssignments[0]) || 'Soon'}
                                                 </span>
                                             </div>
@@ -669,12 +615,12 @@ export default function Home() {
                                 )}
 
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
-                                    <div className="collapse-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 12px 12px' }}>
+                                    <div className="collapse-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
                                         {activeSubjectAssignments.map(ann => (
-                                            <div key={ann.id} style={{ marginBottom: '10px', paddingTop: '10px', borderTop: '1px dashed #fde68a' }}>
-                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.85rem' }}>📝 {ann.topics}</div>
-                                                <div style={{ color: '#444', fontSize: '0.8rem', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{ann.details}</div>
-                                                <div style={{ fontSize: '0.7rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
+                                            <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px dashed #fde68a' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem' }}>📝 {ann.topics}</div>
+                                                <div style={{ color: '#444', fontSize: '0.75rem', marginTop: '4px', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</div>
+                                                <div style={{ fontSize: '0.65rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
                                                     Deadline: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
                                                 </div>
                                             </div>
@@ -686,28 +632,28 @@ export default function Home() {
                                     <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
                                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2L4 10h5v12h6V10h5L12 2z"/></svg>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2L4 10h5v12h6V10h5L12 2z"/></svg>
                                             {points.up}
                                         </span>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#007bff"><path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/></svg>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#007bff"><path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/></svg>
                                             {points.down}
                                         </span>
                                     </div>
                                 </div>
 
                                 {isContactExpanded && (
-                                    <div className="collapse-anim" style={{ padding: '12px 15px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
-                                        {teacherContact ? (
-                                            <a href={generateWaLink(teacherContact.contact, `Salam Sir/Mam ${teacherContact.name}`)} target="_blank" rel="noreferrer" style={contactBtnStyle}>
-                                                {SVGS.whatsapp} Contact Teacher: {teacherContact.name}
+                                    <div className="collapse-anim" style={{ padding: '12px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
+                                        {teacherContactNumber ? (
+                                            <a href={generateWaLink(teacherContactNumber, `Salam Sir/Mam ${cls.teacher}`)} target="_blank" rel="noreferrer" style={contactBtnStyle}>
+                                                {SVGS.whatsapp} Contact Teacher: {cls.teacher}
                                             </a>
                                         ) : (
                                             <div style={{...contactBtnStyle, background: '#e2e8f0', color: '#64748b', cursor: 'not-allowed', boxShadow: 'none'}}>Contact Teacher: Not Available</div>
                                         )}
                                         
-                                        {crContact && (
-                                            <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, marginTop: '8px'}}>
+                                        {crContact && crContact.contact && (
+                                            <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, marginTop: '8px', background: '#002147', color: '#F2A900'}}>
                                                 {SVGS.whatsapp} Contact CR: {crContact.name}
                                             </a>
                                         )}
@@ -729,15 +675,14 @@ export default function Home() {
         }
     };
 
-    // --- MAIN APP VIEW ---
     if (loading) return <div style={centerStyle}>Loading System Data...</div>;
 
     if (isFirstVisit) {
         return (
             <div style={welcomeBg}>
                 <div style={welcomeCard}>
-                    <h2 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.3rem' }}>Welcome to IUB Assistant! 👋</h2>
-                    <p style={{ color: '#666', fontSize: '0.85rem', marginBottom: '20px' }}>Select your section for a personalized schedule, or continue as a guest.</p>
+                    <h2 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.2rem' }}>Welcome to IUB Assistant! 👋</h2>
+                    <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '15px' }}>Select your section for a personalized schedule, or continue as a guest.</p>
 
                     <select id="initSession" style={selectStyle} onChange={(e) => {
                         const secDropdown = document.getElementById('initSec');
@@ -762,7 +707,7 @@ export default function Home() {
                             else alert("Please select both Semester and Section");
                         }} style={bigBtn}>Show My Schedule</button>
                         
-                        <div style={{color: '#999', fontSize: '0.75rem'}}>— OR —</div>
+                        <div style={{color: '#999', fontSize: '0.7rem'}}>— OR —</div>
                         
                         <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
                     </div>
@@ -788,8 +733,6 @@ export default function Home() {
                 <title>My Schedule | IUB AI</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
                 <meta name="theme-color" content="#002147" />
-                <link rel="manifest" href="/manifest.json" />
-                <link rel="apple-touch-icon" href="/icon-192x192.png" />
             </Head>
 
             <style>{`
@@ -806,33 +749,23 @@ export default function Home() {
                 }
                 .scroll-hide::-webkit-scrollbar { display: none; }
                 
-                @keyframes fadeIn {
+                @keyframes fadeInSlide {
                     from { opacity: 0; transform: translateY(-5px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
-                .expand-anim {
-                    animation: fadeIn 0.3s ease forwards;
-                }
-                
-                @keyframes expandDown {
-                    from { opacity: 0; transform: translateY(-5px); max-height: 0; }
-                    to { opacity: 1; transform: translateY(0); max-height: 2000px; }
-                }
-                .collapse-anim {
-                    animation: expandDown 0.4s ease forwards;
-                    overflow: hidden;
-                }
+                .expand-anim { animation: fadeInSlide 0.3s ease forwards; }
+                .collapse-anim { animation: fadeInSlide 0.3s ease forwards; }
             `}</style>
 
             <header style={headerStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#F2A900">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
                             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                         </svg>
                     </div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '1.3rem' }}>🎓</span> {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`}
+                    <div style={{ fontSize: '1rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>🎓</span> {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`}
                     </div>
                 </div>
 
@@ -842,7 +775,7 @@ export default function Home() {
                             key={tab.id} 
                             onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
                             style={{
-                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.8rem',
+                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
                                 background: currentTab === tab.id ? '#F2A900' : 'transparent',
                                 color: currentTab === tab.id ? '#002147' : '#fff',
                                 transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
@@ -867,8 +800,8 @@ export default function Home() {
             {isSidebarOpen && (
                 <div style={sidebarOverlay} onClick={() => setIsSidebarOpen(false)}>
                     <div style={sidebarMenu} onClick={e => e.stopPropagation()}>
-                        <div style={{ padding: '20px', borderBottom: '1px solid #eee', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem' }}>Menu Options</h3>
+                        <div style={{ padding: '15px 20px', borderBottom: '1px solid #eee', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
                             <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
                         {availableTabs.map(tab => (
@@ -881,8 +814,8 @@ export default function Home() {
                             </button>
                         ))}
                         
-                        <div style={{ marginTop: 'auto', padding: '20px', borderTop: '1px solid #eee' }}>
-                            <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); setIsSidebarOpen(false); }} style={{...changeBtn, width: '100%', background: '#dc3545', color: '#fff', border: 'none', padding: '12px', fontSize: '0.85rem' }}>
+                        <div style={{ marginTop: 'auto', padding: '15px', borderTop: '1px solid #eee' }}>
+                            <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); setIsSidebarOpen(false); }} style={{...changeBtn, width: '100%', background: '#dc3545', color: '#fff', border: 'none', padding: '10px', fontSize: '0.8rem' }}>
                                 Change Section
                             </button>
                         </div>
@@ -900,13 +833,13 @@ export default function Home() {
                 ))}
             </div>
 
-            <div style={{ padding: '10px 15px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ padding: '10px 12px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
 
                 {deferredPrompt && (
-                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', marginBottom: '15px' }}>
+                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', marginBottom: '12px' }}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
-                            <b style={{ display: 'block', marginBottom: '3px' }}>Install App 📱</b>
-                            <span style={{ fontSize: '0.7rem', opacity: 0.9 }}>Add IUB Assistant to your home screen for better performance and reliable notifications.</span>
+                            <b style={{ display: 'block', marginBottom: '2px' }}>Install App 📱</b>
+                            <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add IUB Assistant to your home screen.</span>
                         </div>
                         <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
                     </div>
@@ -915,8 +848,8 @@ export default function Home() {
                 {showNotifBanner && (
                     <div className="expand-anim" style={notifBannerStyle}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
-                            <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>Stay Updated! {SVGS.bell}</b>
-                            <span style={{ fontSize: '0.7rem', opacity: 0.9 }}>Allow notifications to get instant alerts for cancelled classes.</span>
+                            <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>Stay Updated! {SVGS.bell}</b>
+                            <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Allow notifications for cancelled classes.</span>
                         </div>
                         <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
                     </div>
@@ -924,8 +857,8 @@ export default function Home() {
 
                 {showAlerts ? (
                     <div className="expand-anim" style={whiteCard}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                            <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#002147' }}>Alerts & Notifications</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#002147' }}>Alerts & Notifications</h4>
                             <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
                         </div>
                         {relevantNotifs.length === 0 ? (
@@ -933,7 +866,7 @@ export default function Home() {
                         ) : (
                             relevantNotifs.map((n, i) => (
                                 <div key={i} style={notifCard}>
-                                    <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem' }}>{n.message}</p>
+                                    <p style={{ margin: '0 0 4px 0', fontSize: '0.8rem' }}>{n.message}</p>
                                     <span style={{ fontSize: '0.65rem', color: '#999' }}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             ))
@@ -954,17 +887,17 @@ export default function Home() {
                             </>
                         )}
 
-                        {/* ======================= NEW ATTENDANCE TAB ======================= */}
+                        {/* ======================= ATTENDANCE TAB ======================= */}
                         {currentTab === 'attendance' && !isGuestUser && (
                             <div className="expand-anim" style={whiteCard}>
-                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1rem'}}>Student Attendance</h4>
+                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '12px', borderBottom: '1px solid #eee', paddingBottom: '8px', fontSize: '0.95rem'}}>Student Attendance</h4>
                                 
                                 {!myRollNumber ? (
                                     <>
-                                        <div style={{ padding: '12px', background: '#e7f1ff', borderRadius: '8px', borderLeft: '4px solid #007bff', marginBottom: '15px', fontSize: '0.8rem', lineHeight: '1.4' }}>
-                                            Please select your Registration/Roll Number to view your attendance. This action is permanent.
+                                        <div style={{ padding: '10px', background: '#e7f1ff', borderRadius: '8px', borderLeft: '3px solid #007bff', marginBottom: '12px', fontSize: '0.75rem', lineHeight: '1.4' }}>
+                                            Please select your Registration/Roll Number to view your attendance.
                                         </div>
-                                        <input type="text" placeholder="🔍 Search Roll No (e.g. FA23...)" value={attSearch} onChange={e => setAttSearch(e.target.value)} style={searchInput} />
+                                        <input type="text" placeholder="🔍 Search Roll No..." value={attSearch} onChange={e => setAttSearch(e.target.value)} style={searchInput} />
                                         
                                         <select value={selectedRollInput} onChange={e => setSelectedRollInput(e.target.value)} style={selectStyle}>
                                             <option value="">-- Select Roll No --</option>
@@ -980,18 +913,17 @@ export default function Home() {
                                     </>
                                 ) : (
                                     <>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                                             <div>
-                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '1.05rem' }}>{myRollNumber}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#666' }}>{studentsData.find(s=>s.registration_number === myRollNumber)?.student_name}</div>
+                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.95rem' }}>{myRollNumber}</div>
+                                                <div style={{ fontSize: '0.7rem', color: '#666' }}>{studentsData.find(s=>s.registration_number === myRollNumber)?.student_name}</div>
                                             </div>
                                         </div>
 
                                         {(() => {
                                             const { subjectStats, validSessions, allValidSessions, mySubjects, myClasses } = getFilteredAttendance();
-                                            if (subjectStats.length === 0) return <div style={emptyState}>No attendance records found for this period.</div>;
+                                            if (subjectStats.length === 0) return <div style={emptyState}>No attendance records found.</div>;
 
-                                            // Calc Overall %
                                             let totalPres = 0, totalClasses = 0;
                                             subjectStats.forEach(s => {
                                                 totalClasses += s.total;
@@ -999,30 +931,27 @@ export default function Home() {
                                             });
                                             const overallPct = totalClasses === 0 ? 0 : (totalPres / totalClasses) * 100;
 
-                                            // Get Last 7 Days Sessions
                                             const nowMs = new Date().getTime();
                                             const last7DaysSessions = validSessions.filter(s => (nowMs - new Date(s.session_date).getTime()) <= 7 * 24 * 60 * 60 * 1000).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
 
                                             return (
                                                 <>
-                                                    {/* SECTION 1: Overall & Subjects Circles */}
-                                                    <div style={{ marginBottom: '30px', padding: '15px', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '10px' }}>
+                                                    <div style={{ marginBottom: '25px', padding: '12px', background: '#f8f9fa', borderRadius: '10px', border: '1px solid #e9ecef' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
                                                             <CircularProgress percentage={overallPct} subject="OVERALL ATTENDANCE" isOverall={true} />
                                                         </div>
-                                                        <div style={{ height: '1px', background: '#dee2e6', margin: '15px 0' }}></div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '10px' }}>
+                                                        <div style={{ height: '1px', background: '#dee2e6', margin: '12px 0' }}></div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-around', flexWrap: 'wrap', gap: '8px' }}>
                                                             {subjectStats.map(stat => (
                                                                 <CircularProgress key={stat.subject} percentage={stat.pct} subject={stat.subject} />
                                                             ))}
                                                         </div>
                                                     </div>
 
-                                                    {/* SECTION 2: Last Week Attendance Table */}
-                                                    <div style={{ marginBottom: '30px' }}>
-                                                        <h3 style={{ fontSize: '0.9rem', color: '#002147', borderBottom: '2px solid #F2A900', paddingBottom: '5px', marginBottom: '15px' }}>Last Week Attendance</h3>
+                                                    <div style={{ marginBottom: '25px' }}>
+                                                        <h3 style={{ fontSize: '0.85rem', color: '#002147', borderBottom: '2px solid #F2A900', paddingBottom: '4px', marginBottom: '12px' }}>Last Week Attendance</h3>
                                                         <div style={{ overflowX: 'auto' }}>
-                                                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+                                                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
                                                                 <tbody>
                                                                     {mySubjects.map(sub => {
                                                                         const subClassIds = myClasses.filter(c => c.course === sub).map(c => c.id);
@@ -1031,16 +960,15 @@ export default function Home() {
 
                                                                         return (
                                                                             <tr key={sub} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                                                                <td style={{ padding: '10px 8px', fontWeight: 'bold', color: '#444', minWidth: '100px' }}>{sub}</td>
-                                                                                <td style={{ padding: '10px 8px', display: 'flex', gap: '8px', overflowX: 'auto' }} className="scroll-hide">
+                                                                                <td style={{ padding: '8px 6px', fontWeight: 'bold', color: '#444', minWidth: '90px' }}>{sub}</td>
+                                                                                <td style={{ padding: '8px 6px', display: 'flex', gap: '6px', overflowX: 'auto' }} className="scroll-hide">
                                                                                     {subSess.map(sess => {
                                                                                         const rec = attRecords.find(r => r.session_id === sess.id && r.student_id === myRollNumber);
                                                                                         const status = rec ? rec.status : 'Absent';
-                                                                                        const dateStr = new Date(sess.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric' }).replace('/', '-'); // Outputs "5-6"
-                                                                                        
+                                                                                        const dateStr = new Date(sess.session_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric' }).replace('/', '-'); 
                                                                                         return (
-                                                                                            <div key={sess.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', padding: '6px', borderRadius: '8px', border: '1px solid #e2e8f0', minWidth: '60px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                                                                                                <span style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold', marginBottom: '4px' }}>{dateStr}</span>
+                                                                                            <div key={sess.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#fff', padding: '4px', borderRadius: '6px', border: '1px solid #e2e8f0', minWidth: '55px', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                                                                                                <span style={{ fontSize: '0.6rem', color: '#666', fontWeight: 'bold', marginBottom: '3px' }}>{dateStr}</span>
                                                                                                 <StatusBadge status={status} />
                                                                                             </div>
                                                                                         )
@@ -1054,19 +982,17 @@ export default function Home() {
                                                         </div>
                                                     </div>
 
-                                                    {/* SECTION 3: Check Specified Subject */}
-                                                    <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '12px', border: '1px solid #e9ecef' }}>
-                                                        <h3 style={{ fontSize: '0.9rem', color: '#002147', marginBottom: '10px' }}>Check Subject History</h3>
+                                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #e9ecef' }}>
+                                                        <h3 style={{ fontSize: '0.85rem', color: '#002147', marginBottom: '8px' }}>Check Subject History</h3>
                                                         <select value={selectedAttSubject} onChange={e => setSelectedAttSubject(e.target.value)} style={selectStyle}>
                                                             <option value="">-- Select Subject --</option>
                                                             {mySubjects.map(s => <option key={s} value={s}>{s}</option>)}
                                                         </select>
 
                                                         {selectedAttSubject && (
-                                                            <div className="collapse-anim" style={{ marginTop: '10px' }}>
+                                                            <div className="collapse-anim" style={{ marginTop: '8px' }}>
                                                                 {(() => {
                                                                     const specificClassIds = myClasses.filter(c => c.course === selectedAttSubject).map(c => c.id);
-                                                                    // Uses allValidSessions (ignoring the Last Week/Month filter to show complete history)
                                                                     const specificSessions = allValidSessions.filter(s => specificClassIds.includes(s.base_schedule_id)).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
                                                                     
                                                                     if(specificSessions.length === 0) return <div style={emptyState}>No records found.</div>;
@@ -1077,8 +1003,8 @@ export default function Home() {
                                                                         const dateStr = new Date(sess.session_date).toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
                                                                         
                                                                         return (
-                                                                            <div key={sess.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: '#fff', borderRadius: '8px', marginBottom: '8px', border: '1px solid #eee', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                                                                                <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#444' }}>{dateStr}</span>
+                                                                            <div key={sess.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: '#fff', borderRadius: '6px', marginBottom: '6px', border: '1px solid #eee', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                                                                                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#444' }}>{dateStr}</span>
                                                                                 <StatusBadge status={status} />
                                                                             </div>
                                                                         )
@@ -1087,7 +1013,6 @@ export default function Home() {
                                                             </div>
                                                         )}
                                                     </div>
-
                                                 </>
                                             )
                                         })()}
@@ -1096,9 +1021,10 @@ export default function Home() {
                             </div>
                         )}
 
+                        {/* ======================= ROOMS TAB ======================= */}
                         {currentTab === 'room' && (
                             <div className="expand-anim">
-                                <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+                                <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                                     <button onClick={() => setRoomSubTab('schedule')} style={subTabBtn(roomSubTab === 'schedule')}>ROOM SCHEDULE</button>
                                     <button onClick={() => setRoomSubTab('free')} style={subTabBtn(roomSubTab === 'free')}>FREE ROOM</button>
                                 </div>
@@ -1111,7 +1037,7 @@ export default function Home() {
                                             {allRooms.filter(r => r.toLowerCase().includes(roomSearch.toLowerCase())).map(r => <option key={r} value={r}>{r}</option>)}
                                         </select>
                                         
-                                        <div style={{...dayFilter, marginTop: '10px', marginBottom: '20px'}}>
+                                        <div style={{...dayFilter, marginTop: '8px', marginBottom: '15px'}}>
                                             {filterDays.map(day => (
                                                 <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>{day}</button>
                                             ))}
@@ -1123,11 +1049,11 @@ export default function Home() {
 
                                 {roomSubTab === 'free' && (
                                     <div className="expand-anim" style={whiteCard}>
-                                        <h4 style={{ marginTop: 0, fontSize: '0.85rem', color: '#555' }}>Strictly finds rooms freed by cancellation</h4>
+                                        <h4 style={{ marginTop: 0, fontSize: '0.8rem', color: '#555' }}>Strictly finds rooms freed by cancellation</h4>
                                         <select value={freeDay} onChange={e => setFreeDay(e.target.value)} style={selectStyle}>
                                             {days.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
-                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
                                             <select value={freeStart} onChange={e => setFreeStart(e.target.value)} style={{ ...selectStyle, flex: 1 }}>
                                                 <option value="" disabled>Start Time</option>
                                                 {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
@@ -1140,10 +1066,10 @@ export default function Home() {
                                         <button onClick={searchFreeRooms} style={searchBtn}>SEARCH FREE ROOMS</button>
 
                                         {searchedFreeRooms !== null && (
-                                            <div className="collapse-anim" style={{ marginTop: '15px' }}>
+                                            <div className="collapse-anim" style={{ marginTop: '12px' }}>
                                                 {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
                                                     <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
-                                                )) : <div style={emptyState}>No rooms were cancelled during this time slot.</div>}
+                                                )) : <div style={emptyState}>No rooms were cancelled.</div>}
                                             </div>
                                         )}
                                     </div>
@@ -1151,6 +1077,7 @@ export default function Home() {
                             </div>
                         )}
 
+                        {/* ======================= TEACHER TAB ======================= */}
                         {currentTab === 'teacher' && (
                             <div className="expand-anim" style={whiteCard}>
                                 <input type="text" placeholder="🔍 Search teacher name..." value={teacherSearch} onChange={e => setTeacherSearch(e.target.value)} style={searchInput} />
@@ -1159,7 +1086,7 @@ export default function Home() {
                                     {allTeachers.filter(t => t.toLowerCase().includes(teacherSearch.toLowerCase())).map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                                 
-                                <div style={{...dayFilter, marginTop: '10px', marginBottom: '20px'}}>
+                                <div style={{...dayFilter, marginTop: '8px', marginBottom: '15px'}}>
                                     {filterDays.map(day => (
                                         <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>{day}</button>
                                     ))}
@@ -1167,29 +1094,44 @@ export default function Home() {
 
                                 {selectedTeacher && (
                                     <div className="expand-anim">
-                                        <a href={getTeacherWhatsAppLink(selectedTeacher)} target="_blank" rel="noreferrer" style={whatsappBtn}>
-                                            {SVGS.whatsapp}
-                                            Contact {selectedTeacher}
-                                        </a>
+                                        {(() => {
+                                            let phone = null;
+                                            const contactTableTeacher = contactsData.find(c => c.role && c.role.toLowerCase() === 'teacher' && c.name === selectedTeacher);
+                                            if (contactTableTeacher && contactTableTeacher.contact) phone = contactTableTeacher.contact;
+                                            else {
+                                                const profileTableTeacher = teachersData.find(t => t.name === selectedTeacher);
+                                                if (profileTableTeacher && profileTableTeacher.phone) phone = profileTableTeacher.phone;
+                                            }
+
+                                            if (phone) {
+                                                return (
+                                                    <a href={generateWaLink(phone, `Salam Sir/Mam ${selectedTeacher}`)} target="_blank" rel="noreferrer" style={whatsappBtn}>
+                                                        {SVGS.whatsapp} Contact {selectedTeacher}
+                                                    </a>
+                                                );
+                                            } else {
+                                                return <div style={{...whatsappBtn, background: '#e2e8f0', color: '#64748b', cursor: 'not-allowed', boxShadow: 'none'}}>Contact Not Available</div>;
+                                            }
+                                        })()}
                                         {renderClassCards(teacherSchedule, 'teacher')}
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* ======================= NEW UPDATES / ANNOUNCEMENTS TAB ======================= */}
+                        {/* ======================= UPDATES TAB ======================= */}
                         {currentTab === 'announcements' && !isGuestUser && (
                             <div className="expand-anim">
-                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', background: '#f8f9fa', padding: '6px', borderRadius: '12px' }}>
+                                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', background: '#f8f9fa', padding: '5px', borderRadius: '10px' }}>
                                     {['Last Week', '15 Days', 'Last Month', 'All'].map(f => (
                                         <button 
                                             key={f} 
                                             onClick={() => setUpdatesFilter(f)} 
                                             style={{ 
-                                                flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', 
+                                                flex: 1, padding: '6px', fontSize: '0.65rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', 
                                                 background: updatesFilter === f ? '#002147' : '#fff', 
                                                 color: updatesFilter === f ? '#F2A900' : '#555',
-                                                boxShadow: updatesFilter === f ? '0 2px 5px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
+                                                boxShadow: updatesFilter === f ? '0 2px 4px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.05)',
                                                 transition: 'all 0.3s ease', cursor: 'pointer'
                                             }}
                                         >
@@ -1197,8 +1139,8 @@ export default function Home() {
                                         </button>
                                     ))}
                                 </div>
-                                {updatesFilter === 'Last Week' && <div style={{fontSize: '0.65rem', color: '#888', marginBottom: '15px', paddingLeft: '5px'}}>* Showing records from today to previous 7 days</div>}
-                                {updatesFilter !== 'Last Week' && <div style={{marginBottom: '15px'}}></div>}
+                                {updatesFilter === 'Last Week' && <div style={{fontSize: '0.6rem', color: '#888', marginBottom: '12px', paddingLeft: '4px'}}>* Showing records from today to previous 7 days</div>}
+                                {updatesFilter !== 'Last Week' && <div style={{marginBottom: '12px'}}></div>}
 
                                 {getFilteredAnnouncements().length === 0 ? (
                                     <div style={emptyState}>No updates found for the selected filter.</div>
@@ -1213,7 +1155,6 @@ export default function Home() {
                                         if (deadlineDate && ann.deadline_time) {
                                             const dm = parseTime(ann.deadline_time);
                                             deadlineDate.setHours(Math.floor(dm / 60), dm % 60, 0, 0);
-                                            
                                             const diffMs = deadlineDate - currentTime;
                                             
                                             if (diffMs > 0) {
@@ -1230,14 +1171,14 @@ export default function Home() {
                                             <div 
                                                 key={ann.id} 
                                                 onClick={() => setExpandedAssignmentId(isExpanded ? null : ann.id)}
-                                                style={{ display: 'flex', background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '12px', border: '1px solid #eee', cursor: 'pointer', transition: 'all 0.3s ease' }}
+                                                style={{ display: 'flex', background: 'white', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', marginBottom: '12px', border: '1px solid #eee', cursor: 'pointer', transition: 'all 0.3s ease' }}
                                             >
-                                                <div style={{ width: '6px', background: ann.type === 'assignment' ? '#F2A900' : '#3b82f6' }}></div>
+                                                <div style={{ width: '5px', background: ann.type === 'assignment' ? '#F2A900' : '#3b82f6' }}></div>
                                                 
-                                                <div style={{ flex: 1, padding: '14px', position: 'relative' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                            <span style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                <div style={{ flex: 1, padding: '12px', position: 'relative' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: '0.6rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                                 {ann.subject}
                                                             </span>
                                                         </div>
@@ -1246,13 +1187,13 @@ export default function Home() {
                                                         </div>
                                                     </div>
 
-                                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem', color: '#111827', fontWeight: '800', lineHeight: '1.4' }}>{ann.topics}</h4>
+                                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#111827', fontWeight: '800', lineHeight: '1.3' }}>{ann.topics}</h4>
                                                     
                                                     {!isExpanded && ann.type === 'assignment' && deadlineDate && (
-                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: isExpired ? '#fef2f2' : '#fff9e6', border: `1px solid ${isExpired ? '#fecaca' : '#F2A900'}`, borderRadius: '20px', padding: '3px 8px', fontSize: '0.65rem', marginTop: '6px' }}>
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isExpired ? '#fef2f2' : '#fff9e6', border: `1px solid ${isExpired ? '#fecaca' : '#F2A900'}`, borderRadius: '15px', padding: '2px 6px', fontSize: '0.6rem', marginTop: '4px' }}>
                                                             <span style={{ fontWeight: '900', color: isExpired ? '#991b1b' : '#b27b00' }}>ASSIGNMENT</span>
                                                             <span style={{ color: isExpired ? '#f87171' : '#fde68a' }}>|</span>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isExpired ? '#991b1b' : '#856404', fontWeight: 'bold' }}>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: isExpired ? '#991b1b' : '#856404', fontWeight: 'bold' }}>
                                                                 {isExpired ? SVGS.alertCircle : SVGS.clock} 
                                                                 {isExpired ? 'Passed' : timeRemainingDisplay}
                                                             </span>
@@ -1260,20 +1201,20 @@ export default function Home() {
                                                     )}
 
                                                     {isExpanded && (
-                                                        <div className="collapse-anim" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f0f0f0' }}>
-                                                            <p style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{ann.details}</p>
+                                                        <div className="collapse-anim" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f0f0f0' }}>
+                                                            <p style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
                                                             
                                                             {ann.type === 'assignment' && deadlineDate && (
-                                                                <div style={{ background: isExpired ? '#fef2f2' : '#f0f9ff', border: `1px solid ${isExpired ? '#fecaca' : '#bae6fd'}`, color: isExpired ? '#991b1b' : '#0369a1', fontSize: '0.75rem', padding: '10px 12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                <div style={{ background: isExpired ? '#fef2f2' : '#f0f9ff', border: `1px solid ${isExpired ? '#fecaca' : '#bae6fd'}`, color: isExpired ? '#991b1b' : '#0369a1', fontSize: '0.7rem', padding: '8px 10px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                                                     <div style={{ fontWeight: 'bold' }}>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</div>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '600' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
                                                                         {isExpired ? SVGS.alertCircle : SVGS.clock}
                                                                         {isExpired ? `❌ Passed` : `Time Remaining: ${timeRemainingDisplay}`}
                                                                     </div>
                                                                 </div>
                                                             )}
                                                             
-                                                            <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginTop: '10px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
+                                                            <div style={{ fontSize: '0.6rem', color: '#9ca3af', marginTop: '8px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1296,36 +1237,36 @@ export default function Home() {
 
 // STYLES
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
-const welcomeCard = { background: '#fff', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
-const bigBtn = { width: '100%', padding: '12px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.9rem' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
-const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '5px 8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' };
-const redDot = { position: 'absolute', top: '0', right: '0', width: '8px', height: '8px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
-const newsRedDot = { position: 'absolute', top: '4px', right: '4px', width: '8px', height: '8px', background: 'red', borderRadius: '50%' };
-const tabBar = { background: '#fff', padding: '8px 6px', gap: '6px', position: 'sticky', top: '56px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '70px', padding: '8px 4px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
-const subTabBtn = (active) => ({ flex: 1, padding: '8px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' });
-const dayFilter = { display: 'flex', gap: '6px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '5px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '6px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.7rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
-const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '6px 12px', borderRadius: '8px', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', fontSize: '0.8rem' };
-const selectStyle = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
-const searchInput = { width: '100%', padding: '10px', marginBottom: '10px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
-const cardBase = { padding: '12px', borderRadius: '10px', transition: 'all 0.3s ease' };
-const notifCard = { background: '#fff', padding: '10px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' };
-const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '15px', borderTop: '4px solid #F2A900', transition: 'all 0.3s ease' };
-const searchBtn = { width: '100%', padding: '12px', background: '#002147', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', boxSizing: 'border-box', transition: 'all 0.3s ease', fontSize: '0.85rem' };
-const markReadBtn = { background: '#e9ecef', border: 'none', padding: '4px 10px', borderRadius: '5px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
-const freeRoomItem = { padding: '10px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.8rem', background: '#f0fff4', borderRadius: '5px', marginBottom: '5px' };
-const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#25D366', color: '#fff', padding: '10px 15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '20px', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease', fontSize: '0.85rem' };
-const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#25D366', color: '#fff', padding: '8px 12px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.8rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 2px 5px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
-const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem' };
-const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif', fontSize: '0.9rem' };
-const footerStyle = { textAlign: 'center', padding: '15px 10px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '10px', transition: 'all 0.3s ease' };
-const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
-const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '6px 10px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', display: 'flex', alignItems: 'center', fontSize: '0.7rem', fontWeight: 'bold', justifyContent: 'flex-start' };
+const welcomeCard = { background: '#fff', padding: '20px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const bigBtn = { width: '100%', padding: '10px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '4px', padding: '4px 6px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' };
+const redDot = { position: 'absolute', top: '0', right: '0', width: '6px', height: '6px', background: 'red', borderRadius: '50%', border: '1px solid #002147' };
+const newsRedDot = { position: 'absolute', top: '4px', right: '4px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
+const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '45px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '6px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '6px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabBtn = (active) => ({ flex: 1, padding: '6px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' });
+const dayFilter = { display: 'flex', gap: '4px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '35px', padding: '6px', borderRadius: '6px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.65rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
+const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '5px 10px', borderRadius: '6px', fontWeight: 900, marginBottom: '8px', textTransform: 'uppercase', fontSize: '0.75rem' };
+const selectStyle = { width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.8rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const searchInput = { width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.8rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const cardBase = { padding: '10px', borderRadius: '8px', transition: 'all 0.3s ease' };
+const notifCard = { background: '#fff', padding: '8px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #dc3545', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' };
+const whiteCard = { background: '#fff', padding: '12px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '12px', borderTop: '4px solid #F2A900', transition: 'all 0.3s ease' };
+const searchBtn = { width: '100%', padding: '10px', background: '#002147', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', boxSizing: 'border-box', transition: 'all 0.3s ease', fontSize: '0.8rem' };
+const markReadBtn = { background: '#e9ecef', border: 'none', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
+const freeRoomItem = { padding: '8px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.75rem', background: '#f0fff4', borderRadius: '4px', marginBottom: '4px' };
+const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#25D366', color: '#fff', padding: '8px 12px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '15px', boxShadow: '0 2px 5px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease', fontSize: '0.8rem' };
+const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: '#25D366', color: '#fff', padding: '6px 10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
+const emptyState = { textAlign: 'center', padding: '20px 10px', color: '#999', fontSize: '0.8rem' };
+const centerStyle = { textAlign: 'center', marginTop: '40px', fontFamily: 'sans-serif', fontSize: '0.85rem' };
+const footerStyle = { textAlign: 'center', padding: '10px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.6rem', marginTop: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.7rem' };
+const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '4px 8px', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', display: 'flex', alignItems: 'center', fontSize: '0.65rem', fontWeight: 'bold', justifyContent: 'flex-start' };
 
 // Sidebar Styles
-const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeIn 0.2s ease' };
-const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '5px solid #F2A900' : '5px solid transparent', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
+const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
+const sidebarMenu = { width: '230px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 15px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
