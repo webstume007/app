@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
@@ -13,14 +13,11 @@ const getSemesterFromSession = (session) => {
     
     const d = new Date();
     const currYear = d.getFullYear();
-    const currMonth = d.getMonth(); // 0 = Jan, 11 = Dec
+    const currMonth = d.getMonth(); 
     
     let semestersPassed = (currYear - startYear) * 2;
-    
-    // Fall sessions start around August (Month index 7)
     if (currMonth >= 7) semestersPassed += 1;
     if (isSpringStart) semestersPassed += 1;
-    
     if (semestersPassed <= 0) return "1ST";
     
     const suffixes = ["TH", "ST", "ND", "RD"];
@@ -32,24 +29,27 @@ const getSemesterFromSession = (session) => {
 
 // --- Custom SVGs for UI ---
 const SVGS = {
-    tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
-    cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
-    minus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg>,
-    chevronDown: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
-    chevronUp: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
+    tick: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
+    cross: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
+    minus: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg>,
+    chevronDown: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+    chevronUp: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
     bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
-    whatsapp: <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>,
-    calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/><line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/></svg>,
-    clipboardCheck: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4" strokeWidth="2" strokeLinecap="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" strokeWidth="2" strokeLinecap="round"/></svg>,
-    megaphone: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    whatsapp: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>,
+    calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
+    attendance: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
+    updates: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    clock: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
+    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>,
     door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
     userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
-    clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>
 };
 
 export default function Home() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
+    
+    // Core Data States
+    const [dropdownMeta, setDropdownMeta] = useState({ sessions: [], rooms: [], baseMeta: [] });
     const [rawData, setRawData] = useState([]);
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
@@ -69,6 +69,9 @@ export default function Home() {
     const [readNotifIds, setReadNotifIds] = useState([]);
     const [myRollNumber, setMyRollNumber] = useState(null);
 
+    const notifiedDeadlines = useRef(new Set());
+
+    // Active View States
     const [currentTab, setCurrentTab] = useState('class'); 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [roomSubTab, setRoomSubTab] = useState('schedule'); 
@@ -96,7 +99,7 @@ export default function Home() {
 
     const [attSearch, setAttSearch] = useState('');
     const [selectedRollInput, setSelectedRollInput] = useState('');
-    const [attFilter, setAttFilter] = useState('Last Month');
+    const [attFilter, setAttFilter] = useState('All'); 
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
     const [selectedAttSubject, setSelectedAttSubject] = useState(''); 
 
@@ -111,6 +114,57 @@ export default function Home() {
         timeSlots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`);
         ts += 30;
     }
+
+    // --- Dynamic Target Fetchers ---
+    const [loadedTeachers, setLoadedTeachers] = useState(new Set());
+    useEffect(() => {
+        if (selectedTeacher && !loadedTeachers.has(selectedTeacher)) {
+            const fetchTS = async () => {
+                const { data } = await supabase.from('base_schedule').select('*').eq('teacher', selectedTeacher);
+                if (data && data.length > 0) {
+                    setRawData(prev => {
+                        const exist = new Set(prev.map(p => p.id));
+                        return [...prev, ...data.filter(d => !exist.has(d.id))];
+                    });
+                    const ids = data.map(d => d.id);
+                    const { data: excData } = await supabase.from('schedule_exceptions').select('*').in('base_schedule_id', ids);
+                    if (excData) {
+                        setExceptions(prev => {
+                            const exist = new Set(prev.map(p => p.id));
+                            return [...prev, ...excData.filter(d => !exist.has(d.id))];
+                        });
+                    }
+                    setLoadedTeachers(prev => new Set(prev).add(selectedTeacher));
+                }
+            };
+            fetchTS();
+        }
+    }, [selectedTeacher]);
+
+    const [loadedRooms, setLoadedRooms] = useState(new Set());
+    useEffect(() => {
+        if (selectedRoom && !loadedRooms.has(selectedRoom)) {
+            const fetchRS = async () => {
+                const { data } = await supabase.from('base_schedule').select('*').eq('room', selectedRoom);
+                if (data && data.length > 0) {
+                    setRawData(prev => {
+                        const exist = new Set(prev.map(p => p.id));
+                        return [...prev, ...data.filter(d => !exist.has(d.id))];
+                    });
+                    const ids = data.map(d => d.id);
+                    const { data: excData } = await supabase.from('schedule_exceptions').select('*').in('base_schedule_id', ids);
+                    if (excData) {
+                        setExceptions(prev => {
+                            const exist = new Set(prev.map(p => p.id));
+                            return [...prev, ...excData.filter(d => !exist.has(d.id))];
+                        });
+                    }
+                    setLoadedRooms(prev => new Set(prev).add(selectedRoom));
+                }
+            };
+            fetchRS();
+        }
+    }, [selectedRoom]);
 
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
@@ -139,10 +193,40 @@ export default function Home() {
         }
 
         fetchLiveSchedule();
-
-        const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-        return () => clearInterval(timer);
     }, []);
+
+    // 2-Hour Popup Notification and Alerts Tracker
+    useEffect(() => {
+        const timer = setInterval(() => {
+            const now = new Date();
+            setCurrentTime(now);
+
+            announcements.forEach(ann => {
+                if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
+                    const deadlineDate = new Date(ann.deadline_date);
+                    const deadlineMins = parseTime(ann.deadline_time);
+                    deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
+                    
+                    const diffMins = Math.floor((deadlineDate - now) / 60000);
+                    
+                    // Exact match for 2 Hours (120 mins)
+                    if (diffMins === 120 && !notifiedDeadlines.current.has(ann.id)) {
+                        notifiedDeadlines.current.add(ann.id);
+                        
+                        const msg = `⏰ DEADLINE ALERT: Only 2 hours left for ${ann.subject} Assignment (${ann.topics}).`;
+                        
+                        setNotifications(prev => [{ id: Date.now(), message: msg, created_at: new Date().toISOString() }, ...prev]);
+                        setShowAlerts(true); // Automatically slide in the alert window
+                        
+                        if (Notification.permission === "granted") {
+                            new Notification("Assignment Due Soon!", { body: msg, icon: "/icon.png" });
+                        }
+                    }
+                }
+            });
+        }, 60000);
+        return () => clearInterval(timer);
+    }, [announcements]);
 
     useEffect(() => {
         if (!userSection || userSection.section === 'GUEST') return;
@@ -168,13 +252,20 @@ export default function Home() {
                 if (payload.new.section === userSection.section && payload.new.session === userSection.session) {
                     setAnnouncements(prev => [payload.new, ...prev].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
                     
+                    const alertMsg = `📢 New ${payload.new.type === 'assignment' ? 'Assignment' : 'Announcement'}: ${payload.new.subject} - ${payload.new.topics}`;
+                    setNotifications(prev => [{ id: payload.new.id, message: alertMsg, created_at: payload.new.created_at }, ...prev]);
+                    
                     if (Notification.permission === "granted") {
-                        new Notification("New Announcement", { body: `${payload.new.subject}: ${payload.new.topics}`, icon: "/icon.png" });
+                        new Notification("New Class Update", { body: `${payload.new.subject}: ${payload.new.topics}`, icon: "/icon.png" });
                     }
                 }
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => fetchLiveSchedule())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'base_schedule' }, () => fetchLiveSchedule())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
+                // To keep this lightweight, we simply reset the loaded states so they fetch fresh on next render
+                setLoadedRooms(new Set());
+                setLoadedTeachers(new Set());
+                fetchLiveSchedule();
+            })
             .subscribe();
 
         return () => { supabase.removeChannel(channel); };
@@ -190,13 +281,12 @@ export default function Home() {
         });
     }, []);
 
-    // --- Helper to fetch large tables safely (>1000 rows) ---
-    const fetchAllRows = async (table) => {
-        let all = [];
-        let from = 0;
-        const step = 1000;
+    // --- Safe Pagination Engine for >1000 Rows ---
+    const fetchAllRows = async (table, select = '*') => {
+        let all = []; let from = 0; const step = 1000;
         while(true) {
-            const { data, error } = await supabase.from(table).select('*').range(from, from + step - 1);
+            // .order('id') absolutely prevents missed rows across pagination limits
+            const { data, error } = await supabase.from(table).select(select).order('id', { ascending: true }).range(from, from + step - 1);
             if (error || !data || data.length === 0) break;
             all = [...all, ...data];
             if (data.length < step) break;
@@ -207,63 +297,68 @@ export default function Home() {
 
     const fetchLiveSchedule = async () => {
         const savedSelection = localStorage.getItem('iub_user_selection');
-        let activeSession = null;
-        let activeSection = null;
-        
+        let activeSession = null; let activeSection = null;
         if (savedSelection) {
             const parsed = JSON.parse(savedSelection);
             activeSession = parsed.session || parsed.semester;
             activeSection = parsed.section;
         }
-        
         const savedRoll = localStorage.getItem('iub_my_roll');
 
-        // Strictly optimized specific fetches for the user
+        // 1. Fetch System Metadata to populate Dropdowns dynamically and safely
+        const { data: baseMeta } = await fetchAllRows('base_schedule', 'id, session, section, room, teacher');
+        const uniqueSessions = [...new Set(baseMeta.map(x => x.session))].filter(Boolean);
+        const uniqueRooms = [...new Set(baseMeta.map(x => x.room))].filter(Boolean).sort();
+        setDropdownMeta({ sessions: uniqueSessions, rooms: uniqueRooms, baseMeta: baseMeta });
+
+        // 2. Fetch specific payloads to save bandwidth
+        let baseReq = Promise.resolve({ data: [] });
         let studentsReq = Promise.resolve({ data: [] });
         let annReq = Promise.resolve({ data: [] });
 
         if (activeSession && activeSection && activeSection !== 'GUEST') {
+            baseReq = supabase.from('base_schedule').select('*').eq('session', activeSession).eq('section', activeSection);
             studentsReq = supabase.from('students').select('*').eq('session', activeSession).eq('section', activeSection);
             annReq = supabase.from('class_announcements').select('*').eq('session', activeSession).eq('section', activeSection).order('created_at', { ascending: false });
         }
 
-        const [baseRes, excRes, notifRes, pointsRes, teachersRes, contactsRes, studentsRes, annRes] = await Promise.all([
-            fetchAllRows('base_schedule'),
-            fetchAllRows('schedule_exceptions'),
-            supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(500),
+        const [baseRes, notifRes, pointsRes, teachersRes, contactsRes, studentsRes, annRes] = await Promise.all([
+            baseReq,
+            supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
             supabase.from('point_schedules').select('*'),
             supabase.from('teacher_profiles').select('name, phone'),
-            fetchAllRows('contacts'),
+            fetchAllRows('contacts'), // Very small table, fetch all safely
             studentsReq,
             annReq
         ]);
-    
-        // Optimize Attendance session fetches strictly to relevant section IDs to save bandwidth
-        let attSessRes = { data: [] };
-        let attRecRes = { data: [] };
 
-        if (activeSession && activeSection && activeSection !== 'GUEST') {
-            const myBaseIds = (baseRes.data || []).filter(c => c.session === activeSession && c.section === activeSection).map(c => c.id);
-            if (myBaseIds.length > 0) {
-                attSessRes = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', myBaseIds);
-            }
+        const myScheduleData = baseRes.data || [];
+        setRawData(myScheduleData); 
+        
+        if (myScheduleData.length > 0) {
+            const ids = myScheduleData.map(c => c.id);
+            const { data: excData } = await supabase.from('schedule_exceptions').select('*').in('base_schedule_id', ids);
+            setExceptions(excData || []);
+        }
+
+        if (activeSession && activeSection && activeSection !== 'GUEST' && myScheduleData.length > 0) {
+            const ids = myScheduleData.map(c => c.id);
+            const { data: attSessData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', ids);
+            setAttSessions(attSessData || []);
         }
 
         if (savedRoll) {
-            attRecRes = await supabase.from('attendance_records').select('*').eq('student_id', savedRoll);
+            const { data: attRecData } = await supabase.from('attendance_records').select('*').eq('student_id', savedRoll);
+            setAttRecords(attRecData || []);
         }
 
-        setRawData(baseRes.data || []);
-        setExceptions(excRes.data || []);
         setNotifications(notifRes.data || []);
         setPointsData(pointsRes.data || []); 
         setTeachersData(teachersRes.data || []);
         setContactsData(contactsRes.data || []);
         setStudentsData(studentsRes.data || []);
         setAnnouncements(annRes.data || []);
-        setAttSessions(attSessRes.data || []);
-        setAttRecords(attRecRes.data || []);
-
+        
         setLoading(false);
     };
 
@@ -289,7 +384,6 @@ export default function Home() {
             localStorage.setItem('iub_my_roll', selectedRollInput);
             setMyRollNumber(selectedRollInput);
             
-            // Dynamically specific fetch for attendance
             const { data } = await supabase.from('attendance_records').select('*').eq('student_id', selectedRollInput);
             if (data) setAttRecords(data);
         }
@@ -330,16 +424,21 @@ export default function Home() {
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
     };
 
-    const availableSessions = [...new Set(rawData.map(x => x.session))].filter(Boolean).sort((a, b) => {
+    const availableSessions = dropdownMeta.sessions.sort((a, b) => {
         const semA = parseInt(getSemesterFromSession(a)) || 99;
         const semB = parseInt(getSemesterFromSession(b)) || 99;
         return semA - semB;
     });
 
-    const getSectionsForSession = (sess) => [...new Set(rawData.filter(x => x.session === sess).map(x => x.section))].sort();
+    const getSectionsForSession = (sess) => [...new Set(dropdownMeta.baseMeta.filter(x => x.session === sess).map(x => x.section))].sort();
     
-    const allTeachers = [...new Set(rawData.map(x => x.teacher))].filter(Boolean).sort();
-    const allRooms = [...new Set(rawData.map(x => x.room))].filter(Boolean).sort();
+    // Merge teachers from designated table and any new ones manually entered in base_schedule
+    const allTeachers = [...new Set([
+        ...teachersData.map(x => x.name), 
+        ...dropdownMeta.baseMeta.map(x => x.teacher)
+    ])].filter(Boolean).sort();
+    
+    const allRooms = dropdownMeta.rooms;
 
     const getStatusStyles = (cls) => {
         const todayStr = new Date().toLocaleDateString('en-CA');
@@ -367,17 +466,23 @@ export default function Home() {
         return { up: bestUp, down: bestDown };
     };
 
-    const searchFreeRooms = () => {
+    const searchFreeRooms = async () => {
         const sVal = parseTime(freeStart);
         const eVal = parseTime(freeEnd);
         if (sVal >= eVal) return alert("End time must be after start time");
 
-        const strictlyCancelledClasses = rawData.filter(cls => {
-            if (cls.day !== freeDay) return false;
+        // Specific DB call so we don't need rawData to have the whole university loaded
+        const { data: dayClasses } = await supabase.from('base_schedule').select('*').eq('day', freeDay);
+        if (!dayClasses) return;
+
+        const ids = dayClasses.map(c => c.id);
+        const { data: excData } = await supabase.from('schedule_exceptions').select('*').in('base_schedule_id', ids);
+
+        const strictlyCancelledClasses = dayClasses.filter(cls => {
             const overlaps = (sVal < parseTime(cls.end_time) && eVal > parseTime(cls.start_time));
             if (!overlaps) return false;
             const todayStr = new Date().toLocaleDateString('en-CA');
-            const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
+            const exc = (excData || []).filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
             return exc?.status === 'cancelled';
         });
 
@@ -475,7 +580,8 @@ export default function Home() {
 
         const subjectStats = mySubjects.map(sub => {
             const subClassIds = myClasses.filter(c => c.course === sub).map(c => c.id);
-            const subSessions = validSessions.filter(s => subClassIds.includes(s.base_schedule_id));
+            // Circle Percentages are perfectly linked to allValidSessions to ensure Whole Record calculation
+            const subSessions = allValidSessions.filter(s => subClassIds.includes(s.base_schedule_id));
             
             let presentCount = 0;
             let totalCount = 0;
@@ -562,7 +668,6 @@ export default function Home() {
                         const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
                         const isContactExpanded = expandedContactId === cls.id;
 
-                        // Flexible matching to ensure Contact Teacher and CR load correctly
                         let teacherContactNumber = null;
                         const teacherFromContacts = contactsData.find(c => c.role && c.role.toLowerCase() === 'teacher' && c.name === cls.teacher);
                         if (teacherFromContacts && teacherFromContacts.contact) {
@@ -572,10 +677,11 @@ export default function Home() {
                             if (teacherFromProfiles && teacherFromProfiles.phone) teacherContactNumber = teacherFromProfiles.phone;
                         }
 
+                        // Finds CR Contact perfectly dynamically based on the current lecture's session and section
                         const crContact = contactsData.find(c => 
                             c.role && c.role.toLowerCase().includes('cr') && 
-                            c.session?.trim().toLowerCase() === userSection?.session?.trim().toLowerCase() && 
-                            c.section?.trim().toLowerCase() === userSection?.section?.trim().toLowerCase()
+                            c.session?.trim().toLowerCase() === cls.session?.trim().toLowerCase() && 
+                            c.section?.trim().toLowerCase() === cls.section?.trim().toLowerCase()
                         );
 
                         return (
@@ -615,7 +721,7 @@ export default function Home() {
                                 )}
 
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
-                                    <div className="collapse-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
+                                    <div className="expand-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
                                         {activeSubjectAssignments.map(ann => (
                                             <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px dashed #fde68a' }}>
                                                 <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem' }}>📝 {ann.topics}</div>
@@ -643,20 +749,22 @@ export default function Home() {
                                 </div>
 
                                 {isContactExpanded && (
-                                    <div className="collapse-anim" style={{ padding: '12px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
-                                        {teacherContactNumber ? (
-                                            <a href={generateWaLink(teacherContactNumber, `Salam Sir/Mam ${cls.teacher}`)} target="_blank" rel="noreferrer" style={contactBtnStyle}>
-                                                {SVGS.whatsapp} Contact Teacher: {cls.teacher}
-                                            </a>
-                                        ) : (
-                                            <div style={{...contactBtnStyle, background: '#e2e8f0', color: '#64748b', cursor: 'not-allowed', boxShadow: 'none'}}>Contact Teacher: Not Available</div>
-                                        )}
-                                        
-                                        {crContact && crContact.contact && (
-                                            <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, marginTop: '8px', background: '#002147', color: '#F2A900'}}>
-                                                {SVGS.whatsapp} Contact CR: {crContact.name}
-                                            </a>
-                                        )}
+                                    <div className="expand-anim" style={{ padding: '12px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {teacherContactNumber ? (
+                                                <a href={generateWaLink(teacherContactNumber, `Salam Sir/Mam ${cls.teacher}`)} target="_blank" rel="noreferrer" style={contactBtnStyle}>
+                                                    {SVGS.whatsapp} Contact Teacher: {cls.teacher}
+                                                </a>
+                                            ) : (
+                                                <div style={{...contactBtnStyle, background: '#e2e8f0', color: '#64748b', cursor: 'not-allowed', boxShadow: 'none'}}>{SVGS.whatsapp} Contact Teacher: N/A</div>
+                                            )}
+                                            
+                                            {crContact && crContact.contact && (
+                                                <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, background: '#002147', color: '#F2A900'}}>
+                                                    {SVGS.whatsapp} Contact CR: {crContact.name}
+                                                </a>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -682,7 +790,7 @@ export default function Home() {
             <div style={welcomeBg}>
                 <div style={welcomeCard}>
                     <h2 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.2rem' }}>Welcome to IUB Assistant! 👋</h2>
-                    <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '15px' }}>Select your section for a personalized schedule, or continue as a guest.</p>
+                    <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '15px' }}>Select your section for a personalized schedule.</p>
 
                     <select id="initSession" style={selectStyle} onChange={(e) => {
                         const secDropdown = document.getElementById('initSec');
@@ -708,7 +816,6 @@ export default function Home() {
                         }} style={bigBtn}>Show My Schedule</button>
                         
                         <div style={{color: '#999', fontSize: '0.7rem'}}>— OR —</div>
-                        
                         <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
                     </div>
                 </div>
@@ -754,7 +861,6 @@ export default function Home() {
                     to { opacity: 1; transform: translateY(0); }
                 }
                 .expand-anim { animation: fadeInSlide 0.3s ease forwards; }
-                .collapse-anim { animation: fadeInSlide 0.3s ease forwards; }
             `}</style>
 
             <header style={headerStyle}>
@@ -921,7 +1027,7 @@ export default function Home() {
                                         </div>
 
                                         {(() => {
-                                            const { subjectStats, validSessions, allValidSessions, mySubjects, myClasses } = getFilteredAttendance();
+                                            const { subjectStats, allValidSessions, mySubjects, myClasses } = getFilteredAttendance();
                                             if (subjectStats.length === 0) return <div style={emptyState}>No attendance records found.</div>;
 
                                             let totalPres = 0, totalClasses = 0;
@@ -932,7 +1038,7 @@ export default function Home() {
                                             const overallPct = totalClasses === 0 ? 0 : (totalPres / totalClasses) * 100;
 
                                             const nowMs = new Date().getTime();
-                                            const last7DaysSessions = validSessions.filter(s => (nowMs - new Date(s.session_date).getTime()) <= 7 * 24 * 60 * 60 * 1000).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
+                                            const last7DaysSessions = allValidSessions.filter(s => (nowMs - new Date(s.session_date).getTime()) <= 7 * 24 * 60 * 60 * 1000).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
 
                                             return (
                                                 <>
@@ -990,7 +1096,7 @@ export default function Home() {
                                                         </select>
 
                                                         {selectedAttSubject && (
-                                                            <div className="collapse-anim" style={{ marginTop: '8px' }}>
+                                                            <div className="expand-anim" style={{ marginTop: '8px' }}>
                                                                 {(() => {
                                                                     const specificClassIds = myClasses.filter(c => c.course === selectedAttSubject).map(c => c.id);
                                                                     const specificSessions = allValidSessions.filter(s => specificClassIds.includes(s.base_schedule_id)).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
@@ -1066,7 +1172,7 @@ export default function Home() {
                                         <button onClick={searchFreeRooms} style={searchBtn}>SEARCH FREE ROOMS</button>
 
                                         {searchedFreeRooms !== null && (
-                                            <div className="collapse-anim" style={{ marginTop: '12px' }}>
+                                            <div className="expand-anim" style={{ marginTop: '12px' }}>
                                                 {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
                                                     <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
                                                 )) : <div style={emptyState}>No rooms were cancelled.</div>}
@@ -1094,25 +1200,6 @@ export default function Home() {
 
                                 {selectedTeacher && (
                                     <div className="expand-anim">
-                                        {(() => {
-                                            let phone = null;
-                                            const contactTableTeacher = contactsData.find(c => c.role && c.role.toLowerCase() === 'teacher' && c.name === selectedTeacher);
-                                            if (contactTableTeacher && contactTableTeacher.contact) phone = contactTableTeacher.contact;
-                                            else {
-                                                const profileTableTeacher = teachersData.find(t => t.name === selectedTeacher);
-                                                if (profileTableTeacher && profileTableTeacher.phone) phone = profileTableTeacher.phone;
-                                            }
-
-                                            if (phone) {
-                                                return (
-                                                    <a href={generateWaLink(phone, `Salam Sir/Mam ${selectedTeacher}`)} target="_blank" rel="noreferrer" style={whatsappBtn}>
-                                                        {SVGS.whatsapp} Contact {selectedTeacher}
-                                                    </a>
-                                                );
-                                            } else {
-                                                return <div style={{...whatsappBtn, background: '#e2e8f0', color: '#64748b', cursor: 'not-allowed', boxShadow: 'none'}}>Contact Not Available</div>;
-                                            }
-                                        })()}
                                         {renderClassCards(teacherSchedule, 'teacher')}
                                     </div>
                                 )}
@@ -1201,7 +1288,7 @@ export default function Home() {
                                                     )}
 
                                                     {isExpanded && (
-                                                        <div className="collapse-anim" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f0f0f0' }}>
+                                                        <div className="expand-anim" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f0f0f0' }}>
                                                             <p style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
                                                             
                                                             {ann.type === 'assignment' && deadlineDate && (
@@ -1257,7 +1344,6 @@ const whiteCard = { background: '#fff', padding: '12px', borderRadius: '10px', b
 const searchBtn = { width: '100%', padding: '10px', background: '#002147', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', boxSizing: 'border-box', transition: 'all 0.3s ease', fontSize: '0.8rem' };
 const markReadBtn = { background: '#e9ecef', border: 'none', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
 const freeRoomItem = { padding: '8px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.75rem', background: '#f0fff4', borderRadius: '4px', marginBottom: '4px' };
-const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#25D366', color: '#fff', padding: '8px 12px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '15px', boxShadow: '0 2px 5px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease', fontSize: '0.8rem' };
 const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: '#25D366', color: '#fff', padding: '6px 10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
 const emptyState = { textAlign: 'center', padding: '20px 10px', color: '#999', fontSize: '0.8rem' };
 const centerStyle = { textAlign: 'center', marginTop: '40px', fontFamily: 'sans-serif', fontSize: '0.85rem' };
