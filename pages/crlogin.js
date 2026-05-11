@@ -46,6 +46,7 @@ export default function Dashboard() {
     const [attendanceStats, setAttendanceStats] = useState([]); 
     const [allSessionsData, setAllSessionsData] = useState([]); 
     const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); 
+    const [uploadCsvSubject, setUploadCsvSubject] = useState(''); // NEW STATE FOR UPLOAD CSV
 
     // --- STUDENT MANAGEMENT STATE ---
     const [newStudent, setNewStudent] = useState({ name: '', roll: '' });
@@ -118,6 +119,24 @@ export default function Dashboard() {
         const targetDay = dayMap[dayName.toUpperCase()];
         const diff = targetDay - currentDay;
         
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + diff);
+        return targetDate.toLocaleDateString('en-CA');
+    };
+
+    // Forces future date selection (skips today)
+    const getNextLectureDate = (dayName) => {
+        const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
+        const today = new Date();
+        const currentDay = today.getDay();
+        const targetDay = dayMap[dayName.toUpperCase()];
+        let diff = targetDay - currentDay;
+
+        // If the calculated day is today or already passed this week, bump it to next week
+        if (diff <= 0) {
+            diff += 7;
+        }
+
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + diff);
         return targetDate.toLocaleDateString('en-CA');
@@ -387,26 +406,26 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    const downloadCSV = (stat) => {
+    // Modified to support viewing HTML natively and strict format
+    const downloadCSV = (stat, viewOnly = false) => {
         if (stat.sessions.length === 0) return alert("No attendance recorded for this subject yet.");
 
-        let csv = "Registration Number,Name";
+        let csv = "Name,Registration Number";
         const sortedSessions = stat.sessions.sort((a,b) => new Date(a.session_date) - new Date(b.session_date));
         
         sortedSessions.forEach(s => { csv += `,${s.session_date}`; });
         csv += ",Overall %\n";
 
         roster.forEach(student => {
-            let row = `${student.registration_number},${student.student_name}`;
+            let row = `${student.student_name},${student.registration_number}`;
             let presentCount = 0, totalCount = 0;
             
             sortedSessions.forEach(s => {
                 const rec = s.records.find(r => r.student_id === student.registration_number);
                 if (rec) {
                     totalCount++;
-                    const isPresent = (rec.status === 'Present' || rec.status === 'Leave') ? 1 : 0;
-                    row += `,${isPresent}`;
-                    if (isPresent === 1) presentCount++;
+                    row += `,${rec.status}`;
+                    if (rec.status === 'Present' || rec.status === 'Leave') presentCount++;
                 } else { row += `,N/A`; }
             });
             
@@ -415,12 +434,113 @@ export default function Dashboard() {
             csv += row;
         });
 
+        if (viewOnly) {
+            const rows = csv.split('\n').filter(r => r.trim() !== '');
+            let html = '<html lang="en"><head><title>Attendance Report</title><style>table { border-collapse: collapse; width: 100%; font-family: sans-serif; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; } th { background-color: #f2f2f2; color: #002147; }</style></head><body style="padding: 20px;"><h2>Attendance View: ' + stat.subject + '</h2><table>';
+            rows.forEach((r, idx) => {
+                html += '<tr>';
+                const cells = r.split(',');
+                cells.forEach(c => { html += idx === 0 ? `<th>${c}</th>` : `<td>${c}</td>`; });
+                html += '</tr>';
+            });
+            html += '</table></body></html>';
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            return;
+        }
+
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `${stat.subject}_Attendance.csv`;
         a.click();
+    };
+
+    const handleAttendanceUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !uploadCsvSubject) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const text = event.target.result;
+                const rows = text.split('\n').map(r => r.split(',').map(cell => cell?.trim()));
+
+                if (rows.length < 2) return alert("Invalid CSV format.");
+
+                const headers = rows[0];
+                const dateCols = [];
+                for(let i = 2; i < headers.length; i++) {
+                    if(headers[i] && headers[i].toLowerCase() !== 'overall %') {
+                        dateCols.push({ index: i, dateStr: headers[i] });
+                    }
+                }
+
+                if(dateCols.length === 0) return alert("No valid date columns found. Format must be: Name, Registration Number, YYYY-MM-DD");
+
+                let addedCount = 0;
+
+                // Process each date column
+                for (const { index, dateStr } of dateCols) {
+                    const parsedDate = new Date(dateStr);
+                    if(isNaN(parsedDate)) continue; 
+
+                    const dayName = parsedDate.toLocaleDateString('en-US', {weekday: 'short'}).toUpperCase();
+                    const matchingBase = baseSchedule.find(b => b.course === uploadCsvSubject && b.day === dayName) || baseSchedule.find(b => b.course === uploadCsvSubject);
+
+                    if (!matchingBase) continue; 
+
+                    let sessionId = null;
+                    const { data: existingSession } = await supabase.from('attendance_sessions')
+                        .select('id')
+                        .eq('base_schedule_id', matchingBase.id)
+                        .eq('session_date', dateStr)
+                        .single();
+
+                    if (existingSession) {
+                        sessionId = existingSession.id;
+                    } else {
+                        const { data: newSession, error: sessErr } = await supabase.from('attendance_sessions')
+                            .insert([{ base_schedule_id: matchingBase.id, session_date: dateStr, submitted_by: session.user.id, status: 'approved' }])
+                            .select().single();
+                        if (sessErr) { console.error(sessErr); continue; }
+                        sessionId = newSession.id;
+                    }
+
+                    const recordsToInsert = [];
+                    for(let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        if(row.length < index + 1) continue;
+                        
+                        const roll = row[1]; // roll is at index 1
+                        const rawStatus = row[index];
+                        if(!roll || !rawStatus || rawStatus === 'N/A') continue;
+
+                        let status = 'Absent';
+                        if (rawStatus.toLowerCase() === 'present' || rawStatus.toLowerCase() === 'p' || rawStatus === '1') status = 'Present';
+                        else if (rawStatus.toLowerCase() === 'leave' || rawStatus.toLowerCase() === 'l') status = 'Leave';
+
+                        recordsToInsert.push({ session_id: sessionId, student_id: roll, status: status });
+                    }
+
+                    if (recordsToInsert.length > 0) {
+                        // Clean delete before batch inserting
+                        await supabase.from('attendance_records').delete().eq('session_id', sessionId);
+                        const { error: recErr } = await supabase.from('attendance_records').insert(recordsToInsert);
+                        if (!recErr) addedCount++;
+                    }
+                }
+
+                alert(`Successfully processed and uploaded attendance for ${addedCount} dates.`);
+                fetchProfileAndSchedule(session.user.id);
+            } catch (err) {
+                alert("Failed to parse and upload CSV.");
+            }
+            e.target.value = null; 
+        };
+        reader.readAsText(file);
     };
 
     const handleAddStudent = async (e) => {
@@ -754,7 +874,7 @@ export default function Dashboard() {
                     <div>
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px' }}>
                             <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>✅ Mark Attendance</button>
-                            <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>📥 Download CSV</button>
+                            <button onClick={() => setAttendanceView('csv_management')} style={subTabStyle(attendanceView === 'csv_management')}>📥 CSV Management</button>
                             <button onClick={() => setAttendanceView('stats')} style={subTabStyle(attendanceView === 'stats')}>📊 Statistics</button>
                         </div>
 
@@ -819,18 +939,48 @@ export default function Dashboard() {
                             </div>
                         )}
 
-                        {/* SUB-VIEW 2: DOWNLOAD CSV */}
-                        {attendanceView === 'download' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
-                                {attendanceStats.map(stat => (
-                                    <div key={`dl-${stat.subject}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #17a2b8' }}>
-                                        <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
-                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
-                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                            📥 Download .CSV Report
-                                        </button>
+                        {/* SUB-VIEW 2: CSV MANAGEMENT */}
+                        {attendanceView === 'csv_management' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {/* DOWNLOAD & VIEW SECTION */}
+                                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                    <h3 style={{ color: '#002147', marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📥 Download / View CSV</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                                        {attendanceStats.map(stat => (
+                                            <div key={`dl-${stat.subject}`} style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #17a2b8' }}>
+                                                <h4 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h4>
+                                                <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    <button onClick={() => downloadCSV(stat, false)} style={{ flex: 1, padding: '8px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                        📥 Download
+                                                    </button>
+                                                    <button onClick={() => downloadCSV(stat, true)} style={{ flex: 1, padding: '8px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                        👁️ View in Browser
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                </div>
+
+                                {/* UPLOAD SECTION */}
+                                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                    <h3 style={{ color: '#002147', marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📤 Upload Attendance via CSV</h3>
+                                    <select value={uploadCsvSubject} onChange={(e) => setUploadCsvSubject(e.target.value)} style={{...inputStyle, marginBottom: '15px'}}>
+                                        <option value="">-- Select Subject to Upload For --</option>
+                                        {availableCourses.map(c => <option key={`up-${c}`} value={c}>{c}</option>)}
+                                    </select>
+
+                                    {uploadCsvSubject && (
+                                        <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '5px', border: '1px dashed #ccc' }}>
+                                            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: 0 }}>
+                                                Format must be exactly: <strong>Name, Registration Number, YYYY-MM-DD, YYYY-MM-DD...</strong><br/>
+                                                Use "Present", "P", "1" or "Absent", "A", "0" or "Leave", "L" in cells.
+                                            </p>
+                                            <input type="file" accept=".csv" onChange={handleAttendanceUpload} style={{ display: 'block', width: '100%', marginTop: '10px' }} />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
@@ -916,7 +1066,7 @@ export default function Dashboard() {
                                             >
                                                 <option value="" disabled>-- Select Upcoming Lecture Date --</option>
                                                 {upcomingLectures.map(l => {
-                                                    const dDate = getDateForCurrentWeekDay(l.day);
+                                                    const dDate = getNextLectureDate(l.day);
                                                     const timeFmt = convertTo12Hour(l.start_time);
                                                     return <option key={l.id} value={`${dDate}|${timeFmt}`}>{l.day} {dDate} (By {timeFmt})</option>;
                                                 })}
