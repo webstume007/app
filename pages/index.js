@@ -44,8 +44,10 @@ const SVGS = {
     cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
     minus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg>,
     hourglass: <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"></path></svg>,
-    chevronDown: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
-    chevronUp: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>
+    chevronDown: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+    chevronUp: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
+    bell: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    whatsapp: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>
 };
 
 export default function Home() {
@@ -56,6 +58,7 @@ export default function Home() {
     const [pointsData, setPointsData] = useState([]); 
     const [announcements, setAnnouncements] = useState([]); 
     const [teachersData, setTeachersData] = useState([]); 
+    const [contactsData, setContactsData] = useState([]); // NEW STATE for contacts table
     const [loading, setLoading] = useState(true);
 
     // NEW Data States for Attendance
@@ -82,6 +85,7 @@ export default function Home() {
     const [showNotifBanner, setShowNotifBanner] = useState(false);
     
     const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
+    const [expandedContactId, setExpandedContactId] = useState(null); // Tracks which lecture is expanded for Contacts
 
     // Responsive State
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
@@ -103,7 +107,7 @@ export default function Home() {
     const [selectedRollInput, setSelectedRollInput] = useState('');
     const [attFilter, setAttFilter] = useState('Last Month');
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
-    const [selectedAttSubject, setSelectedAttSubject] = useState(''); // NEW STATE for Subject Lookup
+    const [selectedAttSubject, setSelectedAttSubject] = useState(''); 
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const filterDays = ["ALL", ...days];
@@ -246,7 +250,7 @@ export default function Home() {
                 .eq('section', activeSection);
         }
 
-        const [baseRes, excRes, notifRes, pointsRes, annRes, teachersRes, studentsRes, attSessRes, attRecRes] = await Promise.all([
+        const [baseRes, excRes, notifRes, pointsRes, annRes, teachersRes, studentsRes, attSessRes, attRecRes, contactsRes] = await Promise.all([
             supabase.from('base_schedule').select('*'),
             supabase.from('schedule_exceptions').select('*'), 
             supabase.from('notifications').select('*').order('created_at', { ascending: false }),
@@ -255,7 +259,8 @@ export default function Home() {
             supabase.from('teacher_profiles').select('name, phone'),
             studentsPromise,
             supabase.from('attendance_sessions').select('*'),
-            supabase.from('attendance_records').select('*')
+            supabase.from('attendance_records').select('*'),
+            supabase.from('contacts').select('*')
         ]);
     
         setRawData(baseRes.data || []);
@@ -264,6 +269,7 @@ export default function Home() {
         setPointsData(pointsRes.data || []); 
         setAnnouncements(annRes.data || []);
         setTeachersData(teachersRes.data || []);
+        setContactsData(contactsRes.data || []);
         
         setStudentsData(studentsRes.data || []);
         setAttSessions(attSessRes.data || []);
@@ -456,6 +462,13 @@ export default function Home() {
         return `https://wa.me/?text=Salam%20${encodeURIComponent(teacherName)}`;
     };
 
+    const generateWaLink = (phone, defaultText) => {
+        if(!phone) return `https://wa.me/?text=${encodeURIComponent(defaultText)}`;
+        let p = String(phone).replace(/\D/g, '');
+        if(p.startsWith('0')) p = '92' + p.substring(1);
+        return `https://wa.me/${p}?text=${encodeURIComponent(defaultText)}`;
+    };
+
     const getTimeRemainingStr = (ann) => {
         if (!ann.deadline_date || !ann.deadline_time) return null;
         const deadlineDate = new Date(ann.deadline_date);
@@ -491,7 +504,8 @@ export default function Home() {
         const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         const mySubjects = [...new Set(myClasses.map(c => c.course))];
         
-        let validSessions = attSessions.filter(sess => myClasses.some(c => c.id === sess.base_schedule_id));
+        let allValidSessions = attSessions.filter(sess => myClasses.some(c => c.id === sess.base_schedule_id));
+        let validSessions = allValidSessions;
         
         if (attFilter !== 'All') {
             const now = new Date();
@@ -519,7 +533,7 @@ export default function Home() {
             return { subject: sub, pct, total: totalCount };
         }).filter(stat => stat.total > 0);
 
-        return { subjectStats, validSessions, mySubjects, myClasses };
+        return { subjectStats, validSessions, allValidSessions, mySubjects, myClasses };
     };
 
     // --- NEW ATTENDANCE UI COMPONENTS ---
@@ -571,7 +585,7 @@ export default function Home() {
                 <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
                     <p style={{fontSize: '1.2rem'}}>👤 Guest Mode Active</p>
                     <p>You can search for Teacher schedules and Free Rooms above.</p>
-                    <p>To view a personalized class schedule, click <b>"Change Section"</b> in the top right corner.</p>
+                    <p>To view a personalized class schedule, click <b>"Change Section"</b> in the menu.</p>
                 </div>
             );
         }
@@ -598,10 +612,18 @@ export default function Home() {
 
                         // STRICT SECTION ISOLATION FOR ASSIGNMENTS IN LECTURE CARDS
                         const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
+                        const isContactExpanded = expandedContactId === cls.id;
+
+                        // Contact Search
+                        const teacherContact = contactsData.find(c => c.role.toLowerCase() === 'teacher' && c.name === cls.teacher);
+                        const crContact = contactsData.find(c => c.role.toLowerCase() === 'cr' && c.session === userSection?.session && c.section === userSection?.section);
 
                         return (
                             <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
-                                <div style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}` }}>
+                                <div 
+                                    onClick={() => setExpandedContactId(isContactExpanded ? null : cls.id)}
+                                    style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}`, cursor: 'pointer' }}
+                                >
                                     <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.85rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', margin: '5px 0' }}>{cls.course}</div>
                                     <div style={{ color: '#555', fontSize: '0.8rem' }}>
@@ -619,21 +641,24 @@ export default function Home() {
                                 
                                 {activeSubjectAssignments.length > 0 && (
                                     <div 
-                                        onClick={() => setExpandedAssignmentId(expandedAssignmentId === cls.id ? null : cls.id)}
-                                        style={{ background: '#dc3545', color: 'white', padding: '8px 12px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                        onClick={(e) => { e.stopPropagation(); setExpandedAssignmentId(expandedAssignmentId === cls.id ? null : cls.id); }}
+                                        style={{ background: '#F2A900', color: '#002147', padding: '8px 12px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                     >
                                         <span>⚠️ Assignment Pending</span>
-                                        <span>{getTimeRemainingStr(activeSubjectAssignments[0])} {expandedAssignmentId === cls.id ? '▲' : '▼'}</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            {getTimeRemainingStr(activeSubjectAssignments[0])} 
+                                            {expandedAssignmentId === cls.id ? SVGS.chevronUp : SVGS.chevronDown}
+                                        </span>
                                     </div>
                                 )}
 
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
-                                    <div style={{ background: '#fef2f2', borderLeft: '5px solid #dc3545', padding: '12px', animation: 'fadeIn 0.2s ease' }}>
+                                    <div className="expand-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '12px' }}>
                                         {activeSubjectAssignments.map(ann => (
                                             <div key={ann.id} style={{ marginBottom: '10px' }}>
-                                                <div style={{ fontWeight: 'bold', color: '#b91c1c', fontSize: '0.9rem' }}>📝 {ann.topics}</div>
-                                                <div style={{ color: '#7f1d1d', fontSize: '0.85rem', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{ann.details}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#991b1b', marginTop: '6px', fontWeight: 'bold' }}>
+                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.9rem' }}>📝 {ann.topics}</div>
+                                                <div style={{ color: '#444', fontSize: '0.85rem', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{ann.details}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
                                                     Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
                                                 </div>
                                             </div>
@@ -654,6 +679,25 @@ export default function Home() {
                                         </span>
                                     </div>
                                 </div>
+
+                                {isContactExpanded && (
+                                    <div className="expand-anim" style={{ padding: '15px', background: '#f8f9fa', borderTop: '1px solid #eee' }}>
+                                        {teacherContact && (
+                                            <a href={generateWaLink(teacherContact.contact, `Salam Sir/Mam ${teacherContact.name}`)} target="_blank" rel="noreferrer" style={contactBtnStyle}>
+                                                {SVGS.whatsapp} Contact Teacher: {teacherContact.name}
+                                            </a>
+                                        )}
+                                        {!teacherContact && (
+                                            <div style={{...contactBtnStyle, background: '#ccc', cursor: 'not-allowed'}}>Contact Teacher: Not Available</div>
+                                        )}
+                                        
+                                        {crContact && (
+                                            <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, marginTop: '10px'}}>
+                                                {SVGS.whatsapp} Contact CR: {crContact.name}
+                                            </a>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
@@ -740,8 +784,21 @@ export default function Home() {
                     .desktop-nav { display: flex; align-items: center; gap: 15px; }
                     .mobile-nav { display: none !important; }
                     .hamburger-btn { display: none !important; }
+                    .desktop-hide { display: none !important; }
+                }
+                @media (max-width: 767px) {
+                    .mobile-hide { display: none !important; }
                 }
                 .scroll-hide::-webkit-scrollbar { display: none; }
+                
+                @keyframes expandDown {
+                    from { opacity: 0; transform: translateY(-8px); max-height: 0; }
+                    to { opacity: 1; transform: translateY(0); max-height: 500px; }
+                }
+                .expand-anim {
+                    animation: expandDown 0.3s ease forwards;
+                    overflow: hidden;
+                }
             `}</style>
 
             <header style={headerStyle}>
@@ -765,7 +822,7 @@ export default function Home() {
                                 cursor: 'pointer', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.85rem',
                                 background: currentTab === tab.id ? '#F2A900' : 'transparent',
                                 color: currentTab === tab.id ? '#002147' : '#fff',
-                                transition: '0.2s'
+                                transition: 'all 0.3s ease'
                             }}
                         >
                             {tab.label}
@@ -773,14 +830,14 @@ export default function Home() {
                     ))}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     {!isGuestUser && (
-                        <div style={{ position: 'relative', cursor: 'pointer', fontSize: '1.3rem' }} onClick={() => setShowAlerts(!showAlerts)}>
-                            🔔
+                        <div style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowAlerts(!showAlerts)}>
+                            {SVGS.bell}
                             {relevantNotifs.length > 0 && <span style={redDot}></span>}
                         </div>
                     )}
-                    <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); }} style={changeBtn}>Change Section</button>
+                    <button className="mobile-hide" onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); }} style={changeBtn}>Change Section</button>
                 </div>
             </header>
 
@@ -799,6 +856,12 @@ export default function Home() {
                                 {tab.label}
                             </button>
                         ))}
+                        
+                        <div style={{ marginTop: 'auto', padding: '20px', borderTop: '1px solid #eee' }}>
+                            <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); setIsSidebarOpen(false); }} style={{...changeBtn, width: '100%', background: '#dc3545', color: '#fff', border: 'none', padding: '12px' }}>
+                                Change Section
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -827,7 +890,7 @@ export default function Home() {
                 {showNotifBanner && (
                     <div style={notifBannerStyle}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
-                            <b style={{ display: 'block', marginBottom: '3px' }}>Stay Updated! 🔔</b>
+                            <b style={{ display: 'block', marginBottom: '3px' }}>Stay Updated! {SVGS.bell}</b>
                             <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>Allow notifications to get instant alerts for cancelled classes.</span>
                         </div>
                         <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
@@ -835,7 +898,7 @@ export default function Home() {
                 )}
 
                 {showAlerts ? (
-                    <div style={whiteCard}>
+                    <div className="expand-anim" style={whiteCard}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                             <h4 style={{ margin: 0, fontSize: '1rem', color: '#002147' }}>Alerts & Notifications</h4>
                             <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
@@ -860,13 +923,15 @@ export default function Home() {
                                         <button key={day} onClick={() => setSelectedDay(day)} style={dayBtnStyle(selectedDay === day)}>{day}</button>
                                     ))}
                                 </div>
-                                {renderClassCards(mySchedule, 'class')}
+                                <div className="expand-anim">
+                                    {renderClassCards(mySchedule, 'class')}
+                                </div>
                             </>
                         )}
 
                         {/* ======================= NEW ATTENDANCE TAB ======================= */}
                         {currentTab === 'attendance' && !isGuestUser && (
-                            <div style={whiteCard}>
+                            <div className="expand-anim" style={whiteCard}>
                                 <h4 style={{marginTop: 0, color: '#002147', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px'}}>Student Attendance</h4>
                                 
                                 {!myRollNumber ? (
@@ -898,7 +963,7 @@ export default function Home() {
                                         </div>
 
                                         {(() => {
-                                            const { subjectStats, validSessions, mySubjects, myClasses } = getFilteredAttendance();
+                                            const { subjectStats, validSessions, allValidSessions, mySubjects, myClasses } = getFilteredAttendance();
                                             if (subjectStats.length === 0) return <div style={emptyState}>No attendance records found for this period.</div>;
 
                                             // Calc Overall %
@@ -973,10 +1038,11 @@ export default function Home() {
                                                         </select>
 
                                                         {selectedAttSubject && (
-                                                            <div style={{ marginTop: '10px' }}>
+                                                            <div className="expand-anim" style={{ marginTop: '10px' }}>
                                                                 {(() => {
                                                                     const specificClassIds = myClasses.filter(c => c.course === selectedAttSubject).map(c => c.id);
-                                                                    const specificSessions = validSessions.filter(s => specificClassIds.includes(s.base_schedule_id)).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
+                                                                    // Use allValidSessions to ensure we ignore the Last Week/Month filter here
+                                                                    const specificSessions = allValidSessions.filter(s => specificClassIds.includes(s.base_schedule_id)).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
                                                                     
                                                                     if(specificSessions.length === 0) return <div style={emptyState}>No records found.</div>;
 
@@ -1006,7 +1072,7 @@ export default function Home() {
                         )}
 
                         {currentTab === 'room' && (
-                            <>
+                            <div className="expand-anim">
                                 <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
                                     <button onClick={() => setRoomSubTab('schedule')} style={subTabBtn(roomSubTab === 'schedule')}>ROOM SCHEDULE</button>
                                     <button onClick={() => setRoomSubTab('free')} style={subTabBtn(roomSubTab === 'free')}>FREE ROOM</button>
@@ -1049,7 +1115,7 @@ export default function Home() {
                                         <button onClick={searchFreeRooms} style={searchBtn}>SEARCH FREE ROOMS</button>
 
                                         {searchedFreeRooms !== null && (
-                                            <div style={{ marginTop: '15px' }}>
+                                            <div className="expand-anim" style={{ marginTop: '15px' }}>
                                                 {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
                                                     <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
                                                 )) : <div style={emptyState}>No rooms were cancelled during this time slot.</div>}
@@ -1057,11 +1123,11 @@ export default function Home() {
                                         )}
                                     </div>
                                 )}
-                            </>
+                            </div>
                         )}
 
                         {currentTab === 'teacher' && (
-                            <div style={whiteCard}>
+                            <div className="expand-anim" style={whiteCard}>
                                 <input type="text" placeholder="🔍 Search teacher name..." value={teacherSearch} onChange={e => setTeacherSearch(e.target.value)} style={searchInput} />
                                 <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={selectStyle}>
                                     <option value="">-- Select Teacher --</option>
@@ -1075,31 +1141,31 @@ export default function Home() {
                                 </div>
 
                                 {selectedTeacher && (
-                                    <>
+                                    <div className="expand-anim">
                                         <a href={getTeacherWhatsAppLink(selectedTeacher)} target="_blank" rel="noreferrer" style={whatsappBtn}>
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>
+                                            {SVGS.whatsapp}
                                             Contact {selectedTeacher}
                                         </a>
                                         {renderClassCards(teacherSchedule, 'teacher')}
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         )}
 
                         {/* ======================= NEW UPDATES / ANNOUNCEMENTS TAB ======================= */}
                         {currentTab === 'announcements' && !isGuestUser && (
-                            <div>
-                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', background: '#f8f9fa', padding: '6px', borderRadius: '8px' }}>
+                            <div className="expand-anim">
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', background: '#f8f9fa', padding: '6px', borderRadius: '12px' }}>
                                     {['Last Week', '15 Days', 'Last Month', 'All'].map(f => (
                                         <button 
                                             key={f} 
                                             onClick={() => setUpdatesFilter(f)} 
                                             style={{ 
-                                                flex: 1, padding: '10px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '5px', border: 'none', 
+                                                flex: 1, padding: '10px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', 
                                                 background: updatesFilter === f ? '#002147' : '#fff', 
                                                 color: updatesFilter === f ? '#F2A900' : '#555',
                                                 boxShadow: updatesFilter === f ? '0 2px 5px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
-                                                transition: 'all 0.2s'
+                                                transition: 'all 0.3s ease', cursor: 'pointer'
                                             }}
                                         >
                                             {f}
@@ -1136,40 +1202,47 @@ export default function Home() {
                                         }
 
                                         return (
-                                            <div key={ann.id} style={{ display: 'flex', background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', border: '1px solid #eee' }}>
-                                                <div style={{ width: '6px', background: '#3b82f6' }}></div> {/* Left Blue Accent */}
+                                            <div 
+                                                key={ann.id} 
+                                                onClick={() => setExpandedAssignmentId(isExpanded ? null : ann.id)}
+                                                style={{ display: 'flex', background: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.04)', marginBottom: '15px', border: '1px solid #eee', cursor: 'pointer', transition: 'all 0.3s ease' }}
+                                            >
+                                                <div style={{ width: '6px', background: ann.type === 'assignment' ? '#F2A900' : '#3b82f6' }}></div>
                                                 
-                                                <div style={{ flex: 1, padding: '15px' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' }}>
-                                                            {ann.subject}
-                                                        </span>
-                                                        {ann.type === 'assignment' && (
-                                                            <span style={{ background: '#F2A900', color: '#002147', fontSize: '0.7rem', fontWeight: '900', padding: '4px 10px', borderRadius: '20px' }}>
-                                                                ASSIGNMENT
+                                                <div style={{ flex: 1, padding: '16px', position: 'relative' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                {ann.subject}
                                                             </span>
-                                                        )}
-                                                    </div>
-
-                                                    <h4 style={{ margin: '0 0 15px 0', fontSize: '1.2rem', color: '#000', fontWeight: 'bold' }}>{ann.topics}</h4>
-                                                    
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                                        {ann.type === 'assignment' && deadlineDate ? (
-                                                            <div style={{ background: isExpired ? '#f8d7da' : '#c2364c', color: isExpired ? '#721c24' : '#fff', fontSize: '0.75rem', fontWeight: 'bold', padding: '6px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                                                {!isExpired && SVGS.hourglass}
-                                                                {isExpired ? `❌ Passed` : `Time Remaining: ${timeRemainingDisplay}`}
-                                                            </div>
-                                                        ) : <div></div>}
-
-                                                        <div onClick={() => setExpandedAssignmentId(isExpanded ? null : ann.id)} style={{ cursor: 'pointer', color: '#000', padding: '5px' }}>
+                                                            {ann.type === 'assignment' && (
+                                                                <span style={{ background: '#F2A900', color: '#002147', fontSize: '0.65rem', fontWeight: '900', padding: '3px 8px', borderRadius: '20px' }}>
+                                                                    ASSIGNMENT
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ color: '#002147', opacity: 0.6 }}>
                                                             {isExpanded ? SVGS.chevronUp : SVGS.chevronDown}
                                                         </div>
                                                     </div>
 
+                                                    <h4 style={{ margin: '0 0 5px 0', fontSize: '1.05rem', color: '#111827', fontWeight: '800', lineHeight: '1.4' }}>{ann.topics}</h4>
+                                                    
                                                     {isExpanded && (
-                                                        <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #f0f0f0', animation: 'fadeIn 0.2s ease' }}>
-                                                            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '8px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
-                                                            <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{ann.details}</p>
+                                                        <div className="expand-anim" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }}>
+                                                            <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{ann.details}</p>
+                                                            
+                                                            {ann.type === 'assignment' && deadlineDate && (
+                                                                <div style={{ background: isExpired ? '#fef2f2' : '#f0f9ff', border: `1px solid ${isExpired ? '#fecaca' : '#bae6fd'}`, color: isExpired ? '#991b1b' : '#0369a1', fontSize: '0.8rem', padding: '10px 12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                    <div style={{ fontWeight: 'bold' }}>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</div>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '600' }}>
+                                                                        {!isExpired && SVGS.hourglass}
+                                                                        {isExpired ? `❌ Passed` : `Time Remaining: ${timeRemainingDisplay}`}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '10px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
                                                         </div>
                                                     )}
                                                 </div>
@@ -1193,34 +1266,35 @@ export default function Home() {
 // STYLES
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
 const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
-const bigBtn = { width: '100%', padding: '15px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer' };
+const bigBtn = { width: '100%', padding: '15px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer', transition: 'all 0.3s ease' };
 const headerStyle = { background: '#002147', color: '#F2A900', padding: '18px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
-const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' };
-const redDot = { position: 'absolute', top: '-2px', right: '-2px', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
+const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '5px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' };
+const redDot = { position: 'absolute', top: '0', right: '0', width: '10px', height: '10px', background: 'red', borderRadius: '50%', border: '2px solid #002147' };
 const newsRedDot = { position: 'absolute', top: '5px', right: '5px', width: '8px', height: '8px', background: 'red', borderRadius: '50%' };
 const tabBar = { background: '#fff', padding: '8px 6px', gap: '6px', position: 'sticky', top: '60px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, minWidth: '95px', padding: '12px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.2s', position: 'relative' });
-const subTabBtn = (active) => ({ flex: 1, padding: '10px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' });
+const tabBtn = (active) => ({ flex: 1, minWidth: '95px', padding: '12px 5px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabBtn = (active) => ({ flex: 1, padding: '10px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' });
 const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '5px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '45px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' });
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '45px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
 const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '8px 15px', borderRadius: '8px', fontWeight: 900, marginBottom: '10px', textTransform: 'uppercase', fontSize: '0.85rem' };
-const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' };
-const searchInput = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box' };
-const cardBase = { padding: '12px', borderRadius: '10px' };
-const notifCard = { background: '#fff', padding: '12px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' };
-const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '15px', borderTop: '4px solid #F2A900' };
-const searchBtn = { width: '100%', padding: '14px', background: '#002147', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', boxSizing: 'border-box' };
-const markReadBtn = { background: '#e9ecef', border: 'none', padding: '6px 12px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', color: '#555' };
+const selectStyle = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const searchInput = { width: '100%', padding: '12px', marginBottom: '10px', borderRadius: '8px', border: '2px solid #dee2e6', fontSize: '0.9rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const cardBase = { padding: '12px', borderRadius: '10px', transition: 'all 0.3s ease' };
+const notifCard = { background: '#fff', padding: '12px', borderRadius: '8px', marginBottom: '10px', borderLeft: '4px solid #dc3545', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' };
+const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '15px', borderTop: '4px solid #F2A900', transition: 'all 0.3s ease' };
+const searchBtn = { width: '100%', padding: '14px', background: '#002147', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const markReadBtn = { background: '#e9ecef', border: 'none', padding: '6px 12px', borderRadius: '5px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
 const freeRoomItem = { padding: '12px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.85rem', background: '#f0fff4', borderRadius: '5px', marginBottom: '5px' };
-const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#25D366', color: '#fff', padding: '12px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '20px', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)' };
+const whatsappBtn = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', background: '#25D366', color: '#fff', padding: '12px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', marginBottom: '20px', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
+const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#25D366', color: '#fff', padding: '10px 15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 2px 5px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
 const emptyState = { textAlign: 'center', padding: '30px 10px', color: '#999', fontSize: '0.9rem' };
 const centerStyle = { textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' };
 const footerStyle = { textAlign: 'center', padding: '20px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.9rem', marginTop: 'auto' };
-const notifBannerStyle = { background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900', gap: '10px' };
-const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900', gap: '10px', transition: 'all 0.3s ease' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease' };
 const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '8px 12px', borderBottomLeftRadius: '10px', borderBottomRightRadius: '10px', display: 'flex', alignItems: 'center', fontSize: '0.8rem', fontWeight: 'bold', justifyContent: 'flex-start' };
 
 // Sidebar Styles
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeIn 0.2s ease' };
 const sidebarMenu = { width: '260px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '15px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '5px solid #F2A900' : '5px solid transparent', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee' });
+const sidebarBtn = (active) => ({ width: '100%', textAlign: 'left', padding: '15px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '5px solid #F2A900' : '5px solid transparent', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
