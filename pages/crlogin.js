@@ -955,7 +955,7 @@ export default function Dashboard() {
                                                         📥 Download
                                                     </button>
                                                     <button onClick={() => downloadCSV(stat, true)} style={{ flex: 1, padding: '8px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                        👁️ View in Browser
+                                                        View
                                                     </button>
                                                 </div>
                                             </div>
