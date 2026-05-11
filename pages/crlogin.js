@@ -46,7 +46,13 @@ export default function Dashboard() {
     const [attendanceStats, setAttendanceStats] = useState([]); 
     const [allSessionsData, setAllSessionsData] = useState([]); 
     const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); 
-    const [uploadCsvSubject, setUploadCsvSubject] = useState(''); // NEW STATE FOR UPLOAD CSV
+    const [uploadCsvSubject, setUploadCsvSubject] = useState('');
+    
+    // --- CSV UPLOAD & HISTORY STATES ---
+    const [csvMeta, setCsvMeta] = useState(null); // Holds parsed data waiting for confirmation
+    const [uploadStatus, setUploadStatus] = useState('idle'); // idle, confirm, uploading, success
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadLogs, setUploadLogs] = useState([]);
 
     // --- STUDENT MANAGEMENT STATE ---
     const [newStudent, setNewStudent] = useState({ name: '', roll: '' });
@@ -124,7 +130,6 @@ export default function Dashboard() {
         return targetDate.toLocaleDateString('en-CA');
     };
 
-    // Forces future date selection (skips today)
     const getNextLectureDate = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
@@ -132,17 +137,13 @@ export default function Dashboard() {
         const targetDay = dayMap[dayName.toUpperCase()];
         let diff = targetDay - currentDay;
 
-        // If the calculated day is today or already passed this week, bump it to next week
-        if (diff <= 0) {
-            diff += 7;
-        }
+        if (diff <= 0) diff += 7;
 
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + diff);
         return targetDate.toLocaleDateString('en-CA');
     };
 
-    // --- WINDOW RESIZE LISTENER ---
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
         window.addEventListener('resize', handleResize);
@@ -174,14 +175,16 @@ export default function Dashboard() {
                     
                     const diffMins = Math.floor((deadlineDate - now) / 60000);
                     
-                    if (diffMins <= 241 && diffMins >= 239 && !notifiedDeadlines.current.has(ann.id)) {
+                    // 2-HOUR ALERT LOGIC
+                    if (diffMins === 120 && !notifiedDeadlines.current.has(ann.id)) {
                         notifiedDeadlines.current.add(ann.id);
-                        supabase.from('notifications').insert([{ 
-                            message: `⏰ DEADLINE ALERT: Only 4 hours left for ${ann.subject} Assignment (${ann.topics}).` 
-                        }]).then();
+                        
+                        const msg = `⏰ DEADLINE ALERT: Only 2 hours left for ${ann.subject} Assignment (${ann.topics}).`;
+                        
+                        supabase.from('notifications').insert([{ message: msg }]).then();
                         
                         if (Notification.permission === "granted") {
-                            new Notification("Assignment Deadline Approaching!", { body: `4 hours left for ${ann.subject}` });
+                            new Notification("Assignment Deadline Approaching!", { body: msg, icon: "/icon.png" });
                         }
                     }
                 }
@@ -213,6 +216,23 @@ export default function Dashboard() {
         }
     }, [announcementForm.subject, schedule]);
 
+    // Dynamic Safe Fetcher to bypass >1000 limit
+    const fetchAllRows = async (table, matchObj = null, inObj = null) => {
+        let all = []; let from = 0; const step = 1000;
+        while(true) {
+            let query = supabase.from(table).select('*').range(from, from + step - 1);
+            if (matchObj) query = query.match(matchObj);
+            if (inObj) query = query.in(inObj.column, inObj.values);
+            
+            const { data, error } = await query;
+            if (error || !data || data.length === 0) break;
+            all = [...all, ...data];
+            if (data.length < step) break;
+            from += step;
+        }
+        return { data: all };
+    };
+
     const fetchProfileAndSchedule = async (userId) => {
         const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
         
@@ -225,20 +245,12 @@ export default function Dashboard() {
                 return; 
             }
 
-            // 1. Fetch Students using strict session & section
-            const { data: rosterData } = await supabase.from('students')
-                .select('*')
-                .eq('session', profileData.session)
-                .eq('section', profileData.section)
-                .order('registration_number');
-            setRoster(rosterData || []);
+            const { data: rosterData } = await fetchAllRows('students', { session: profileData.session, section: profileData.section });
+            const sortedRoster = rosterData.sort((a,b) => a.registration_number.localeCompare(b.registration_number));
+            setRoster(sortedRoster);
 
-            // 2. Fetch Base Schedule using strict session & section
-            const { data: scheduleData } = await supabase.from('base_schedule')
-                .select('*')
-                .eq('session', profileData.session)
-                .eq('section', profileData.section);
-            setBaseSchedule(scheduleData || []);
+            const { data: scheduleData } = await fetchAllRows('base_schedule', { session: profileData.session, section: profileData.section });
+            setBaseSchedule(scheduleData);
             
             const { data: allBaseSchedules } = await supabase.from('base_schedule').select('room, teacher, course');
             if (allBaseSchedules) {
@@ -252,13 +264,9 @@ export default function Dashboard() {
                 setTeacherCourseMap(tMap);
             }
             
-            // 3. Fetch Announcements using strict session & section
-            const { data: annData } = await supabase.from('class_announcements')
-                .select('*')
-                .eq('session', profileData.session)
-                .eq('section', profileData.section)
-                .order('created_at', { ascending: false });
-            setAnnouncements(annData || []);
+            const { data: annData } = await fetchAllRows('class_announcements', { session: profileData.session, section: profileData.section });
+            const sortedAnns = annData.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+            setAnnouncements(sortedAnns);
 
             if (scheduleData) {
                 setAvailableRooms([...new Set(scheduleData.map(x => x.room))].filter(Boolean).sort());
@@ -267,15 +275,27 @@ export default function Dashboard() {
             }
 
             const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
-            const [exceptionsRes, sessionsRes, recordsRes] = await Promise.all([
-                supabase.from('schedule_exceptions').select('*'),
-                supabase.from('attendance_sessions').select('*').in('base_schedule_id', baseIds),
-                supabase.from('attendance_records').select('*')
+            
+            // Bypass >1000 limit with fetchAllRows
+            const [exceptionsRes, sessionsRes, logsRes] = await Promise.all([
+                fetchAllRows('schedule_exceptions'),
+                fetchAllRows('attendance_sessions', null, { column: 'base_schedule_id', values: baseIds }),
+                fetchAllRows('attendance_upload_logs', { session: profileData.session, section: profileData.section })
             ]);
 
             const exceptionsData = exceptionsRes.data || [];
             const allSessions = sessionsRes.data || [];
-            const allRecords = recordsRes.data || [];
+            
+            // Strictly fetch records for ONLY the sessions of this section to prevent crushing memory
+            const sessionIds = allSessions.map(s => s.id);
+            let allRecords = [];
+            if (sessionIds.length > 0) {
+                const recRes = await fetchAllRows('attendance_records', null, { column: 'session_id', values: sessionIds });
+                allRecords = recRes.data || [];
+            }
+
+            const sortedLogs = (logsRes.data || []).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+            setUploadLogs(sortedLogs);
 
             const sessionsWithRecords = allSessions.map(s => ({
                 ...s,
@@ -406,7 +426,6 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    // Modified to support viewing HTML natively and strict format
     const downloadCSV = (stat, viewOnly = false) => {
         if (stat.sessions.length === 0) return alert("No attendance recorded for this subject yet.");
 
@@ -458,89 +477,153 @@ export default function Dashboard() {
         a.click();
     };
 
-    const handleAttendanceUpload = async (e) => {
+    // --- PHASE 1: Parse CSV and show Confirmation UI ---
+    const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file || !uploadCsvSubject) return;
 
         const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const text = event.target.result;
-                const rows = text.split('\n').map(r => r.split(',').map(cell => cell?.trim()));
+        reader.onload = (event) => {
+            const text = event.target.result;
+            const rows = text.split('\n').map(r => r.split(',').map(cell => cell?.trim()));
 
-                if (rows.length < 2) return alert("Invalid CSV format.");
+            if (rows.length < 2) return alert("Invalid CSV format.");
 
-                const headers = rows[0];
-                const dateCols = [];
-                for(let i = 2; i < headers.length; i++) {
-                    if(headers[i] && headers[i].toLowerCase() !== 'overall %') {
-                        dateCols.push({ index: i, dateStr: headers[i] });
-                    }
+            const headers = rows[0];
+            const dateCols = [];
+            for(let i = 2; i < headers.length; i++) {
+                if(headers[i] && headers[i].toLowerCase() !== 'overall %') {
+                    dateCols.push({ index: i, dateStr: headers[i] });
                 }
-
-                if(dateCols.length === 0) return alert("No valid date columns found. Format must be: Name, Registration Number, YYYY-MM-DD");
-
-                let addedCount = 0;
-
-                // Process each date column
-                for (const { index, dateStr } of dateCols) {
-                    const parsedDate = new Date(dateStr);
-                    if(isNaN(parsedDate)) continue; 
-
-                    const dayName = parsedDate.toLocaleDateString('en-US', {weekday: 'short'}).toUpperCase();
-                    const matchingBase = baseSchedule.find(b => b.course === uploadCsvSubject && b.day === dayName) || baseSchedule.find(b => b.course === uploadCsvSubject);
-
-                    if (!matchingBase) continue; 
-
-                    let sessionId = null;
-                    const { data: existingSession } = await supabase.from('attendance_sessions')
-                        .select('id')
-                        .eq('base_schedule_id', matchingBase.id)
-                        .eq('session_date', dateStr)
-                        .single();
-
-                    if (existingSession) {
-                        sessionId = existingSession.id;
-                    } else {
-                        const { data: newSession, error: sessErr } = await supabase.from('attendance_sessions')
-                            .insert([{ base_schedule_id: matchingBase.id, session_date: dateStr, submitted_by: session.user.id, status: 'approved' }])
-                            .select().single();
-                        if (sessErr) { console.error(sessErr); continue; }
-                        sessionId = newSession.id;
-                    }
-
-                    const recordsToInsert = [];
-                    for(let i = 1; i < rows.length; i++) {
-                        const row = rows[i];
-                        if(row.length < index + 1) continue;
-                        
-                        const roll = row[1]; // roll is at index 1
-                        const rawStatus = row[index];
-                        if(!roll || !rawStatus || rawStatus === 'N/A') continue;
-
-                        let status = 'Absent';
-                        if (rawStatus.toLowerCase() === 'present' || rawStatus.toLowerCase() === 'p' || rawStatus === '1') status = 'Present';
-                        else if (rawStatus.toLowerCase() === 'leave' || rawStatus.toLowerCase() === 'l') status = 'Leave';
-
-                        recordsToInsert.push({ session_id: sessionId, student_id: roll, status: status });
-                    }
-
-                    if (recordsToInsert.length > 0) {
-                        // Clean delete before batch inserting
-                        await supabase.from('attendance_records').delete().eq('session_id', sessionId);
-                        const { error: recErr } = await supabase.from('attendance_records').insert(recordsToInsert);
-                        if (!recErr) addedCount++;
-                    }
-                }
-
-                alert(`Successfully processed and uploaded attendance for ${addedCount} dates.`);
-                fetchProfileAndSchedule(session.user.id);
-            } catch (err) {
-                alert("Failed to parse and upload CSV.");
             }
-            e.target.value = null; 
+
+            if(dateCols.length === 0) return alert("No valid date columns found. Format must be: Name, Registration Number, YYYY-MM-DD");
+
+            setCsvMeta({ file, rows, dateCols, totalRecords: rows.length - 1 });
+            setUploadStatus('confirm');
         };
         reader.readAsText(file);
+        e.target.value = null; // reset input
+    };
+
+    // --- PHASE 2: Execute the overwrite and upload ---
+    const executeCsvUpload = async () => {
+        if (!csvMeta) return;
+        setUploadStatus('uploading');
+        setUploadProgress(0);
+
+        const { rows, dateCols } = csvMeta;
+        let processedDatesCount = 0;
+        const totalDates = dateCols.length;
+        const successfulDates = [];
+
+        try {
+            // Strictly loop sequentially to guarantee Overwrites don't race
+            for (const { index, dateStr } of dateCols) {
+                const parsedDate = new Date(dateStr);
+                if(isNaN(parsedDate)) continue; 
+
+                const dayName = parsedDate.toLocaleDateString('en-US', {weekday: 'short'}).toUpperCase();
+                const matchingBase = baseSchedule.find(b => b.course === uploadCsvSubject && b.day === dayName) || baseSchedule.find(b => b.course === uploadCsvSubject);
+
+                if (!matchingBase) continue; 
+
+                let sessionId = null;
+                const { data: existingSession } = await supabase.from('attendance_sessions')
+                    .select('id')
+                    .eq('base_schedule_id', matchingBase.id)
+                    .eq('session_date', dateStr)
+                    .single();
+
+                if (existingSession) {
+                    sessionId = existingSession.id;
+                    // CRITICAL FIX: Explicitly guarantee old records are wiped for this date to prevent duplicates
+                    await supabase.from('attendance_records').delete().eq('session_id', sessionId);
+                } else {
+                    const { data: newSession, error: sessErr } = await supabase.from('attendance_sessions')
+                        .insert([{ base_schedule_id: matchingBase.id, session_date: dateStr, submitted_by: session.user.id, status: 'approved' }])
+                        .select().single();
+                    if (sessErr) { console.error(sessErr); continue; }
+                    sessionId = newSession.id;
+                }
+
+                const recordsToInsert = [];
+                for(let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if(row.length < index + 1) continue;
+                    
+                    const roll = row[1]; // roll is at index 1
+                    const rawStatus = row[index];
+                    if(!roll || !rawStatus || rawStatus === 'N/A') continue;
+
+                    let status = 'Absent';
+                    if (rawStatus.toLowerCase() === 'present' || rawStatus.toLowerCase() === 'p' || rawStatus === '1') status = 'Present';
+                    else if (rawStatus.toLowerCase() === 'leave' || rawStatus.toLowerCase() === 'l') status = 'Leave';
+
+                    recordsToInsert.push({ session_id: sessionId, student_id: roll, status: status });
+                }
+
+                if (recordsToInsert.length > 0) {
+                    const { error: recErr } = await supabase.from('attendance_records').insert(recordsToInsert);
+                    if (!recErr) {
+                        processedDatesCount++;
+                        successfulDates.push(dateStr);
+                    }
+                }
+                
+                // Update Progress UI
+                setUploadProgress(Math.round(((dateCols.indexOf(dateCols.find(d => d.dateStr === dateStr)) + 1) / totalDates) * 100));
+            }
+
+            // Log the upload history for Undo capabilities
+            if (successfulDates.length > 0) {
+                await supabase.from('attendance_upload_logs').insert([{
+                    subject: uploadCsvSubject,
+                    session: profile.session,
+                    section: profile.section,
+                    dates_included: successfulDates.join(', '),
+                    total_records: csvMeta.totalRecords,
+                    uploaded_by: session.user.id
+                }]);
+            }
+
+            setUploadStatus('success');
+            fetchProfileAndSchedule(session.user.id);
+        } catch (err) {
+            alert("A network error occurred during upload.");
+            setUploadStatus('idle');
+        }
+    };
+
+    const handleUndoUpload = async (log) => {
+        if (!window.confirm(`Are you sure you want to completely reverse this upload for ${log.subject}? All attendance records for dates (${log.dates_included}) will be wiped.`)) return;
+        
+        try {
+            const matchingBases = baseSchedule.filter(b => b.course === log.subject);
+            const baseIds = matchingBases.map(b => b.id);
+            const dates = log.dates_included.split(',').map(d => d.trim());
+            
+            const { data: sessionsToDelete } = await supabase.from('attendance_sessions')
+                .select('id')
+                .in('base_schedule_id', baseIds)
+                .in('session_date', dates);
+                
+            if (sessionsToDelete && sessionsToDelete.length > 0) {
+                const sessIds = sessionsToDelete.map(s => s.id);
+                // Wipe records first
+                await supabase.from('attendance_records').delete().in('session_id', sessIds);
+                // Wipe sessions
+                await supabase.from('attendance_sessions').delete().in('id', sessIds);
+            }
+            
+            // Delete log entry
+            await supabase.from('attendance_upload_logs').delete().eq('id', log.id);
+            
+            alert("Upload reversed successfully.");
+            fetchProfileAndSchedule(session.user.id);
+        } catch (err) {
+            alert("Failed to undo upload.");
+        }
     };
 
     const handleAddStudent = async (e) => {
@@ -691,7 +774,6 @@ export default function Dashboard() {
         ? ['weekly', 'attendance', 'announcements'] 
         : ['weekly', 'permanent', 'students', 'attendance', 'announcements'];
 
-    // --- ONGOING CLASSES FILTER FOR GLOBAL BANNER ---
     const ongoingClasses = schedule.filter(cls => {
         if (cls.day !== currentDay || cls.isCancelled) return false;
         const startMins = parseTime(cls.start_time);
@@ -705,6 +787,18 @@ export default function Dashboard() {
                 <title>CR Dashboard | IUB</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
             </Head>
+
+            <style>{`
+                @keyframes slideFade {
+                    from { opacity: 0; transform: translateY(-5px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .anim-slide { animation: slideFade 0.3s ease-out forwards; }
+                
+                @keyframes expandBar {
+                    from { width: 0%; }
+                }
+            `}</style>
 
             <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', position: 'relative' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -737,14 +831,13 @@ export default function Dashboard() {
 
             <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
                 
-                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="anim-slide" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div>
                         <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
                         <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
                     </div>
                 </div>
 
-                {/* ================= ONGOING LECTURES GLOBAL BANNER ================= */}
                 {ongoingClasses.length > 0 && (
                     <div style={{ marginBottom: '20px' }}>
                         {ongoingClasses.map(ongoingClass => {
@@ -759,7 +852,7 @@ export default function Dashboard() {
                             }
 
                             return (
-                                <div key={`global-ongoing-${ongoingClass.id}`} style={{ background: '#28a745', padding: '15px 20px', borderRadius: '8px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(40, 167, 69, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                                <div key={`global-ongoing-${ongoingClass.id}`} className="anim-slide" style={{ background: '#28a745', padding: '15px 20px', borderRadius: '8px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(40, 167, 69, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
                                     <div style={{ color: 'white' }}>
                                         <h3 style={{ margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}>
                                             <span style={{ animation: 'pulse 2s infinite' }}>🔴</span> Ongoing Lecture: {ongoingClass.course}
@@ -801,7 +894,7 @@ export default function Dashboard() {
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
-                    <div>
+                    <div className="anim-slide">
                         <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '20px', paddingBottom: '10px', scrollbarWidth: 'none' }}>
                             {days.map(day => (
                                 <button key={day} onClick={() => setSelectedDay(day)}
@@ -845,7 +938,7 @@ export default function Dashboard() {
                                     </div>
 
                                     {expandedLectureId === cls.id && (
-                                        <div style={{ marginTop: '15px', animation: 'fadeIn 0.3s ease-in-out' }}>
+                                        <div style={{ marginTop: '15px', animation: 'slideFade 0.3s ease-out' }}>
                                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                                                 {cls.isCancelled ? (
                                                     <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
@@ -871,16 +964,17 @@ export default function Dashboard() {
 
                 {/* ================= SPLIT ATTENDANCE TAB ================= */}
                 {activeTab === 'attendance' && (
-                    <div>
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px' }}>
-                            <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>✅ Mark Attendance</button>
-                            <button onClick={() => setAttendanceView('csv_management')} style={subTabStyle(attendanceView === 'csv_management')}>📥 CSV Management</button>
+                    <div className="anim-slide">
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+                            <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>✅ Mark</button>
+                            <button onClick={() => setAttendanceView('csv_management')} style={subTabStyle(attendanceView === 'csv_management')}>📤 Upload CSV</button>
+                            <button onClick={() => setAttendanceView('csv_history')} style={subTabStyle(attendanceView === 'csv_history')}>🕒 CSV History</button>
+                            <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>📥 Download</button>
                             <button onClick={() => setAttendanceView('stats')} style={subTabStyle(attendanceView === 'stats')}>📊 Statistics</button>
                         </div>
 
-                        {/* SUB-VIEW 1: MARK ATTENDANCE */}
                         {attendanceView === 'mark' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                            <div className="anim-slide" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
                                 {attendanceStats.map(stat => {
                                     const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
                                     let isOngoing = false;
@@ -939,54 +1033,127 @@ export default function Dashboard() {
                             </div>
                         )}
 
-                        {/* SUB-VIEW 2: CSV MANAGEMENT */}
-                        {attendanceView === 'csv_management' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                {/* DOWNLOAD & VIEW SECTION */}
-                                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                                    <h3 style={{ color: '#002147', marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📥 Download / View CSV</h3>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
-                                        {attendanceStats.map(stat => (
-                                            <div key={`dl-${stat.subject}`} style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #17a2b8' }}>
-                                                <h4 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h4>
-                                                <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
-                                                <div style={{ display: 'flex', gap: '10px' }}>
-                                                    <button onClick={() => downloadCSV(stat, false)} style={{ flex: 1, padding: '8px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                        📥 Download
-                                                    </button>
-                                                    <button onClick={() => downloadCSV(stat, true)} style={{ flex: 1, padding: '8px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                        View
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* UPLOAD SECTION */}
-                                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                                    <h3 style={{ color: '#002147', marginTop: 0, borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📤 Upload Attendance via CSV</h3>
-                                    <select value={uploadCsvSubject} onChange={(e) => setUploadCsvSubject(e.target.value)} style={{...inputStyle, marginBottom: '15px'}}>
-                                        <option value="">-- Select Subject to Upload For --</option>
-                                        {availableCourses.map(c => <option key={`up-${c}`} value={c}>{c}</option>)}
-                                    </select>
-
-                                    {uploadCsvSubject && (
-                                        <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '5px', border: '1px dashed #ccc' }}>
-                                            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: 0 }}>
-                                                Format must be exactly: <strong>Name, Registration Number, YYYY-MM-DD, YYYY-MM-DD...</strong><br/>
-                                                Use "Present", "P", "1" or "Absent", "A", "0" or "Leave", "L" in cells.
-                                            </p>
-                                            <input type="file" accept=".csv" onChange={handleAttendanceUpload} style={{ display: 'block', width: '100%', marginTop: '10px' }} />
+                        {attendanceView === 'download' && (
+                            <div className="anim-slide" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                                {attendanceStats.map(stat => (
+                                    <div key={`dl-${stat.subject}`} style={{ border: '1px solid #eee', background: '#fff', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #17a2b8' }}>
+                                        <h4 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h4>
+                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button onClick={() => downloadCSV(stat, false)} style={{ flex: 1, padding: '8px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                📥 Download
+                                            </button>
+                                            <button onClick={() => downloadCSV(stat, true)} style={{ flex: 1, padding: '8px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                👁️ View
+                                            </button>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
 
-                        {/* SUB-VIEW 3: STATISTICS */}
+                        {attendanceView === 'csv_management' && (
+                            <div className="anim-slide" style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                                {uploadStatus === 'idle' && (
+                                    <>
+                                        <h3 style={{ color: '#002147', marginTop: 0, borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📤 Upload Attendance (Overwrite Enabled)</h3>
+                                        <p style={{fontSize: '0.9rem', color: '#666', marginBottom: '20px'}}>Select a subject and upload your CSV. If attendance for any dates inside the CSV already exists, it will be <strong>replaced entirely</strong> with the new file's data.</p>
+                                        
+                                        <select value={uploadCsvSubject} onChange={(e) => setUploadCsvSubject(e.target.value)} style={{...inputStyle, marginBottom: '15px', fontWeight: 'bold'}}>
+                                            <option value="">-- Select Subject to Upload For --</option>
+                                            {availableCourses.map(c => <option key={`up-${c}`} value={c}>{c}</option>)}
+                                        </select>
+
+                                        {uploadCsvSubject && (
+                                            <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '2px dashed #ccc', textAlign: 'center', cursor: 'pointer' }} onClick={() => fileInputRef.current.click()}>
+                                                <div style={{ fontSize: '2rem', marginBottom: '10px' }}>📄</div>
+                                                <p style={{ fontSize: '1rem', color: '#002147', fontWeight: 'bold', margin: '0 0 5px 0' }}>Click to select CSV File</p>
+                                                <p style={{ fontSize: '0.8rem', color: '#666', margin: 0 }}>Format: Name, Registration Number, YYYY-MM-DD...</p>
+                                                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} />
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {uploadStatus === 'confirm' && csvMeta && (
+                                    <div className="anim-slide" style={{textAlign: 'center'}}>
+                                        <h3 style={{color: '#002147'}}>Confirm Upload</h3>
+                                        <div style={{background: '#e7f1ff', padding: '20px', borderRadius: '10px', border: '1px solid #007bff', marginBottom: '20px'}}>
+                                            <p style={{margin: '0 0 10px 0'}}><strong>Subject:</strong> {uploadCsvSubject}</p>
+                                            <p style={{margin: '0 0 10px 0'}}><strong>Total Students/Rows:</strong> {csvMeta.totalRecords}</p>
+                                            <p style={{margin: '0 0 10px 0'}}><strong>Dates to Overwrite/Insert ({csvMeta.dateCols.length}):</strong></p>
+                                            <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                                                {csvMeta.dateCols.map(d => (
+                                                    <span key={d.dateStr} style={{background: '#fff', border: '1px solid #ccc', padding: '3px 8px', borderRadius: '15px', fontSize: '0.8rem'}}>{d.dateStr}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); }} style={{ flex: 1, padding: '12px', background: '#ccc', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
+                                            <button onClick={executeCsvUpload} style={{ flex: 2, padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>🚀 Confirm & Upload Data</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {uploadStatus === 'uploading' && (
+                                    <div className="anim-slide" style={{textAlign: 'center', padding: '30px 0'}}>
+                                        <h3 style={{color: '#002147'}}>Processing Data...</h3>
+                                        <div style={{width: '100%', height: '20px', background: '#eee', borderRadius: '10px', overflow: 'hidden', marginTop: '20px'}}>
+                                            <div style={{width: `${uploadProgress}%`, height: '100%', background: '#F2A900', transition: 'width 0.3s ease', animation: 'expandBar 0.5s ease-out'}}></div>
+                                        </div>
+                                        <p style={{fontWeight: 'bold', marginTop: '10px', color: '#555'}}>{uploadProgress}%</p>
+                                    </div>
+                                )}
+
+                                {uploadStatus === 'success' && (
+                                    <div className="anim-slide" style={{textAlign: 'center', padding: '20px 0'}}>
+                                        <div style={{fontSize: '4rem', color: '#28a745', marginBottom: '15px'}}>✅</div>
+                                        <h2 style={{color: '#28a745', margin: '0 0 10px 0'}}>Upload Complete!</h2>
+                                        <p style={{color: '#666', marginBottom: '25px'}}>The attendance data has been successfully stored in the database.</p>
+                                        <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); setUploadCsvSubject(''); }} style={{ padding: '12px 30px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Upload Another File</button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {attendanceView === 'csv_history' && (
+                            <div className="anim-slide" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                                <h3 style={{ margin: '0 0 15px 0', color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>CSV Upload History & Undo</h3>
+                                {uploadLogs.length === 0 ? (
+                                    <p style={{textAlign: 'center', color: '#999', padding: '20px'}}>No upload history found.</p>
+                                ) : (
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                                            <thead>
+                                                <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                                                    <th style={{ padding: '12px' }}>Date Uploaded</th>
+                                                    <th style={{ padding: '12px' }}>Subject</th>
+                                                    <th style={{ padding: '12px' }}>Dates Processed</th>
+                                                    <th style={{ padding: '12px', textAlign: 'right' }}>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {uploadLogs.map(log => (
+                                                    <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
+                                                        <td style={{ padding: '12px' }}>{new Date(log.created_at).toLocaleDateString()}</td>
+                                                        <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{log.subject}</td>
+                                                        <td style={{ padding: '12px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.dates_included}</td>
+                                                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                                                            <button onClick={() => handleUndoUpload(log)} style={{ padding: '6px 12px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                                                ↩️ Undo
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {attendanceView === 'stats' && (
-                            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                            <div className="anim-slide" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
                                     <h3 style={{ margin: 0, color: '#002147' }}>Student Attendance Overview</h3>
                                     <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold' }}>
@@ -1027,7 +1194,7 @@ export default function Dashboard() {
 
                 {/* ================= ANNOUNCEMENTS TAB ================= */}
                 {activeTab === 'announcements' && (
-                    <div>
+                    <div className="anim-slide">
                         <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
                             <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
                                 {editAnnId ? '✏️ Edit Announcement' : 'Publish Announcement'}
@@ -1172,7 +1339,7 @@ export default function Dashboard() {
 
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
                 {activeTab === 'permanent' && (
-                    <div>
+                    <div className="anim-slide">
                         {baseSchedule.length === 0 ? <p>No base schedule found.</p> : (
                             baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
                                 <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
@@ -1199,7 +1366,7 @@ export default function Dashboard() {
 
                 {/* ================= MANAGE STUDENTS TAB ================= */}
                 {activeTab === 'students' && (
-                    <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                    <div className="anim-slide" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                             <h3 style={{ margin: 0, color: '#002147' }}>Add New Student</h3>
                             <div>
