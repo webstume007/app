@@ -38,7 +38,7 @@ const SVGS = {
     whatsapp: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>,
     calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
     attendance: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
-    updates: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    updates: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
     clock: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
     alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>,
     door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
@@ -104,6 +104,10 @@ export default function Home() {
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
     const [selectedAttSubject, setSelectedAttSubject] = useState(''); 
 
+    // Offline / Connectivity States
+    const [isOffline, setIsOffline] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState('Unknown');
+
     // Transport Tab State
     const [isSatTransport, setIsSatTransport] = useState(false);
 
@@ -118,6 +122,19 @@ export default function Home() {
         timeSlots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`);
         ts += 30;
     }
+
+    // Offline Event Listeners
+    useEffect(() => {
+        setIsOffline(!navigator.onLine);
+        const handleOnline = () => setIsOffline(false);
+        const handleOffline = () => setIsOffline(true);
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+        return () => { 
+            window.removeEventListener('online', handleOnline); 
+            window.removeEventListener('offline', handleOffline); 
+        };
+    }, []);
 
     // --- Dynamic Target Fetchers ---
     const [loadedTeachers, setLoadedTeachers] = useState(new Set());
@@ -177,6 +194,19 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
+        // Hydrate from LocalStorage
+        const savedOffline = localStorage.getItem('iub_offline_data');
+        if (savedOffline) {
+            try {
+                const parsed = JSON.parse(savedOffline);
+                if (parsed.rawData) setRawData(parsed.rawData);
+                if (parsed.notifications) setNotifications(parsed.notifications);
+                if (parsed.announcements) setAnnouncements(parsed.announcements);
+                if (parsed.pointsData) setPointsData(parsed.pointsData);
+                if (parsed.lastUpdated) setLastUpdated(parsed.lastUpdated);
+            } catch(e) {}
+        }
+
         const savedSelection = localStorage.getItem('iub_user_selection');
         if (savedSelection) {
             const parsed = JSON.parse(savedSelection);
@@ -237,37 +267,46 @@ export default function Home() {
 
         const channel = supabase
             .channel('student-dashboard-updates')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
-                if (payload.new.message.includes(`Section ${userSection.section}`) || payload.new.message.includes('GLOBAL')) {
-                    setNotifications(prev => [payload.new, ...prev]);
-                    
-                    if (Notification.permission === "granted") {
-                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                            navigator.serviceWorker.ready.then((reg) => {
-                                reg.showNotification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
-                            });
-                        } else {
-                            new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
+                const msg = (payload.new?.message || payload.old?.message || "");
+                const sem = getSemesterFromSession(userSection.session);
+                
+                const isGlobal = msg.includes('GLOBAL');
+                const hasSection = msg.includes(userSection.section);
+                const hasSession = msg.includes(userSection.session) || (sem && msg.includes(sem));
+
+                if (isGlobal || (hasSection && hasSession)) {
+                    if (payload.eventType === 'INSERT') {
+                        if (Notification.permission === "granted") {
+                            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                                navigator.serviceWorker.ready.then((reg) => {
+                                    reg.showNotification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
+                                });
+                            } else {
+                                new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
+                            }
                         }
                     }
+                    setShowAlerts(true);
+                    fetchLiveSchedule(); // Silent background refresh
                 }
             })
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'class_announcements' }, (payload) => {
-                if (payload.new.section === userSection.section && payload.new.session === userSection.session) {
-                    setAnnouncements(prev => [payload.new, ...prev].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
-                    
-                    const alertMsg = `📢 New ${payload.new.type === 'assignment' ? 'Assignment' : 'Announcement'}: ${payload.new.subject} - ${payload.new.topics}`;
-                    setNotifications(prev => [{ id: payload.new.id, message: alertMsg, created_at: payload.new.created_at }, ...prev]);
-                    
-                    if (Notification.permission === "granted") {
-                        new Notification("New Class Update", { body: `${payload.new.subject}: ${payload.new.topics}`, icon: "/icon.png" });
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'class_announcements' }, (payload) => {
+                const pnew = payload.new || payload.old || {};
+                if (pnew.section === userSection.section && pnew.session === userSection.session) {
+                    if (payload.eventType === 'INSERT') {
+                        if (Notification.permission === "granted") {
+                            new Notification("New Class Update", { body: `${pnew.subject}: ${pnew.topics}`, icon: "/icon.png" });
+                        }
                     }
+                    setShowAlerts(true);
+                    fetchLiveSchedule(); // Silent background refresh
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
                 setLoadedRooms(new Set());
                 setLoadedTeachers(new Set());
-                fetchLiveSchedule();
+                fetchLiveSchedule(); // Silent background refresh
             })
             .subscribe();
 
@@ -359,6 +398,17 @@ export default function Home() {
         setStudentsData(studentsRes.data || []);
         setAnnouncements(annRes.data || []);
         
+        // Cache data for offline viewing
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        setLastUpdated(nowTime);
+        localStorage.setItem('iub_offline_data', JSON.stringify({
+            rawData: myScheduleData,
+            notifications: notifRes.data || [],
+            announcements: annRes.data || [],
+            pointsData: pointsRes.data || [],
+            lastUpdated: nowTime
+        }));
+
         setLoading(false);
     };
 
@@ -495,10 +545,15 @@ export default function Home() {
         }
     };
 
-    const relevantNotifs = notifications.filter(n => 
-        (n.message.includes(`Section ${userSection?.section}`) || n.message.includes('GLOBAL')) &&
-        !readNotifIds.includes(n.id)
-    );
+    const relevantNotifs = notifications.filter(n => {
+        const msg = n.message || "";
+        const sem = getSemesterFromSession(userSection?.session);
+        const isGlobal = msg.includes('GLOBAL');
+        const hasSection = msg.includes(userSection?.section);
+        const hasSession = msg.includes(userSection?.session) || (sem && msg.includes(sem));
+
+        return (isGlobal || (hasSection && hasSession)) && !readNotifIds.includes(n.id);
+    });
 
     const handleMarkAsRead = () => {
         const newReadIds = [...readNotifIds, ...relevantNotifs.map(n => n.id)];
@@ -885,7 +940,8 @@ export default function Home() {
                         </svg>
                     </div>
                     <div style={{ fontSize: '1rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>🎓</span> {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`}
+                        <span style={{ fontSize: '1.2rem' }}>🎓</span> 
+                        {isOffline ? 'IUB ASSISTANT' : (isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`)}
                     </div>
                 </div>
 
@@ -944,7 +1000,7 @@ export default function Home() {
             )}
 
             <div className="mobile-nav" style={tabBar}>
-                {availableTabs.filter(tab => tab.id !== 'room' && tab.id !== 'teacher' && tab.id !== 'transport').map(tab => (
+                {availableTabs.filter(tab => isGuestUser ? true : (tab.id !== 'room' && tab.id !== 'teacher' && tab.id !== 'transport')).map(tab => (
                     <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
                         <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
                         {tab.label}
@@ -955,8 +1011,16 @@ export default function Home() {
 
             <div style={{ padding: '10px 12px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
 
+                {isOffline && !isGuestUser && (
+                    <div className="expand-anim" style={{ background: '#fff', borderRadius: '20px', padding: '6px 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '15px', fontSize: '0.75rem', fontWeight: 'bold', color: '#002147', border: '1px solid #F2A900' }}>
+                        <span style={{background: '#002147', color: '#F2A900', padding: '2px 8px', borderRadius: '12px'}}>{getSemesterFromSession(userSection?.session)}-{userSection?.section}</span>
+                        <span style={{color: '#ccc'}}>|</span>
+                        <span style={{display: 'flex', alignItems: 'center', gap: '4px', color: '#dc3545'}}>{SVGS.alertCircle} Last Update: {lastUpdated}</span>
+                    </div>
+                )}
+
                 {deferredPrompt && (
-                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', marginBottom: '12px' }}>
+                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
                             <b style={{ display: 'block', marginBottom: '2px' }}>Install App 📱</b>
                             <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add IUB Assistant to your home screen.</span>
