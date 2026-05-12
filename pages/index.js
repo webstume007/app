@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
@@ -46,7 +46,6 @@ const SVGS = {
     bus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 11h8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM8 19v2a1 1 0 01-2 0v-2M18 19v2a1 1 0 01-2 0v-2"></path></svg>,
     home: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
     cap: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
-    hand: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" /></svg>,
     location: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
     live: <svg width="10" height="10" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>,
     tickCircle: <svg width="14" height="14" fill="none" stroke="#28a745" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
@@ -222,17 +221,21 @@ export default function Home() {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
-        if (typeof window !== 'undefined') {
-            const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-            if (!isInstalled) {
-                setShowInstallBanner(true);
-            }
-        }
-
         return () => { 
             window.removeEventListener('online', handleOnline); 
             window.removeEventListener('offline', handleOffline); 
         };
+    }, []);
+
+    // Dedicated Native App Install Listener
+    useEffect(() => {
+        const handler = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setShowInstallBanner(true); // Banner strictly shows ONLY when native install is physically available via browser
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+        return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
     // Fetch setup students dynamically when session & section selected in Welcome screen
@@ -365,10 +368,6 @@ export default function Home() {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').then((reg) => console.log('SW Registered')).catch(console.error);
         }
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-        });
     }, []);
 
     // --- Safe Pagination Engine for >1000 Rows ---
@@ -528,10 +527,11 @@ export default function Home() {
     };
 
     const formatCountdown = (totalSeconds) => {
-        if (totalSeconds <= 0) return "00:00";
-        const m = Math.floor(totalSeconds / 60);
+        if (totalSeconds <= 0) return "00:00:00";
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
         const s = totalSeconds % 60;
-        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
     const availableSessions = dropdownMeta.sessions.sort((a, b) => {
@@ -662,7 +662,6 @@ export default function Home() {
         return `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
     };
 
-    // Note: Global fetch replaces local rawData for Rooms and Teachers
     const getFilteredClasses = (filterKey, filterValue, sourceData = rawData) => {
         let classes = sourceData.filter(c => c[filterKey] === filterValue);
         if (filterKey === 'section') classes = classes.filter(c => c.session === userSection?.session);
@@ -687,26 +686,52 @@ export default function Home() {
     
     const ongoingAllLectures = allBaseSchedule.filter(c => c.day === currentDayStr && parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
 
-    // Notice Board Live Logic (Strictly filtering out cancelled)
-    const myTodayClasses = mySchedule.filter(c => {
-        if (c.day !== currentDayStr) return false;
-        const status = getStatusStyles(c);
-        if (status && status.label.toLowerCase().includes('cancelled')) return false;
-        return true;
-    }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+    // Dynamic Construction of Notice Board Carousel Logic (Events + Strict Filters)
+    const todayEvents = useMemo(() => {
+        const events = [];
+        const myTodayClasses = mySchedule.filter(c => {
+            if (c.day !== currentDayStr) return false;
+            const status = getStatusStyles(c);
+            if (status && status.label.toLowerCase().includes('cancelled')) return false;
+            return true;
+        }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+
+        if (myTodayClasses.length > 0) {
+            const firstCls = myTodayClasses[0];
+            const lastCls = myTodayClasses[myTodayClasses.length - 1];
+
+            const ptsFirst = getNearestPoints(firstCls);
+            if (ptsFirst.up !== 'N/A') {
+                events.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+            }
+
+            myTodayClasses.forEach(c => {
+                events.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
+            });
+
+            const ptsLast = getNearestPoints(lastCls);
+            if (ptsLast.down !== 'N/A') {
+                events.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+            }
+        }
+        return events;
+    }, [mySchedule, currentDayStr, exceptions, pointsData]);
     
     // Auto-align Notice Index
     useEffect(() => {
-        if (myTodayClasses.length > 0 && currentTab === 'home') {
-            const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
-            let activeIdx = myTodayClasses.findIndex(c => parseTime(c.end_time) > currentMins);
-            if (activeIdx === -1) activeIdx = myTodayClasses.length - 1; // All finished, show last
+        if (todayEvents.length > 0 && currentTab === 'home') {
+            const currentTotalSecs = new Date().getHours() * 3600 + new Date().getMinutes() * 60 + new Date().getSeconds();
+            let activeIdx = todayEvents.findIndex(e => {
+                if (e.type === 'lecture') return (e.endMins * 60) > currentTotalSecs;
+                return (e.timeMins * 60) > currentTotalSecs;
+            });
+            if (activeIdx === -1) activeIdx = todayEvents.length - 1; // All finished, show last
             setNoticeIndex(activeIdx);
         }
-    }, [rawData.length, currentTab]); // Run when schedule loads or when hitting home tab
+    }, [todayEvents.length, currentTab]); // Run on load/tab switch
 
-    const nextNotice = () => setNoticeIndex((prev) => (prev + 1) % myTodayClasses.length);
-    const prevNotice = () => setNoticeIndex((prev) => (prev - 1 + myTodayClasses.length) % myTodayClasses.length);
+    const nextNotice = () => setNoticeIndex((prev) => (prev + 1) % todayEvents.length);
+    const prevNotice = () => setNoticeIndex((prev) => (prev - 1 + todayEvents.length) % todayEvents.length);
 
     // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
@@ -851,7 +876,7 @@ export default function Home() {
                                     <div style={{ color: '#555', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                         {displayContext !== 'room' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {cls.room}</span>}
                                         {displayContext !== 'teacher' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>}
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.users} {getSemesterFromSession(cls.session)}-{cls.section}</span>
+                                        {displayContext !== 'class' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.users} {getSemesterFromSession(cls.session)}-{cls.section}</span>}
                                     </div>
                                     {status && <div style={{ marginTop: '8px', fontSize: '0.65rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.live} {status.label}</div>}
                                 </div>
@@ -1175,7 +1200,7 @@ export default function Home() {
                             <div className="expand-anim">
                                 <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '15px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
                                     <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        Welcome, {isGuestUser ? 'Guest' : studentsData.find(s => s.registration_number === myRollNumber)?.student_name?.split(' ')[0] || 'Student'} {SVGS.hand}
+                                        Welcome, {isGuestUser ? 'Guest' : studentsData.find(s => s.registration_number === myRollNumber)?.student_name?.split(' ')[0] || 'Student'}
                                     </h2>
                                     {!isGuestUser && myRollNumber && (
                                         <>
@@ -1192,12 +1217,12 @@ export default function Home() {
                                         {SVGS.bell} Notice Board
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px' }}>
-                                        {myTodayClasses.length > 0 && (
+                                        {todayEvents.length > 0 && (
                                             <button onClick={prevNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.leftArrow}</button>
                                         )}
                                         
                                         <div style={{ flex: 1, textAlign: 'center', margin: '0 10px' }}>
-                                            {myTodayClasses.length === 0 ? (
+                                            {todayEvents.length === 0 ? (
                                                 <div>
                                                     <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                                                         {SVGS.sparkle} Today is Off
@@ -1205,34 +1230,60 @@ export default function Home() {
                                                     <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
                                                 </div>
                                             ) : (() => {
-                                                const targetClass = myTodayClasses[noticeIndex];
+                                                const targetEvent = todayEvents[noticeIndex];
                                                 let noticeState = "Finished";
-                                                let remainingMs = 0;
+                                                let remainingSecs = 0;
                                                 
-                                                if (targetClass) {
-                                                    const startMins = parseTime(targetClass.start_time);
-                                                    const endMins = parseTime(targetClass.end_time);
-                                                    if (currentMins < startMins) {
-                                                        noticeState = "Starts In";
-                                                        remainingMs = (startMins * 60) - (currentMins * 60 + currentSecs);
-                                                    } else if (currentMins >= startMins && currentMins < endMins) {
-                                                        noticeState = "Ongoing";
-                                                        remainingMs = (endMins * 60) - (currentMins * 60 + currentSecs);
+                                                if (targetEvent) {
+                                                    const currentTotalSecs = currentMins * 60 + currentSecs;
+                                                    if (targetEvent.type === 'lecture') {
+                                                        const startSecs = targetEvent.startMins * 60;
+                                                        const endSecs = targetEvent.endMins * 60;
+                                                        if (currentTotalSecs < startSecs) {
+                                                            noticeState = "Starts In";
+                                                            remainingSecs = startSecs - currentTotalSecs;
+                                                        } else if (currentTotalSecs >= startSecs && currentTotalSecs < endSecs) {
+                                                            noticeState = "Ongoing";
+                                                            remainingSecs = endSecs - currentTotalSecs;
+                                                        }
+                                                    } else {
+                                                        const pointSecs = targetEvent.timeMins * 60;
+                                                        if (currentTotalSecs < pointSecs) {
+                                                            noticeState = "Departs In";
+                                                            remainingSecs = pointSecs - currentTotalSecs;
+                                                        } else {
+                                                            noticeState = "Departed";
+                                                        }
                                                     }
                                                 }
 
-                                                return (
-                                                    <div className="expand-anim" key={noticeIndex}>
+                                                return targetEvent.type === 'lecture' ? (
+                                                    <div className="expand-anim" key={`lec-${noticeIndex}`}>
                                                         <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                                             {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Lecture Concluded' : `${noticeState} Lecture`}
                                                         </div>
-                                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{targetClass.course}</h3>
+                                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{targetEvent.title}</h3>
                                                         <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                            {SVGS.location} Room {targetClass.room}
+                                                            {SVGS.location} Room {targetEvent.room}
                                                         </div>
                                                         {noticeState !== 'Finished' && (
                                                             <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
-                                                                {formatCountdown(remainingMs)} <span style={{fontSize: '0.7rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                                {formatCountdown(remainingSecs)} <span style={{fontSize: '0.7rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="expand-anim" key={`pt-${noticeIndex}`}>
+                                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: noticeState === 'Departs In' ? '#007bff' : '#666', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                            {noticeState === 'Departed' ? 'Bus Departed' : 'Upcoming Bus'}
+                                                        </div>
+                                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{targetEvent.title}</h3>
+                                                        <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                            {SVGS.clock} Departure at {targetEvent.time}
+                                                        </div>
+                                                        {noticeState !== 'Departed' && (
+                                                            <div style={{ background: '#e7f1ff', border: `1px solid #b8daff`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
+                                                                {formatCountdown(remainingSecs)} <span style={{fontSize: '0.7rem'}}>Departs In</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1240,7 +1291,7 @@ export default function Home() {
                                             })()}
                                         </div>
 
-                                        {myTodayClasses.length > 0 && (
+                                        {todayEvents.length > 0 && (
                                             <button onClick={nextNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.rightArrow}</button>
                                         )}
                                     </div>
@@ -1562,7 +1613,7 @@ export default function Home() {
                                                 const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                                                 const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
                                                 const mins = Math.floor((diffMs / 1000 / 60) % 60);
-                                                timeRemainingDisplay = `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
+                                                timeRemainingDisplay = `${days > 0 ? days + 'd ' : ''}${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
                                             } else {
                                                 isExpired = true;
                                             }
