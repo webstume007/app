@@ -113,6 +113,9 @@ export default function Home() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     
     // Core Data States
+    const [userSection, setUserSection] = useState(null);
+    const isGuestUser = userSection?.section === 'GUEST';
+
     const [dropdownMeta, setDropdownMeta] = useState({ sessions: [], rooms: [], baseMeta: [] });
     const [allBaseSchedule, setAllBaseSchedule] = useState([]); // Master fetch fixing the 1000 row issue completely
     const [rawData, setRawData] = useState([]);
@@ -128,7 +131,6 @@ export default function Home() {
     const [attSessions, setAttSessions] = useState([]);
     const [attRecords, setAttRecords] = useState([]);
 
-    const [userSection, setUserSection] = useState(null);
     const [isFirstVisit, setIsFirstVisit] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date()); 
     const [readNotifIds, setReadNotifIds] = useState([]);
@@ -155,6 +157,9 @@ export default function Home() {
         return today === 'SUN' ? 'ALL' : today;
     });
     const [showAlerts, setShowAlerts] = useState(false);
+    
+    // Forced Banner States
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
     
     const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
@@ -178,10 +183,9 @@ export default function Home() {
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
     const [selectedAttSubject, setSelectedAttSubject] = useState(''); 
 
-    // Offline / Connectivity / Install States
+    // Offline / Connectivity States
     const [isOffline, setIsOffline] = useState(false);
     const [lastUpdated, setLastUpdated] = useState('--:--');
-    const [isStandalone, setIsStandalone] = useState(true);
 
     // Transport Tab State
     const [isSatTransport, setIsSatTransport] = useState(false);
@@ -207,7 +211,10 @@ export default function Home() {
         window.addEventListener('offline', handleOffline);
 
         if (typeof window !== 'undefined') {
-            setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
+            const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            if (!isInstalled) {
+                setShowInstallBanner(true);
+            }
         }
 
         return () => { 
@@ -778,7 +785,7 @@ export default function Home() {
         if (displayContext === 'class' && userSection?.section === 'GUEST') {
             return (
                 <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
-                    <p style={{fontSize: '1rem', fontWeight: 'bold', color: '#002147'}}>{SVGS.users} Guest Mode Active</p>
+                    <p style={{fontSize: '1rem', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.users} Guest Mode Active</p>
                     <p style={{fontSize: '0.8rem'}}>You can search for Teacher schedules and Free Rooms above.</p>
                     <p style={{fontSize: '0.8rem'}}>To view a personalized schedule, click <b>"Change Section"</b>.</p>
                 </div>
@@ -983,18 +990,6 @@ export default function Home() {
         );
     }
 
-    const allTabs = [
-        { id: 'home', label: 'HOME', icon: SVGS.home },
-        { id: 'class', label: 'SCHEDULE', icon: SVGS.calendar },
-        { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
-        { id: 'announcements', label: 'UPDATES', icon: SVGS.updates },
-        { id: 'room', label: 'ROOMS', icon: SVGS.door },
-        { id: 'teacher', label: 'TEACHERS', icon: SVGS.userTie },
-        { id: 'transport', label: 'TRANSPORT', icon: SVGS.bus }
-    ];
-    
-    const availableTabs = isGuestUser ? allTabs.filter(t => ['room', 'teacher', 'transport'].includes(t.id)) : allTabs;
-
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
@@ -1121,7 +1116,7 @@ export default function Home() {
             <div style={{ padding: '10px 12px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
 
                 {/* Forced Install App Banner */}
-                {!isStandalone && (
+                {showInstallBanner && (
                     <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
                         <div style={{ flex: 1, paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{ opacity: 0.9 }}>{SVGS.mobile}</div>
