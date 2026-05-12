@@ -116,6 +116,18 @@ export default function Home() {
     const [userSection, setUserSection] = useState(null);
     const isGuestUser = userSection?.section === 'GUEST';
 
+    const allTabs = [
+        { id: 'home', label: 'HOME', icon: SVGS.home },
+        { id: 'class', label: 'SCHEDULE', icon: SVGS.calendar },
+        { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
+        { id: 'announcements', label: 'UPDATES', icon: SVGS.updates },
+        { id: 'room', label: 'ROOMS', icon: SVGS.door },
+        { id: 'teacher', label: 'TEACHERS', icon: SVGS.userTie },
+        { id: 'transport', label: 'TRANSPORT', icon: SVGS.bus }
+    ];
+    
+    const availableTabs = isGuestUser ? allTabs.filter(t => ['room', 'teacher', 'transport'].includes(t.id)) : allTabs;
+
     const [dropdownMeta, setDropdownMeta] = useState({ sessions: [], rooms: [], baseMeta: [] });
     const [allBaseSchedule, setAllBaseSchedule] = useState([]); // Master fetch fixing the 1000 row issue completely
     const [rawData, setRawData] = useState([]);
