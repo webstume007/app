@@ -44,7 +44,18 @@ const SVGS = {
     door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
     userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
     bus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 11h8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM8 19v2a1 1 0 01-2 0v-2M18 19v2a1 1 0 01-2 0v-2"></path></svg>,
-    home: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+    home: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
+    cap: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
+    hand: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" /></svg>,
+    location: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+    live: <svg width="10" height="10" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>,
+    tickCircle: <svg width="14" height="14" fill="none" stroke="#28a745" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+    note: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
+    users: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
+    leftArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>,
+    rightArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
+    sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+    mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
 };
 
 // --- Custom Realtime Dropdown Search Component ---
@@ -103,6 +114,7 @@ export default function Home() {
     
     // Core Data States
     const [dropdownMeta, setDropdownMeta] = useState({ sessions: [], rooms: [], baseMeta: [] });
+    const [allBaseSchedule, setAllBaseSchedule] = useState([]); // Master fetch fixing the 1000 row issue completely
     const [rawData, setRawData] = useState([]);
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
@@ -150,6 +162,9 @@ export default function Home() {
 
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
+    // Carousel Notice Board State
+    const [noticeIndex, setNoticeIndex] = useState(0);
+
     const [freeDay, setFreeDay] = useState('MON');
     const [freeStart, setFreeStart] = useState('8:00 AM');
     const [freeEnd, setFreeEnd] = useState('9:00 AM');
@@ -163,9 +178,10 @@ export default function Home() {
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
     const [selectedAttSubject, setSelectedAttSubject] = useState(''); 
 
-    // Offline / Connectivity States
+    // Offline / Connectivity / Install States
     const [isOffline, setIsOffline] = useState(false);
     const [lastUpdated, setLastUpdated] = useState('--:--');
+    const [isStandalone, setIsStandalone] = useState(true);
 
     // Transport Tab State
     const [isSatTransport, setIsSatTransport] = useState(false);
@@ -182,13 +198,18 @@ export default function Home() {
         ts += 30;
     }
 
-    // Offline Event Listeners
+    // Offline & App Install Listeners
     useEffect(() => {
         setIsOffline(!navigator.onLine);
         const handleOnline = () => setIsOffline(false);
         const handleOffline = () => setIsOffline(true);
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+
+        if (typeof window !== 'undefined') {
+            setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true);
+        }
+
         return () => { 
             window.removeEventListener('online', handleOnline); 
             window.removeEventListener('offline', handleOffline); 
@@ -206,57 +227,6 @@ export default function Home() {
         }
     }, [isFirstVisit, setupSession, setupSection]);
 
-    // --- Dynamic Target Fetchers ---
-    const [loadedTeachers, setLoadedTeachers] = useState(new Set());
-    useEffect(() => {
-        if (selectedTeacher && !loadedTeachers.has(selectedTeacher)) {
-            const fetchTS = async () => {
-                const { data } = await supabase.from('base_schedule').select('*').eq('teacher', selectedTeacher);
-                if (data && data.length > 0) {
-                    setRawData(prev => {
-                        const exist = new Set(prev.map(p => p.id));
-                        return [...prev, ...data.filter(d => !exist.has(d.id))];
-                    });
-                    const ids = data.map(d => d.id);
-                    const { data: excData } = await supabase.from('schedule_exceptions').select('*').in('base_schedule_id', ids);
-                    if (excData) {
-                        setExceptions(prev => {
-                            const exist = new Set(prev.map(p => p.id));
-                            return [...prev, ...excData.filter(d => !exist.has(d.id))];
-                        });
-                    }
-                    setLoadedTeachers(prev => new Set(prev).add(selectedTeacher));
-                }
-            };
-            fetchTS();
-        }
-    }, [selectedTeacher]);
-
-    const [loadedRooms, setLoadedRooms] = useState(new Set());
-    useEffect(() => {
-        if (selectedRoom && !loadedRooms.has(selectedRoom)) {
-            const fetchRS = async () => {
-                const { data } = await supabase.from('base_schedule').select('*').eq('room', selectedRoom);
-                if (data && data.length > 0) {
-                    setRawData(prev => {
-                        const exist = new Set(prev.map(p => p.id));
-                        return [...prev, ...data.filter(d => !exist.has(d.id))];
-                    });
-                    const ids = data.map(d => d.id);
-                    const { data: excData } = await supabase.from('schedule_exceptions').select('*').in('base_schedule_id', ids);
-                    if (excData) {
-                        setExceptions(prev => {
-                            const exist = new Set(prev.map(p => p.id));
-                            return [...prev, ...excData.filter(d => !exist.has(d.id))];
-                        });
-                    }
-                    setLoadedRooms(prev => new Set(prev).add(selectedRoom));
-                }
-            };
-            fetchRS();
-        }
-    }, [selectedRoom]);
-
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
         window.addEventListener('resize', handleResize);
@@ -270,6 +240,7 @@ export default function Home() {
             try {
                 const parsed = JSON.parse(savedOffline);
                 if (parsed.rawData) setRawData(parsed.rawData);
+                if (parsed.allBaseSchedule) setAllBaseSchedule(parsed.allBaseSchedule);
                 if (parsed.notifications) setNotifications(parsed.notifications);
                 if (parsed.announcements) setAnnouncements(parsed.announcements);
                 if (parsed.pointsData) setPointsData(parsed.pointsData);
@@ -300,13 +271,12 @@ export default function Home() {
         fetchLiveSchedule();
     }, []);
 
-    // Ticking Clock for Home Noticeboard Countdown
+    // Ticking Clock for Home Noticeboard Countdown & Assignments
     useEffect(() => {
         const timer = setInterval(() => {
             const now = new Date();
             setCurrentTime(now);
 
-            // 2-hour assignment check
             announcements.forEach(ann => {
                 if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
                     const deadlineDate = new Date(ann.deadline_date);
@@ -314,7 +284,6 @@ export default function Home() {
                     deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
                     
                     const diffMins = Math.floor((deadlineDate - now) / 60000);
-                    
                     if (diffMins === 120 && !notifiedDeadlines.current.has(ann.id)) {
                         notifiedDeadlines.current.add(ann.id);
                         const msg = `⏰ DEADLINE ALERT: Only 2 hours left for ${ann.subject} Assignment (${ann.topics}).`;
@@ -344,15 +313,11 @@ export default function Home() {
                 const hasSession = msg.includes(userSection.session) || (sem && msg.includes(sem));
 
                 if (isGlobal || (hasSection && hasSession)) {
-                    if (payload.eventType === 'INSERT') {
-                        if (Notification.permission === "granted") {
-                            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                                navigator.serviceWorker.ready.then((reg) => {
-                                    reg.showNotification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
-                                });
-                            } else {
-                                new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
-                            }
+                    if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
+                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                            navigator.serviceWorker.ready.then((reg) => reg.showNotification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" }));
+                        } else {
+                            new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
                         }
                     }
                     setShowAlerts(true);
@@ -362,18 +327,14 @@ export default function Home() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'class_announcements' }, (payload) => {
                 const pnew = payload.new || payload.old || {};
                 if (pnew.section === userSection.section && pnew.session === userSection.session) {
-                    if (payload.eventType === 'INSERT') {
-                        if (Notification.permission === "granted") {
-                            new Notification("New Class Update", { body: `${pnew.subject}: ${pnew.topics}`, icon: "/icon.png" });
-                        }
+                    if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
+                        new Notification("New Class Update", { body: `${pnew.subject}: ${pnew.topics}`, icon: "/icon.png" });
                     }
                     setShowAlerts(true);
                     fetchLiveSchedule(); // Silent background refresh
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
-                setLoadedRooms(new Set());
-                setLoadedTeachers(new Set());
                 fetchLiveSchedule(); // Silent background refresh
             })
             .subscribe();
@@ -414,23 +375,28 @@ export default function Home() {
         }
         const savedRoll = localStorage.getItem('iub_my_roll');
 
-        const { data: baseMeta } = await fetchAllRows('base_schedule', 'id, session, section, room, teacher');
-        const uniqueSessions = [...new Set(baseMeta.map(x => x.session))].filter(Boolean);
-        const uniqueRooms = [...new Set(baseMeta.map(x => x.room))].filter(Boolean).sort();
-        setDropdownMeta({ sessions: uniqueSessions, rooms: uniqueRooms, baseMeta: baseMeta });
+        // Master Fetch: Fetches ALL schedule rows seamlessly resolving 1000 Row limit constraints
+        const { data: allBaseData } = await fetchAllRows('base_schedule');
+        const { data: allExcData } = await fetchAllRows('schedule_exceptions');
+        
+        setAllBaseSchedule(allBaseData || []);
+        setExceptions(allExcData || []);
 
-        let baseReq = Promise.resolve({ data: [] });
+        const uniqueSessions = [...new Set((allBaseData || []).map(x => x.session))].filter(Boolean);
+        const uniqueRooms = [...new Set((allBaseData || []).map(x => x.room))].filter(Boolean).sort();
+        setDropdownMeta({ sessions: uniqueSessions, rooms: uniqueRooms, baseMeta: allBaseData || [] });
+
+        let myScheduleData = [];
         let studentsReq = Promise.resolve({ data: [] });
         let annReq = Promise.resolve({ data: [] });
 
         if (activeSession && activeSection && activeSection !== 'GUEST') {
-            baseReq = supabase.from('base_schedule').select('*').eq('session', activeSession).eq('section', activeSection);
+            myScheduleData = (allBaseData || []).filter(c => c.session === activeSession && c.section === activeSection);
             studentsReq = supabase.from('students').select('*').eq('session', activeSession).eq('section', activeSection);
             annReq = supabase.from('class_announcements').select('*').eq('session', activeSession).eq('section', activeSection).order('created_at', { ascending: false });
         }
 
-        const [baseRes, notifRes, pointsRes, teachersRes, contactsRes, studentsRes, annRes] = await Promise.all([
-            baseReq,
+        const [notifRes, pointsRes, teachersRes, contactsRes, studentsRes, annRes] = await Promise.all([
             supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
             supabase.from('point_schedules').select('*'),
             supabase.from('teacher_profiles').select('name, phone'),
@@ -439,16 +405,9 @@ export default function Home() {
             annReq
         ]);
 
-        const myScheduleData = baseRes.data || [];
         setRawData(myScheduleData); 
         
         if (myScheduleData.length > 0) {
-            const ids = myScheduleData.map(c => c.id);
-            const { data: excData } = await supabase.from('schedule_exceptions').select('*').in('base_schedule_id', ids);
-            setExceptions(excData || []);
-        }
-
-        if (activeSession && activeSection && activeSection !== 'GUEST' && myScheduleData.length > 0) {
             const ids = myScheduleData.map(c => c.id);
             const { data: attSessData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', ids);
             setAttSessions(attSessData || []);
@@ -471,6 +430,7 @@ export default function Home() {
         setLastUpdated(nowTime);
         localStorage.setItem('iub_offline_data', JSON.stringify({
             rawData: myScheduleData,
+            allBaseSchedule: allBaseData || [],
             notifications: notifRes.data || [],
             announcements: annRes.data || [],
             pointsData: pointsRes.data || [],
@@ -481,9 +441,7 @@ export default function Home() {
     };
 
     const handleInitialSelection = () => {
-        if (!setupSession || !setupSection) {
-            return alert("Please select both Semester and Section");
-        }
+        if (!setupSession || !setupSection) return alert("Please select both Semester and Section");
         const selection = { session: setupSession, section: setupSection };
         localStorage.setItem('iub_user_selection', JSON.stringify(selection));
         if (setupRollNo) {
@@ -603,17 +561,14 @@ export default function Home() {
         const eVal = parseTime(freeEnd);
         if (sVal >= eVal) return alert("End time must be after start time");
 
-        const { data: dayClasses } = await supabase.from('base_schedule').select('*').eq('day', freeDay);
+        const dayClasses = allBaseSchedule.filter(c => c.day === freeDay);
         if (!dayClasses) return;
-
-        const ids = dayClasses.map(c => c.id);
-        const { data: excData } = await supabase.from('schedule_exceptions').select('*').in('base_schedule_id', ids);
 
         const strictlyCancelledClasses = dayClasses.filter(cls => {
             const overlaps = (sVal < parseTime(cls.end_time) && eVal > parseTime(cls.start_time));
             if (!overlaps) return false;
             const todayStr = new Date().toLocaleDateString('en-CA');
-            const exc = (excData || []).filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
+            const exc = (exceptions || []).filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
             return exc?.status === 'cancelled';
         });
 
@@ -688,32 +643,51 @@ export default function Home() {
         return `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
     };
 
-    const getFilteredClasses = (filterKey, filterValue) => {
-        let classes = rawData.filter(c => c[filterKey] === filterValue);
+    // Note: Global fetch replaces local rawData for Rooms and Teachers
+    const getFilteredClasses = (filterKey, filterValue, sourceData = rawData) => {
+        let classes = sourceData.filter(c => c[filterKey] === filterValue);
         if (filterKey === 'section') classes = classes.filter(c => c.session === userSection?.session);
         if (selectedDay !== 'ALL') classes = classes.filter(c => c.day === selectedDay);
         return classes; 
     };
 
-    const mySchedule = getFilteredClasses('section', userSection?.section);
+    const mySchedule = getFilteredClasses('section', userSection?.section, rawData);
+    const teacherSchedule = getFilteredClasses('teacher', selectedTeacher, allBaseSchedule);
+    
     let roomSchedule = [];
     if (roomViewType === 'Specified') {
-        roomSchedule = getFilteredClasses('room', selectedRoom);
+        roomSchedule = getFilteredClasses('room', selectedRoom, allBaseSchedule);
     } else {
         const timeFilterMins = parseTime(roomTimeFilter);
-        roomSchedule = rawData.filter(c => c.day === selectedDay && parseTime(c.start_time) <= timeFilterMins && parseTime(c.end_time) > timeFilterMins);
+        roomSchedule = allBaseSchedule.filter(c => c.day === selectedDay && parseTime(c.start_time) <= timeFilterMins && parseTime(c.end_time) > timeFilterMins);
     }
 
     const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
     const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
     const currentSecs = currentTime.getSeconds();
     
-    const ongoingAllLectures = rawData.filter(c => c.day === currentDayStr && parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
+    const ongoingAllLectures = allBaseSchedule.filter(c => c.day === currentDayStr && parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
 
-    // Notice Board Live Logic
-    const myTodayClasses = mySchedule.filter(c => c.day === currentDayStr).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
-    const ongoingMyLecture = myTodayClasses.find(c => parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
-    const nextMyLecture = myTodayClasses.find(c => parseTime(c.start_time) > currentMins);
+    // Notice Board Live Logic (Strictly filtering out cancelled)
+    const myTodayClasses = mySchedule.filter(c => {
+        if (c.day !== currentDayStr) return false;
+        const status = getStatusStyles(c);
+        if (status && status.label.toLowerCase().includes('cancelled')) return false;
+        return true;
+    }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+    
+    // Auto-align Notice Index
+    useEffect(() => {
+        if (myTodayClasses.length > 0 && currentTab === 'home') {
+            const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+            let activeIdx = myTodayClasses.findIndex(c => parseTime(c.end_time) > currentMins);
+            if (activeIdx === -1) activeIdx = myTodayClasses.length - 1; // All finished, show last
+            setNoticeIndex(activeIdx);
+        }
+    }, [rawData.length, currentTab]); // Run when schedule loads or when hitting home tab
+
+    const nextNotice = () => setNoticeIndex((prev) => (prev + 1) % myTodayClasses.length);
+    const prevNotice = () => setNoticeIndex((prev) => (prev - 1 + myTodayClasses.length) % myTodayClasses.length);
 
     // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
@@ -752,6 +726,17 @@ export default function Home() {
         return { subjectStats, validSessions, allValidSessions, mySubjects, myClasses };
     };
 
+    let overallPct = 0;
+    if (!isGuestUser && myRollNumber) {
+        const { subjectStats } = getFilteredAttendance();
+        let totalPres = 0, totalClasses = 0;
+        subjectStats.forEach(s => {
+            totalClasses += s.total;
+            totalPres += (s.pct / 100) * s.total;
+        });
+        overallPct = totalClasses === 0 ? 0 : Math.round((totalPres / totalClasses) * 100);
+    }
+
     const CircularProgress = ({ percentage, subject, isOverall = false }) => {
         const radius = isOverall ? 40 : 30;
         const circumference = 2 * Math.PI * radius;
@@ -778,7 +763,7 @@ export default function Home() {
     };
 
     const StatusBadge = ({ status }) => {
-        let bg = '#d4edda', color = '#155724', icon = SVGS.tick;
+        let bg = '#d4edda', color = '#155724', icon = SVGS.tickCircle;
         if (status === 'Absent') { bg = '#f8d7da'; color = '#721c24'; icon = SVGS.cross; }
         else if (status === 'Leave') { bg = '#e2e8f0'; color = '#334155'; icon = SVGS.minus; }
 
@@ -793,7 +778,7 @@ export default function Home() {
         if (displayContext === 'class' && userSection?.section === 'GUEST') {
             return (
                 <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
-                    <p style={{fontSize: '1rem', fontWeight: 'bold', color: '#002147'}}>👤 Guest Mode Active</p>
+                    <p style={{fontSize: '1rem', fontWeight: 'bold', color: '#002147'}}>{SVGS.users} Guest Mode Active</p>
                     <p style={{fontSize: '0.8rem'}}>You can search for Teacher schedules and Free Rooms above.</p>
                     <p style={{fontSize: '0.8rem'}}>To view a personalized schedule, click <b>"Change Section"</b>.</p>
                 </div>
@@ -840,14 +825,16 @@ export default function Home() {
                                     onClick={() => setExpandedContactId(isContactExpanded ? null : cls.id)}
                                     style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}`, cursor: 'pointer' }}
                                 >
-                                    <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.75rem' }}>🕒 {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '4px 0', color: '#111827' }}>{cls.course}</div>
-                                    <div style={{ color: '#555', fontSize: '0.7rem' }}>
-                                        {displayContext !== 'room' && <span>📍 Room: {cls.room} | </span>}
-                                        {displayContext !== 'teacher' && <span>👨‍🏫 {cls.teacher} | </span>}
-                                        <span>👥 {getSemesterFromSession(cls.session)}-{cls.section}</span>
+                                    <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}
                                     </div>
-                                    {status && <div style={{ marginTop: '8px', fontSize: '0.65rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase' }}>● {status.label}</div>}
+                                    <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '6px 0', color: '#111827' }}>{cls.course}</div>
+                                    <div style={{ color: '#555', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {displayContext !== 'room' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {cls.room}</span>}
+                                        {displayContext !== 'teacher' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>}
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.users} {getSemesterFromSession(cls.session)}-{cls.section}</span>
+                                    </div>
+                                    {status && <div style={{ marginTop: '8px', fontSize: '0.65rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.live} {status.label}</div>}
                                 </div>
                                 
                                 {activeSubjectAssignments.length > 0 && (
@@ -874,7 +861,7 @@ export default function Home() {
                                     <div className="expand-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
                                         {activeSubjectAssignments.map(ann => (
                                             <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px dashed #fde68a' }}>
-                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem' }}>📝 {ann.topics}</div>
+                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.note} {ann.topics}</div>
                                                 <div style={{ color: '#444', fontSize: '0.75rem', marginTop: '4px', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</div>
                                                 <div style={{ fontSize: '0.65rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
                                                     Deadline: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
@@ -930,6 +917,8 @@ export default function Home() {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') setDeferredPrompt(null);
+        } else {
+            alert("To install this app on your phone, tap the Share icon (iOS) or browser menu (Android) and select 'Add to Home Screen'.");
         }
     };
 
@@ -954,7 +943,7 @@ export default function Home() {
         return (
             <div style={welcomeBg}>
                 <div style={welcomeCard}>
-                    <h2 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.2rem' }}>Welcome to IUB Assistant! 👋</h2>
+                    <h2 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>{SVGS.cap} Welcome to IUB Assistant!</h2>
                     <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '15px' }}>Select your details for a personalized experience.</p>
 
                     <select style={selectStyle} value={setupSession} onChange={(e) => setSetupSession(e.target.value)}>
@@ -994,8 +983,6 @@ export default function Home() {
         );
     }
 
-    const isGuestUser = userSection?.section === 'GUEST';
-
     const allTabs = [
         { id: 'home', label: 'HOME', icon: SVGS.home },
         { id: 'class', label: 'SCHEDULE', icon: SVGS.calendar },
@@ -1006,7 +993,6 @@ export default function Home() {
         { id: 'transport', label: 'TRANSPORT', icon: SVGS.bus }
     ];
     
-    // Guest doesn't see classes, attendance, or updates
     const availableTabs = isGuestUser ? allTabs.filter(t => ['room', 'teacher', 'transport'].includes(t.id)) : allTabs;
 
     return (
@@ -1046,7 +1032,7 @@ export default function Home() {
                         </svg>
                     </div>
                     <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>🎓</span> 
+                        <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span> 
                         IUB ASSISTANT
                     </div>
                 </div>
@@ -1070,11 +1056,11 @@ export default function Home() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="mobile-hide">
-                        <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                            {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+                        <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
                         </span>
-                        <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569' }}>
-                            Last Update: {lastUpdated}
+                        <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {SVGS.clock} Update: {lastUpdated}
                         </span>
                     </div>
 
@@ -1087,12 +1073,12 @@ export default function Home() {
                 </div>
             </header>
 
-            <div className="desktop-hide" style={{ background: '#002147', padding: '4px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold' }}>
-                    {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+            <div className="desktop-hide" style={{ background: '#002147', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
                 </span>
-                <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569' }}>
-                    Last Update: {lastUpdated}
+                <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {SVGS.clock} Update: {lastUpdated}
                 </span>
             </div>
 
@@ -1134,12 +1120,15 @@ export default function Home() {
 
             <div style={{ padding: '10px 12px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
 
-                {/* Priority Banners */}
-                {deferredPrompt && (
+                {/* Forced Install App Banner */}
+                {!isStandalone && (
                     <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
-                        <div style={{ flex: 1, paddingRight: '10px' }}>
-                            <b style={{ display: 'block', marginBottom: '2px' }}>Install App 📱</b>
-                            <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add IUB Assistant to your home screen.</span>
+                        <div style={{ flex: 1, paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ opacity: 0.9 }}>{SVGS.mobile}</div>
+                            <div>
+                                <b style={{ display: 'block', marginBottom: '2px', fontSize: '0.8rem' }}>Install App</b>
+                                <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add IUB Assistant to your home screen.</span>
+                            </div>
                         </div>
                         <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
                     </div>
@@ -1178,11 +1167,16 @@ export default function Home() {
                         {currentTab === 'home' && (
                             <div className="expand-anim">
                                 <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '15px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
-                                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900' }}>
-                                        {isGuestUser ? 'Welcome, Guest 👋' : `Welcome, ${studentsData.find(s => s.registration_number === myRollNumber)?.student_name?.split(' ')[0] || 'Student'} 👋`}
+                                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        Welcome, {isGuestUser ? 'Guest' : studentsData.find(s => s.registration_number === myRollNumber)?.student_name?.split(' ')[0] || 'Student'} {SVGS.hand}
                                     </h2>
                                     {!isGuestUser && myRollNumber && (
-                                        <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{myRollNumber}</div>
+                                        <>
+                                            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{myRollNumber}</div>
+                                            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                {SVGS.attendance} Attendance: {overallPct}%
+                                            </div>
+                                        </>
                                     )}
                                 </div>
 
@@ -1190,34 +1184,57 @@ export default function Home() {
                                     <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                                         {SVGS.bell} Notice Board
                                     </div>
-                                    <div style={{ padding: '15px', textAlign: 'center' }}>
-                                        {myTodayClasses.length === 0 ? (
-                                            <div>
-                                                <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem' }}>Today is Off 🎉</h3>
-                                                <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
-                                            </div>
-                                        ) : ongoingMyLecture ? (
-                                            <div>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#dc3545', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px' }}>● Ongoing Lecture</div>
-                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{ongoingMyLecture.course}</h3>
-                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px' }}>📍 Room {ongoingMyLecture.room}</div>
-                                                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: '#991b1b', fontWeight: '900', fontSize: '1.2rem' }}>
-                                                    {formatCountdown((parseTime(ongoingMyLecture.end_time) * 60) - (currentMins * 60 + currentSecs))} <span style={{fontSize: '0.7rem'}}>Remaining</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px' }}>
+                                        {myTodayClasses.length > 0 && (
+                                            <button onClick={prevNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.leftArrow}</button>
+                                        )}
+                                        
+                                        <div style={{ flex: 1, textAlign: 'center', margin: '0 10px' }}>
+                                            {myTodayClasses.length === 0 ? (
+                                                <div>
+                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                        {SVGS.sparkle} Today is Off
+                                                    </h3>
+                                                    <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
                                                 </div>
-                                            </div>
-                                        ) : nextMyLecture ? (
-                                            <div>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px' }}>Next Lecture</div>
-                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{nextMyLecture.course}</h3>
-                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px' }}>Starts at {convertTo12Hour(nextMyLecture.start_time)}</div>
-                                                <div style={{ background: '#e7f1ff', border: '1px solid #b8daff', display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
-                                                    {formatCountdown((parseTime(nextMyLecture.start_time) * 60) - (currentMins * 60 + currentSecs))} <span style={{fontSize: '0.7rem'}}>Starts In</span>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <h3 style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>All lectures finished for today!</h3>
-                                            </div>
+                                            ) : (() => {
+                                                const targetClass = myTodayClasses[noticeIndex];
+                                                let noticeState = "Finished";
+                                                let remainingMs = 0;
+                                                
+                                                if (targetClass) {
+                                                    const startMins = parseTime(targetClass.start_time);
+                                                    const endMins = parseTime(targetClass.end_time);
+                                                    if (currentMins < startMins) {
+                                                        noticeState = "Starts In";
+                                                        remainingMs = (startMins * 60) - (currentMins * 60 + currentSecs);
+                                                    } else if (currentMins >= startMins && currentMins < endMins) {
+                                                        noticeState = "Ongoing";
+                                                        remainingMs = (endMins * 60) - (currentMins * 60 + currentSecs);
+                                                    }
+                                                }
+
+                                                return (
+                                                    <div className="expand-anim" key={noticeIndex}>
+                                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                            {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Lecture Concluded' : `${noticeState} Lecture`}
+                                                        </div>
+                                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{targetClass.course}</h3>
+                                                        <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                            {SVGS.location} Room {targetClass.room}
+                                                        </div>
+                                                        {noticeState !== 'Finished' && (
+                                                            <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
+                                                                {formatCountdown(remainingMs)} <span style={{fontSize: '0.7rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+
+                                        {myTodayClasses.length > 0 && (
+                                            <button onClick={nextNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.rightArrow}</button>
                                         )}
                                     </div>
                                 </div>
@@ -1297,13 +1314,6 @@ export default function Home() {
                                         {(() => {
                                             const { subjectStats, allValidSessions, mySubjects, myClasses } = getFilteredAttendance();
                                             if (subjectStats.length === 0) return <div style={emptyState}>No attendance records found.</div>;
-
-                                            let totalPres = 0, totalClasses = 0;
-                                            subjectStats.forEach(s => {
-                                                totalClasses += s.total;
-                                                totalPres += (s.pct / 100) * s.total;
-                                            });
-                                            const overallPct = totalClasses === 0 ? 0 : (totalPres / totalClasses) * 100;
 
                                             const nowMs = new Date().getTime();
                                             const last7DaysSessions = allValidSessions.filter(s => (nowMs - new Date(s.session_date).getTime()) <= 7 * 24 * 60 * 60 * 1000).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
@@ -1460,7 +1470,7 @@ export default function Home() {
                                         {searchedFreeRooms !== null && (
                                             <div className="expand-anim" style={{ marginTop: '12px' }}>
                                                 {searchedFreeRooms.length > 0 ? searchedFreeRooms.map(r => (
-                                                    <div key={r} style={freeRoomItem}>✅ Room {r} is FREE (Class Cancelled)</div>
+                                                    <div key={r} style={freeRoomItem}>{SVGS.tickCircle} Room {r} is FREE (Class Cancelled)</div>
                                                 )) : <div style={emptyState}>No rooms were cancelled.</div>}
                                             </div>
                                         )}
@@ -1469,8 +1479,8 @@ export default function Home() {
 
                                 {roomSubTab === 'ongoing' && (
                                     <div className="expand-anim">
-                                        <div style={{ marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', textAlign: 'center' }}>
-                                            🔴 Live Ongoing Lectures
+                                        <div style={{ marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                            {SVGS.live} Live Ongoing Lectures
                                         </div>
                                         {renderClassCards(ongoingAllLectures, 'room')}
                                         {ongoingAllLectures.length === 0 && <div style={whiteCard}><div style={emptyState}>No lectures are currently ongoing.</div></div>}
@@ -1686,7 +1696,7 @@ const notifCard = { background: '#fff', padding: '8px', borderRadius: '6px', mar
 const whiteCard = { background: '#fff', padding: '12px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '12px', borderTop: '4px solid #F2A900', transition: 'all 0.3s ease' };
 const searchBtn = { width: '100%', padding: '10px', background: '#002147', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', boxSizing: 'border-box', transition: 'all 0.3s ease', fontSize: '0.8rem' };
 const markReadBtn = { background: '#e9ecef', border: 'none', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
-const freeRoomItem = { padding: '8px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.75rem', background: '#f0fff4', borderRadius: '4px', marginBottom: '4px' };
+const freeRoomItem = { padding: '8px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.75rem', background: '#f0fff4', borderRadius: '4px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' };
 const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: '#25D366', color: '#fff', padding: '6px 10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
 const emptyState = { textAlign: 'center', padding: '20px 10px', color: '#999', fontSize: '0.8rem' };
 const centerStyle = { textAlign: 'center', marginTop: '40px', fontFamily: 'sans-serif', fontSize: '0.85rem' };
