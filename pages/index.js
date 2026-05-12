@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
-// Helper function to dynamically calculate Semester based on Session text and Current Date
+// Helper function to dynamically calculate Semester
 const getSemesterFromSession = (session) => {
     if (!session) return "";
     const match = session.match(/20\d{2}/);
@@ -43,7 +43,59 @@ const SVGS = {
     alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>,
     door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
     userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
-    bus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 11h8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM8 19v2a1 1 0 01-2 0v-2M18 19v2a1 1 0 01-2 0v-2"></path></svg>
+    bus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 11h8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM8 19v2a1 1 0 01-2 0v-2M18 19v2a1 1 0 01-2 0v-2"></path></svg>,
+    home: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+};
+
+// --- Custom Realtime Dropdown Search Component ---
+const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
+    const [search, setSearch] = useState(value || '');
+    const [isOpen, setIsOpen] = useState(false);
+    const wrapperRef = useRef(null);
+
+    useEffect(() => { setSearch(value || ''); }, [value]);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setIsOpen(false); };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filtered = options.filter(o => {
+        const text = typeof o === 'string' ? o : o.label;
+        return text.toLowerCase().includes(search.toLowerCase());
+    });
+
+    return (
+        <div ref={wrapperRef} style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
+            <input 
+                type="text" 
+                placeholder={placeholder} 
+                value={search} 
+                onChange={e => { setSearch(e.target.value); setIsOpen(true); }}
+                onFocus={() => setIsOpen(true)}
+                style={searchInput} 
+            />
+            {isOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', maxHeight: '200px', overflowY: 'auto', background: '#fff', border: '1px solid #dee2e6', borderRadius: '6px', zIndex: 50, boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                    {filtered.length > 0 ? filtered.map((opt, i) => {
+                        const val = typeof opt === 'string' ? opt : opt.value;
+                        const label = typeof opt === 'string' ? opt : opt.label;
+                        return (
+                            <div key={i} 
+                                onClick={() => { onChange(val); setSearch(label); setIsOpen(false); }}
+                                style={{ padding: '10px', fontSize: '0.8rem', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', color: '#333' }}
+                                onMouseEnter={(e) => e.target.style.background = '#f8f9fa'}
+                                onMouseLeave={(e) => e.target.style.background = '#fff'}
+                            >
+                                {label}
+                            </div>
+                        )
+                    }) : <div style={{ padding: '10px', fontSize: '0.8rem', color: '#999', textAlign: 'center' }}>No results found</div>}
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default function Home() {
@@ -70,12 +122,22 @@ export default function Home() {
     const [readNotifIds, setReadNotifIds] = useState([]);
     const [myRollNumber, setMyRollNumber] = useState(null);
 
+    // Initial Setup States
+    const [setupSession, setSetupSession] = useState('');
+    const [setupSection, setSetupSection] = useState('');
+    const [setupStudentsList, setSetupStudentsList] = useState([]);
+    const [setupRollNo, setSetupRollNo] = useState('');
+
     const notifiedDeadlines = useRef(new Set());
 
     // Active View States
-    const [currentTab, setCurrentTab] = useState('class'); 
+    const [currentTab, setCurrentTab] = useState('home'); 
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    
     const [roomSubTab, setRoomSubTab] = useState('schedule'); 
+    const [roomViewType, setRoomViewType] = useState('Specified'); // All | Specified
+    const [roomTimeFilter, setRoomTimeFilter] = useState('');
+
     const [selectedDay, setSelectedDay] = useState(() => {
         const today = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
         return today === 'SUN' ? 'ALL' : today;
@@ -93,12 +155,9 @@ export default function Home() {
     const [freeEnd, setFreeEnd] = useState('9:00 AM');
     const [searchedFreeRooms, setSearchedFreeRooms] = useState(null);
 
-    const [teacherSearch, setTeacherSearch] = useState('');
     const [selectedTeacher, setSelectedTeacher] = useState('');
-    const [roomSearch, setRoomSearch] = useState('');
     const [selectedRoom, setSelectedRoom] = useState('');
 
-    const [attSearch, setAttSearch] = useState('');
     const [selectedRollInput, setSelectedRollInput] = useState('');
     const [attFilter, setAttFilter] = useState('All'); 
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
@@ -106,7 +165,7 @@ export default function Home() {
 
     // Offline / Connectivity States
     const [isOffline, setIsOffline] = useState(false);
-    const [lastUpdated, setLastUpdated] = useState('Unknown');
+    const [lastUpdated, setLastUpdated] = useState('--:--');
 
     // Transport Tab State
     const [isSatTransport, setIsSatTransport] = useState(false);
@@ -135,6 +194,17 @@ export default function Home() {
             window.removeEventListener('offline', handleOffline); 
         };
     }, []);
+
+    // Fetch setup students dynamically when session & section selected in Welcome screen
+    useEffect(() => {
+        if (isFirstVisit && setupSession && setupSection) {
+            const fetchSetup = async () => {
+                const { data } = await supabase.from('students').select('registration_number, student_name').eq('session', setupSession).eq('section', setupSection);
+                if (data) setSetupStudentsList(data);
+            };
+            fetchSetup();
+        }
+    }, [isFirstVisit, setupSession, setupSection]);
 
     // --- Dynamic Target Fetchers ---
     const [loadedTeachers, setLoadedTeachers] = useState(new Set());
@@ -214,6 +284,7 @@ export default function Home() {
             setUserSection(parsed);
             setIsFirstVisit(false);
             if (parsed.section === 'GUEST') setCurrentTab('room');
+            else setCurrentTab('home');
         }
 
         const savedReadNotifs = localStorage.getItem('iub_read_notifs');
@@ -229,12 +300,13 @@ export default function Home() {
         fetchLiveSchedule();
     }, []);
 
-    // 2-Hour Popup Notification and Alerts Tracker
+    // Ticking Clock for Home Noticeboard Countdown
     useEffect(() => {
         const timer = setInterval(() => {
             const now = new Date();
             setCurrentTime(now);
 
+            // 2-hour assignment check
             announcements.forEach(ann => {
                 if (ann.type === 'assignment' && ann.deadline_date && ann.deadline_time) {
                     const deadlineDate = new Date(ann.deadline_date);
@@ -243,22 +315,18 @@ export default function Home() {
                     
                     const diffMins = Math.floor((deadlineDate - now) / 60000);
                     
-                    // Exact match for 2 Hours (120 mins)
                     if (diffMins === 120 && !notifiedDeadlines.current.has(ann.id)) {
                         notifiedDeadlines.current.add(ann.id);
-                        
                         const msg = `⏰ DEADLINE ALERT: Only 2 hours left for ${ann.subject} Assignment (${ann.topics}).`;
-                        
                         setNotifications(prev => [{ id: Date.now(), message: msg, created_at: new Date().toISOString() }, ...prev]);
                         setShowAlerts(true); 
-                        
                         if (Notification.permission === "granted") {
                             new Notification("Assignment Due Soon!", { body: msg, icon: "/icon.png" });
                         }
                     }
                 }
             });
-        }, 60000);
+        }, 1000); // 1-second tick for live countdowns
         return () => clearInterval(timer);
     }, [announcements]);
 
@@ -412,11 +480,19 @@ export default function Home() {
         setLoading(false);
     };
 
-    const handleInitialSelection = (sessionVal, secVal) => {
-        const selection = { session: sessionVal, section: secVal };
+    const handleInitialSelection = () => {
+        if (!setupSession || !setupSection) {
+            return alert("Please select both Semester and Section");
+        }
+        const selection = { session: setupSession, section: setupSection };
         localStorage.setItem('iub_user_selection', JSON.stringify(selection));
+        if (setupRollNo) {
+            localStorage.setItem('iub_my_roll', setupRollNo);
+            setMyRollNumber(setupRollNo);
+        }
         setUserSection(selection);
         setIsFirstVisit(false);
+        setCurrentTab('home');
         setLoading(true);
         fetchLiveSchedule();
     };
@@ -429,12 +505,12 @@ export default function Home() {
         setCurrentTab('room');
     };
 
-    const handleRollSelectConfirm = async () => {
-        if (!selectedRollInput) return;
-        if (window.confirm(`Are you sure ${selectedRollInput} is your registration number?`)) {
-            localStorage.setItem('iub_my_roll', selectedRollInput);
-            setMyRollNumber(selectedRollInput);
-            const { data } = await supabase.from('attendance_records').select('*').eq('student_id', selectedRollInput);
+    const handleRollSelectConfirm = async (val) => {
+        if (!val) return;
+        if (window.confirm(`Are you sure ${val} is your registration number?`)) {
+            localStorage.setItem('iub_my_roll', val);
+            setMyRollNumber(val);
+            const { data } = await supabase.from('attendance_records').select('*').eq('student_id', val);
             if (data) setAttRecords(data);
         }
     };
@@ -472,6 +548,13 @@ export default function Home() {
         const suffix = h >= 12 ? "PM" : "AM";
         h = h % 12 || 12;
         return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
+    };
+
+    const formatCountdown = (totalSeconds) => {
+        if (totalSeconds <= 0) return "00:00";
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
     const availableSessions = dropdownMeta.sessions.sort((a, b) => {
@@ -613,8 +696,24 @@ export default function Home() {
     };
 
     const mySchedule = getFilteredClasses('section', userSection?.section);
-    const teacherSchedule = getFilteredClasses('teacher', selectedTeacher);
-    const roomSchedule = getFilteredClasses('room', selectedRoom);
+    let roomSchedule = [];
+    if (roomViewType === 'Specified') {
+        roomSchedule = getFilteredClasses('room', selectedRoom);
+    } else {
+        const timeFilterMins = parseTime(roomTimeFilter);
+        roomSchedule = rawData.filter(c => c.day === selectedDay && parseTime(c.start_time) <= timeFilterMins && parseTime(c.end_time) > timeFilterMins);
+    }
+
+    const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const currentSecs = currentTime.getSeconds();
+    
+    const ongoingAllLectures = rawData.filter(c => c.day === currentDayStr && parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
+
+    // Notice Board Live Logic
+    const myTodayClasses = mySchedule.filter(c => c.day === currentDayStr).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+    const ongoingMyLecture = myTodayClasses.find(c => parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
+    const nextMyLecture = myTodayClasses.find(c => parseTime(c.start_time) > currentMins);
 
     // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
@@ -856,30 +955,36 @@ export default function Home() {
             <div style={welcomeBg}>
                 <div style={welcomeCard}>
                     <h2 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.2rem' }}>Welcome to IUB Assistant! 👋</h2>
-                    <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '15px' }}>Select your section for a personalized schedule.</p>
+                    <p style={{ color: '#666', fontSize: '0.8rem', marginBottom: '15px' }}>Select your details for a personalized experience.</p>
 
-                    <select id="initSession" style={selectStyle} onChange={(e) => {
-                        const secDropdown = document.getElementById('initSec');
-                        const secs = getSectionsForSession(e.target.value);
-                        secDropdown.innerHTML = '<option value="">-- Select Section --</option>' + secs.map(s => `<option value="${s}">${s}</option>`).join('');
-                    }}>
+                    <select style={selectStyle} value={setupSession} onChange={(e) => setSetupSession(e.target.value)}>
                         <option value="">-- Select Semester --</option>
                         {availableSessions.map(s => (
                             <option key={s} value={s}>{getSemesterFromSession(s)} Semester</option>
                         ))}
                     </select>
 
-                    <select id="initSec" style={selectStyle}>
+                    <select style={selectStyle} value={setupSection} onChange={(e) => setSetupSection(e.target.value)} disabled={!setupSession}>
                         <option value="">-- Select Section --</option>
+                        {setupSession && getSectionsForSession(setupSession).map(s => (
+                            <option key={s} value={s}>{s}</option>
+                        ))}
                     </select>
 
+                    {setupSession && setupSection && (
+                        <div className="expand-anim" style={{ marginTop: '5px' }}>
+                            <p style={{ fontSize: '0.75rem', color: '#666', margin: '0 0 6px 0', textAlign: 'left' }}>Your Roll Number (For Attendance)</p>
+                            <RealtimeSearchSelect 
+                                value={setupRollNo} 
+                                onChange={setSetupRollNo} 
+                                options={setupStudentsList.map(s => ({ value: s.registration_number, label: `${s.registration_number} - ${s.student_name}` }))} 
+                                placeholder="🔍 Search Roll No..." 
+                            />
+                        </div>
+                    )}
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                        <button onClick={() => {
-                            const sem = document.getElementById('initSession').value;
-                            const sec = document.getElementById('initSec').value;
-                            if (sem && sec) handleInitialSelection(sem, sec);
-                            else alert("Please select both Semester and Section");
-                        }} style={bigBtn}>Show My Schedule</button>
+                        <button onClick={handleInitialSelection} style={bigBtn}>Show My Schedule</button>
                         
                         <div style={{color: '#999', fontSize: '0.7rem'}}>— OR —</div>
                         <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
@@ -892,6 +997,7 @@ export default function Home() {
     const isGuestUser = userSection?.section === 'GUEST';
 
     const allTabs = [
+        { id: 'home', label: 'HOME', icon: SVGS.home },
         { id: 'class', label: 'SCHEDULE', icon: SVGS.calendar },
         { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
         { id: 'announcements', label: 'UPDATES', icon: SVGS.updates },
@@ -906,7 +1012,7 @@ export default function Home() {
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
-                <title>My Schedule | IUB AI</title>
+                <title>IUB Assistant</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
                 <meta name="theme-color" content="#002147" />
             </Head>
@@ -939,9 +1045,9 @@ export default function Home() {
                             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
                         </svg>
                     </div>
-                    <div style={{ fontSize: '1rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <span style={{ fontSize: '1.2rem' }}>🎓</span> 
-                        {isOffline ? 'IUB ASSISTANT' : (isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)} • ${userSection?.section}`)}
+                        IUB ASSISTANT
                     </div>
                 </div>
 
@@ -962,16 +1068,33 @@ export default function Home() {
                     ))}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="mobile-hide">
+                        <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                            {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+                        </span>
+                        <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569' }}>
+                            Last Update: {lastUpdated}
+                        </span>
+                    </div>
+
                     {!isGuestUser && (
                         <div style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowAlerts(!showAlerts)}>
                             {SVGS.bell}
                             {relevantNotifs.length > 0 && <span style={redDot}></span>}
                         </div>
                     )}
-                    <button className="mobile-hide" onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); }} style={changeBtn}>Change Section</button>
                 </div>
             </header>
+
+            <div className="desktop-hide" style={{ background: '#002147', padding: '4px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+                </span>
+                <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569' }}>
+                    Last Update: {lastUpdated}
+                </span>
+            </div>
 
             {isSidebarOpen && (
                 <div style={sidebarOverlay} onClick={() => setIsSidebarOpen(false)}>
@@ -1011,14 +1134,7 @@ export default function Home() {
 
             <div style={{ padding: '10px 12px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
 
-                {isOffline && !isGuestUser && (
-                    <div className="expand-anim" style={{ background: '#fff', borderRadius: '20px', padding: '6px 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', marginBottom: '15px', fontSize: '0.75rem', fontWeight: 'bold', color: '#002147', border: '1px solid #F2A900' }}>
-                        <span style={{background: '#002147', color: '#F2A900', padding: '2px 8px', borderRadius: '12px'}}>{getSemesterFromSession(userSection?.session)}-{userSection?.section}</span>
-                        <span style={{color: '#ccc'}}>|</span>
-                        <span style={{display: 'flex', alignItems: 'center', gap: '4px', color: '#dc3545'}}>{SVGS.alertCircle} Last Update: {lastUpdated}</span>
-                    </div>
-                )}
-
+                {/* Priority Banners */}
                 {deferredPrompt && (
                     <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
@@ -1058,6 +1174,83 @@ export default function Home() {
                     </div>
                 ) : (
                     <>
+                        {/* ======================= HOME TAB (NEW DASHBOARD) ======================= */}
+                        {currentTab === 'home' && (
+                            <div className="expand-anim">
+                                <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '15px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
+                                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900' }}>
+                                        {isGuestUser ? 'Welcome, Guest 👋' : `Welcome, ${studentsData.find(s => s.registration_number === myRollNumber)?.student_name?.split(' ')[0] || 'Student'} 👋`}
+                                    </h2>
+                                    {!isGuestUser && myRollNumber && (
+                                        <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{myRollNumber}</div>
+                                    )}
+                                </div>
+
+                                <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
+                                    <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                                        {SVGS.bell} Notice Board
+                                    </div>
+                                    <div style={{ padding: '15px', textAlign: 'center' }}>
+                                        {myTodayClasses.length === 0 ? (
+                                            <div>
+                                                <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem' }}>Today is Off 🎉</h3>
+                                                <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
+                                            </div>
+                                        ) : ongoingMyLecture ? (
+                                            <div>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#dc3545', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px' }}>● Ongoing Lecture</div>
+                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{ongoingMyLecture.course}</h3>
+                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px' }}>📍 Room {ongoingMyLecture.room}</div>
+                                                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: '#991b1b', fontWeight: '900', fontSize: '1.2rem' }}>
+                                                    {formatCountdown((parseTime(ongoingMyLecture.end_time) * 60) - (currentMins * 60 + currentSecs))} <span style={{fontSize: '0.7rem'}}>Remaining</span>
+                                                </div>
+                                            </div>
+                                        ) : nextMyLecture ? (
+                                            <div>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px' }}>Next Lecture</div>
+                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{nextMyLecture.course}</h3>
+                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px' }}>Starts at {convertTo12Hour(nextMyLecture.start_time)}</div>
+                                                <div style={{ background: '#e7f1ff', border: '1px solid #b8daff', display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
+                                                    {formatCountdown((parseTime(nextMyLecture.start_time) * 60) - (currentMins * 60 + currentSecs))} <span style={{fontSize: '0.7rem'}}>Starts In</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <h3 style={{ margin: '0', color: '#666', fontSize: '0.9rem' }}>All lectures finished for today!</h3>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                                    {[
+                                        { id: 'class', label: 'Schedule', icon: SVGS.calendar, bg: '#e0f2fe', col: '#0369a1' },
+                                        { id: 'attendance', label: 'Attendance', icon: SVGS.attendance, bg: '#dcfce7', col: '#15803d' },
+                                        { id: 'announcements', label: 'Updates', icon: SVGS.updates, bg: '#fef3c7', col: '#a16207' }
+                                    ].map(item => (
+                                        <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: item.bg, color: item.col, padding: '15px 5px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'transform 0.2s' }}>
+                                            <div style={{ marginBottom: '8px', opacity: 0.9, transform: 'scale(1.3)' }}>{item.icon}</div>
+                                            <div style={{ fontSize: '0.7rem', fontWeight: '900' }}>{item.label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                                    {[
+                                        { id: 'teacher', label: 'Teachers', icon: SVGS.userTie },
+                                        { id: 'room', label: 'Rooms', icon: SVGS.door },
+                                        { id: 'transport', label: 'Transport', icon: SVGS.bus }
+                                    ].map(item => (
+                                        <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: '#fff', color: '#555', padding: '10px 5px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', border: '1px solid #e9ecef', transition: 'background 0.2s' }}>
+                                            <div style={{ marginBottom: '5px', opacity: 0.7 }}>{item.icon}</div>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{item.label}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ======================= SCHEDULE TAB ======================= */}
                         {currentTab === 'class' && !isGuestUser && (
                             <>
                                 <div style={dayFilter}>
@@ -1081,17 +1274,14 @@ export default function Home() {
                                         <div style={{ padding: '10px', background: '#e7f1ff', borderRadius: '8px', borderLeft: '3px solid #007bff', marginBottom: '12px', fontSize: '0.75rem', lineHeight: '1.4' }}>
                                             Please select your Registration/Roll Number to view your attendance.
                                         </div>
-                                        <input type="text" placeholder="🔍 Search Roll No..." value={attSearch} onChange={e => setAttSearch(e.target.value)} style={searchInput} />
+                                        <RealtimeSearchSelect 
+                                            value={selectedRollInput} 
+                                            onChange={setSelectedRollInput} 
+                                            options={sectionStudents.map(s => ({ value: s.registration_number, label: `${s.registration_number} - ${s.student_name}` }))} 
+                                            placeholder="🔍 Search Roll No..." 
+                                        />
                                         
-                                        <select value={selectedRollInput} onChange={e => setSelectedRollInput(e.target.value)} style={selectStyle}>
-                                            <option value="">-- Select Roll No --</option>
-                                            {sectionStudents
-                                                .filter(s => (s.registration_number || "").toLowerCase().includes(attSearch.toLowerCase()))
-                                                .map(s => <option key={s.registration_number} value={s.registration_number}>{s.registration_number} - {s.student_name}</option>)
-                                            }
-                                        </select>
-                                        
-                                        <button onClick={handleRollSelectConfirm} style={{...bigBtn, opacity: selectedRollInput ? 1 : 0.5}} disabled={!selectedRollInput}>
+                                        <button onClick={() => handleRollSelectConfirm(selectedRollInput)} style={{...bigBtn, opacity: selectedRollInput ? 1 : 0.5}} disabled={!selectedRollInput}>
                                             Confirm Roll Number
                                         </button>
                                     </>
@@ -1209,17 +1399,35 @@ export default function Home() {
                         {currentTab === 'room' && (
                             <div className="expand-anim">
                                 <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-                                    <button onClick={() => setRoomSubTab('schedule')} style={subTabBtn(roomSubTab === 'schedule')}>ROOM SCHEDULE</button>
+                                    <button onClick={() => setRoomSubTab('schedule')} style={subTabBtn(roomSubTab === 'schedule')}>SCHEDULE</button>
                                     <button onClick={() => setRoomSubTab('free')} style={subTabBtn(roomSubTab === 'free')}>FREE ROOM</button>
+                                    <button onClick={() => setRoomSubTab('ongoing')} style={subTabBtn(roomSubTab === 'ongoing')}>ONGOING</button>
                                 </div>
 
                                 {roomSubTab === 'schedule' && (
                                     <div className="expand-anim" style={whiteCard}>
-                                        <input type="text" placeholder="🔍 Search room..." value={roomSearch} onChange={e => setRoomSearch(e.target.value)} style={searchInput} />
-                                        <select value={selectedRoom} onChange={e => setSelectedRoom(e.target.value)} style={selectStyle}>
-                                            <option value="">-- Select Room --</option>
-                                            {allRooms.filter(r => r.toLowerCase().includes(roomSearch.toLowerCase())).map(r => <option key={r} value={r}>{r}</option>)}
-                                        </select>
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', background: '#f8f9fa', padding: '5px', borderRadius: '8px' }}>
+                                            {['All', 'Specified'].map(type => (
+                                                <label key={type} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', color: roomViewType === type ? '#002147' : '#666' }}>
+                                                    <input type="radio" name="roomViewType" checked={roomViewType === type} onChange={() => setRoomViewType(type)} />
+                                                    {type}
+                                                </label>
+                                            ))}
+                                        </div>
+
+                                        {roomViewType === 'Specified' ? (
+                                            <RealtimeSearchSelect 
+                                                value={selectedRoom} 
+                                                onChange={setSelectedRoom} 
+                                                options={allRooms} 
+                                                placeholder="🔍 Search room..." 
+                                            />
+                                        ) : (
+                                            <select value={roomTimeFilter} onChange={e => setRoomTimeFilter(e.target.value)} style={selectStyle}>
+                                                <option value="" disabled>Select Time Filter</option>
+                                                {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                            </select>
+                                        )}
                                         
                                         <div style={{...dayFilter, marginTop: '8px', marginBottom: '15px'}}>
                                             {filterDays.map(day => (
@@ -1227,7 +1435,7 @@ export default function Home() {
                                             ))}
                                         </div>
 
-                                        {selectedRoom && renderClassCards(roomSchedule, 'room')}
+                                        {(roomViewType === 'Specified' ? selectedRoom : roomTimeFilter) && renderClassCards(roomSchedule, 'room')}
                                     </div>
                                 )}
 
@@ -1258,17 +1466,28 @@ export default function Home() {
                                         )}
                                     </div>
                                 )}
+
+                                {roomSubTab === 'ongoing' && (
+                                    <div className="expand-anim">
+                                        <div style={{ marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', textAlign: 'center' }}>
+                                            🔴 Live Ongoing Lectures
+                                        </div>
+                                        {renderClassCards(ongoingAllLectures, 'room')}
+                                        {ongoingAllLectures.length === 0 && <div style={whiteCard}><div style={emptyState}>No lectures are currently ongoing.</div></div>}
+                                    </div>
+                                )}
                             </div>
                         )}
 
                         {/* ======================= TEACHER TAB ======================= */}
                         {currentTab === 'teacher' && (
                             <div className="expand-anim" style={whiteCard}>
-                                <input type="text" placeholder="🔍 Search teacher name..." value={teacherSearch} onChange={e => setTeacherSearch(e.target.value)} style={searchInput} />
-                                <select value={selectedTeacher} onChange={e => setSelectedTeacher(e.target.value)} style={selectStyle}>
-                                    <option value="">-- Select Teacher --</option>
-                                    {allTeachers.filter(t => t.toLowerCase().includes(teacherSearch.toLowerCase())).map(t => <option key={t} value={t}>{t}</option>)}
-                                </select>
+                                <RealtimeSearchSelect 
+                                    value={selectedTeacher} 
+                                    onChange={setSelectedTeacher} 
+                                    options={allTeachers} 
+                                    placeholder="🔍 Search teacher name..." 
+                                />
                                 
                                 <div style={{...dayFilter, marginTop: '8px', marginBottom: '15px'}}>
                                     {filterDays.map(day => (
@@ -1461,7 +1680,7 @@ const dayFilter = { display: 'flex', gap: '4px', marginBottom: '10px', overflowX
 const dayBtnStyle = (active) => ({ flex: 1, minWidth: '35px', padding: '6px', borderRadius: '6px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.65rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
 const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '5px 10px', borderRadius: '6px', fontWeight: 900, marginBottom: '8px', textTransform: 'uppercase', fontSize: '0.75rem' };
 const selectStyle = { width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.8rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
-const searchInput = { width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.8rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const searchInput = { width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.8rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
 const cardBase = { padding: '10px', borderRadius: '8px', transition: 'all 0.3s ease' };
 const notifCard = { background: '#fff', padding: '8px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #dc3545', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' };
 const whiteCard = { background: '#fff', padding: '12px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '12px', borderTop: '4px solid #F2A900', transition: 'all 0.3s ease' };
