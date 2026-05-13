@@ -1,7 +1,61 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet'; 
+
+// --- Custom SVGs for UI (NO EMOJIS) ---
+const SVGS = {
+    tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
+    cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
+    chevronDown: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+    chevronUp: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
+    bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    calendar: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
+    attendance: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
+    updates: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
+    clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
+    home: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
+    userTie: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
+    location: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+    live: <svg width="10" height="10" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>,
+    tickCircle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+    users: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
+    leftArrow: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>,
+    rightArrow: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
+    cap: <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
+    edit: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
+    trash: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+    download: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
+    stats: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+    plus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>,
+    undo: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>,
+    building: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+};
+
+const CircularProgress = ({ percentage, subtitle }) => {
+    const radius = 35;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+    const color = percentage < 50 ? '#dc3545' : percentage < 80 ? '#F2A900' : '#28a745';
+    const size = 90;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="50" cy="50" r={radius} stroke="#e9ecef" strokeWidth="8" fill="transparent" />
+                    <circle cx="50" cy="50" r={radius} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
+                </svg>
+                <span style={{ position: 'absolute', fontWeight: '900', fontSize: '1.1rem', color: '#002147' }}>
+                    {Math.round(percentage)}%
+                </span>
+            </div>
+            <div style={{ fontSize: '0.7rem', marginTop: '8px', fontWeight: 'bold', color: '#555', textAlign: 'center', maxWidth: '100px', lineHeight: '1.2' }}>
+                {subtitle}
+            </div>
+        </div>
+    );
+};
 
 export default function TeacherLoginAndDashboard() {
     // --- AUTH STATES ---
@@ -29,9 +83,10 @@ export default function TeacherLoginAndDashboard() {
     const [profile, setProfile] = useState(null);
     const [schedule, setSchedule] = useState([]);
     const [baseSchedule, setBaseSchedule] = useState([]);
-    const [roster, setRoster] = useState([]); // All students for this teacher's sections
+    const [roster, setRoster] = useState([]); 
     const [loading, setLoading] = useState(true);
     const alertedClasses = useRef(new Set()); 
+    const [currentTime, setCurrentTime] = useState(new Date());
 
     // --- PWA & NOTIFICATION STATES ---
     const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -40,17 +95,18 @@ export default function TeacherLoginAndDashboard() {
     // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
     const [availableCourses, setAvailableCourses] = useState([]);
-    const [availableSessions, setAvailableSessions] = useState([]); // Changed from Semesters
+    const [availableSessions, setAvailableSessions] = useState([]); 
     const [availableSections, setAvailableSections] = useState([]);
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
     const [isManualRoom, setIsManualRoom] = useState(false);
-    const [isManualSession, setIsManualSession] = useState(false); // Changed from Semester
+    const [isManualSession, setIsManualSession] = useState(false); 
     const [isManualSection, setIsManualSection] = useState(false);
 
     // --- TAB STATES ---
-    const [activeTab, setActiveTab] = useState('weekly');
+    const [currentTab, setCurrentTab] = useState('home');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     
     // --- WEEKLY TIMETABLE STATES ---
     const [selectedDay, setSelectedDay] = useState(() => {
@@ -58,13 +114,17 @@ export default function TeacherLoginAndDashboard() {
         return ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].includes(today) ? today : "MON";
     });
 
+    // --- NOTICE BOARD STATE ---
+    const [noticeIndex, setNoticeIndex] = useState(0);
+
     // --- ATTENDANCE & APPROVAL STATES ---
-    const [attendanceView, setAttendanceView] = useState('approve'); // mark, approve, download, stats
+    const [attendanceView, setAttendanceView] = useState('approve'); 
     const [pendingAttendances, setPendingAttendances] = useState([]);
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
     const [attendanceStats, setAttendanceStats] = useState([]);
     const [allSessionsData, setAllSessionsData] = useState([]);
     const [attendanceSectionFilter, setAttendanceSectionFilter] = useState('ALL');
+    const [attendanceSessionFilter, setAttendanceSessionFilter] = useState('ALL');
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -75,6 +135,13 @@ export default function TeacherLoginAndDashboard() {
     const [newRoom, setNewRoom] = useState('');
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
     const [baseForm, setBaseForm] = useState({ id: null, session: '', section: '', course: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
+
+    const allTabs = [
+        { id: 'home', label: 'HOME', icon: SVGS.home },
+        { id: 'weekly', label: 'SCHEDULE', icon: SVGS.calendar },
+        { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
+        { id: 'permanent', label: 'BASE PLAN', icon: SVGS.building }
+    ];
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
     const timeSlots = [];
@@ -115,6 +182,14 @@ export default function TeacherLoginAndDashboard() {
         return 0;
     };
 
+    const formatCountdown = (totalSeconds) => {
+        if (totalSeconds <= 0) return "00:00:00";
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
     const getDateForCurrentWeekDay = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
@@ -139,6 +214,11 @@ export default function TeacherLoginAndDashboard() {
         }
         return () => clearInterval(interval);
     }, [resendTimer]);
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         if ('serviceWorker' in navigator) {
@@ -213,10 +293,8 @@ export default function TeacherLoginAndDashboard() {
     const handleLogin = async (e) => {
         e.preventDefault();
         setAuthError('');
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-            setAuthError(error.message);
-        } 
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) setAuthError(error.message);
     };
 
     const handleSignup = async (e) => {
@@ -274,11 +352,9 @@ export default function TeacherLoginAndDashboard() {
     };
 
     const fetchProfileAndSchedule = async (teacherName) => {
-        // Fetch Base Schedule for this teacher
         const { data: scheduleData } = await supabase.from('base_schedule').select('*').eq('teacher', teacherName);
         setBaseSchedule(scheduleData || []);
         
-        // Populate all Dropdowns
         const { data: allData } = await supabase.from('base_schedule').select('room, course, session, section');
         if (allData) {
             setAvailableRooms([...new Set(allData.map(x => x.room))].filter(Boolean).sort());
@@ -287,7 +363,6 @@ export default function TeacherLoginAndDashboard() {
             setAvailableSections([...new Set(allData.map(x => x.section))].filter(Boolean).sort());
         }
 
-        // Fetch Students for the classes this teacher teaches
         if (scheduleData && scheduleData.length > 0) {
             const uniqueGroups = [...new Set(scheduleData.map(s => JSON.stringify({ session: s.session, section: s.section })))].map(str => JSON.parse(str));
             let allStudents = [];
@@ -329,18 +404,16 @@ export default function TeacherLoginAndDashboard() {
             
             setAllSessionsData(sessionsWithRecords);
 
-            // Calculate pending attendances
             pending = sessionsWithRecords.filter(s => s.status === 'pending').map(session => {
                 const presentCount = session.records.filter(r => r.status === 'Present' || r.status === 'Leave').length;
                 return { ...session, presentCount, totalCount: session.records.length };
             });
             setPendingAttendances(pending);
 
-            // Calculate overall stats per Course + Section combination
-            const uniqueClasses = [...new Set(scheduleData.map(s => JSON.stringify({ course: s.course, section: s.section })))].map(str => JSON.parse(str));
+            const uniqueClasses = [...new Set(scheduleData.map(s => JSON.stringify({ course: s.course, section: s.section, session: s.session })))].map(str => JSON.parse(str));
             
             stats = uniqueClasses.map(cls => {
-                const classBaseIds = scheduleData.filter(s => s.course === cls.course && s.section === cls.section).map(s => s.id);
+                const classBaseIds = scheduleData.filter(s => s.course === cls.course && s.section === cls.section && s.session === cls.session).map(s => s.id);
                 const classSessions = sessionsWithRecords.filter(s => classBaseIds.includes(s.base_schedule_id));
                 
                 let totalRecords = 0;
@@ -354,7 +427,7 @@ export default function TeacherLoginAndDashboard() {
                 });
 
                 const percentage = totalRecords === 0 ? 0 : Math.round((presentRecords / totalRecords) * 100);
-                return { subject: cls.course, section: cls.section, totalConducted: classSessions.length, percentage, sessions: classSessions };
+                return { subject: cls.course, section: cls.section, session: cls.session, totalConducted: classSessions.length, percentage, sessions: classSessions };
             });
             setAttendanceStats(stats);
         }
@@ -388,13 +461,12 @@ export default function TeacherLoginAndDashboard() {
         }
     };
 
-    // Calculate individual student attendance %
-    const getStudentAttendance = (studentReg, subjectFilter, sectionFilter) => {
+    const getStudentAttendance = (studentReg, subjectFilter, sectionFilter, sessionFilter) => {
         let present = 0, total = 0;
         allSessionsData.forEach(session => {
-            // Check filters
             if (subjectFilter !== 'ALL' && session.course !== subjectFilter) return;
             if (sectionFilter !== 'ALL' && session.section !== sectionFilter) return;
+            if (sessionFilter !== 'ALL' && session.session !== sessionFilter) return;
 
             const record = session.records.find(r => r.student_id === studentReg);
             if (record) {
@@ -414,8 +486,7 @@ export default function TeacherLoginAndDashboard() {
         sortedSessions.forEach(s => { csv += `,${s.session_date}`; });
         csv += ",Overall %\n";
 
-        // Filter roster to only include students in this section
-        const sectionRoster = roster.filter(student => student.section === stat.section);
+        const sectionRoster = roster.filter(student => student.section === stat.section && student.session === stat.session);
 
         sectionRoster.forEach(student => {
             let row = `${student.registration_number},${student.student_name}`;
@@ -440,16 +511,15 @@ export default function TeacherLoginAndDashboard() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${stat.subject}_Section_${stat.section}_Attendance.csv`;
+        a.download = `${stat.subject}_${stat.session}_Sec_${stat.section}_Attendance.csv`;
         a.click();
     };
 
     useEffect(() => {
         if (!session || schedule.length === 0) return;
         const interval = setInterval(() => {
-            const now = new Date();
-            const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-            const currentMins = now.getHours() * 60 + now.getMinutes();
+            const currentDay = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+            const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
 
             schedule.forEach(cls => {
                 if (cls.day === currentDay) {
@@ -465,7 +535,7 @@ export default function TeacherLoginAndDashboard() {
                                     icon: "/icon.png" 
                                 });
                             }
-                            supabase.from('notifications').insert([{ message: `⚠️ Teacher Reminder: ${cls.course} (Sec ${cls.section}) is pending confirmation.` }]).then();
+                            supabase.from('notifications').insert([{ message: `Teacher Reminder: ${cls.course} (Sec ${cls.section}) is pending confirmation.` }]).then();
                         }
                     }
                 }
@@ -473,7 +543,7 @@ export default function TeacherLoginAndDashboard() {
         }, 60000); 
 
         return () => clearInterval(interval);
-    }, [schedule, session]);
+    }, [schedule, session, currentTime]);
 
     useEffect(() => {
         if (!profile || !profile.is_approved || schedule.length === 0) return;
@@ -514,7 +584,7 @@ export default function TeacherLoginAndDashboard() {
 
         if (error) showToast("Failed to update: " + error.message, "error");
         else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${section} will be held on ${targetDate}.` }]);
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Confirmed: ${courseName} for Section ${section} will be held on ${targetDate}.` }]);
             if(notifError) showToast("Updated, but notification failed.", "error");
             else showToast("Class confirmed & students notified!", "success");
         }
@@ -533,7 +603,7 @@ export default function TeacherLoginAndDashboard() {
 
         if (error) showToast("Failed to cancel: " + error.message, "error");
         else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${section} on ${targetDate} has been cancelled by ${profile.name}.` }]);
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Cancelled: ${courseName} for Section ${section} on ${targetDate} has been cancelled by ${profile.name}.` }]);
             if(notifError) showToast("Cancelled, but notification failed.", "error");
             else showToast("Class cancelled & students notified!", "success");
         }
@@ -548,9 +618,9 @@ export default function TeacherLoginAndDashboard() {
 
         if (error) showToast("Failed to undo: " + error.message, "error");
         else {
-            if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${section} on ${targetDate} has been cancelled by ${profile.name}.`);
-            else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${section} will be held on ${targetDate}.`);
-            else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${section}%`);
+            if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `Cancelled: ${courseName} for Section ${section} on ${targetDate} has been cancelled by ${profile.name}.`);
+            else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `Confirmed: ${courseName} for Section ${section} will be held on ${targetDate}.`);
+            else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `Rescheduled: ${courseName} for Section ${section}%`);
             showToast("Action reversed successfully.", "success");
         }
         fetchProfileAndSchedule(profile.name);
@@ -566,7 +636,7 @@ export default function TeacherLoginAndDashboard() {
 
         if (error) showToast("Failed to reschedule: " + error.message, "error");
         else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}) on ${targetDate}.` }]);
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}) on ${targetDate}.` }]);
             if(notifError) showToast("Rescheduled, but notification failed.", "error");
             else showToast(`Class rescheduled & students notified!`, "success");
         }
@@ -612,19 +682,83 @@ export default function TeacherLoginAndDashboard() {
         await fetchProfileAndSchedule(profile.name);
     };
 
-    if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading...</div>;
+    // Notice Board & Conducted Lecture Math
+    const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const currentSecs = currentTime.getSeconds();
 
-    // ==========================================
-    // RENDER: AUTHENTICATION SCREEN
-    // ==========================================
+    const todayEvents = useMemo(() => {
+        const events = [];
+        const myTodayClasses = schedule.filter(c => c.day === currentDayStr && !c.isCancelled).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+        myTodayClasses.forEach(c => {
+            events.push({ type: 'lecture', title: c.course, room: c.room, section: c.section, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
+        });
+        return events;
+    }, [schedule, currentDayStr]);
+
+    useEffect(() => {
+        if (todayEvents.length > 0 && currentTab === 'home') {
+            const currentTotalSecs = currentMins * 60 + currentSecs;
+            let activeIdx = todayEvents.findIndex(e => (e.endMins * 60) > currentTotalSecs);
+            if (activeIdx === -1) activeIdx = todayEvents.length - 1; 
+            setNoticeIndex(activeIdx);
+        }
+    }, [todayEvents.length, currentTab, currentMins, currentSecs]);
+
+    const nextNotice = () => setNoticeIndex((prev) => (prev + 1) % todayEvents.length);
+    const prevNotice = () => setNoticeIndex((prev) => (prev - 1 + todayEvents.length) % todayEvents.length);
+
+    // Calculate Week's Progress
+    const getWeekProgress = () => {
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+        startOfWeek.setHours(0,0,0,0);
+        
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23,59,59,999);
+
+        const scheduledThisWeek = baseSchedule.length; 
+        const conductedThisWeek = allSessionsData.filter(s => {
+            const sd = new Date(s.session_date);
+            return sd >= startOfWeek && sd <= endOfWeek;
+        }).length;
+
+        const pct = scheduledThisWeek === 0 ? 0 : Math.min(100, Math.round((conductedThisWeek / scheduledThisWeek) * 100));
+        return { conductedThisWeek, scheduledThisWeek, pct };
+    };
+
+    const weekProgress = getWeekProgress();
+
+
+    if (loading) {
+        return (
+            <div style={{ ...welcomeBg, flexDirection: 'column', gap: '20px' }}>
+                <Head><title>Loading | Teacher Portal</title></Head>
+                <div className="custom-spinner"></div>
+                <h2 style={{ color: '#F2A900', margin: 0, fontSize: '1.2rem', animation: 'pulseText 1.5s infinite ease-in-out' }}>
+                    Loading Teacher Data...
+                </h2>
+                <style>{`
+                    .custom-spinner { width: 45px; height: 45px; border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #F2A900; border-radius: 50%; animation: spin 1s linear infinite; }
+                    @keyframes spin { to { transform: rotate(360deg); } }
+                    @keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+                `}</style>
+            </div>
+        );
+    }
+
     if (!session) {
         return (
-            <div style={{ background: '#002147', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif" }}>
+            <div style={welcomeBg}>
                 <div style={{...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
                     {toast.message}
                 </div>
-                <div style={{ background: 'white', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-                    <h2 style={{ color: '#002147', textAlign: 'center', margin: '0 0 20px 0' }}>{isLoginMode ? 'Teacher Login' : 'Teacher Sign Up'}</h2>
+                <div style={welcomeCard}>
+                    <h2 style={{ color: '#002147', margin: '0 0 20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        {SVGS.userTie} {isLoginMode ? 'Teacher Login' : 'Teacher Sign Up'}
+                    </h2>
                     {authError && <div style={{ background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '5px', marginBottom: '15px', fontSize: '0.85rem' }}>{authError}</div>}
                     <form onSubmit={isLoginMode ? handleLogin : handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         {!isLoginMode && (
@@ -663,13 +797,14 @@ export default function TeacherLoginAndDashboard() {
         );
     }
 
-    // --- RENDER PENDING APPROVAL SCREEN ---
     if (isPendingApproval) {
         return (
-            <div style={{ background: '#f0f2f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif", padding: '20px' }}>
-                <Head><title>Pending Approval | IUB Assistant</title></Head>
-                <div style={{ background: 'white', padding: '40px', borderRadius: '12px', textAlign: 'center', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '15px' }}>⏳</div>
+            <div style={welcomeBg}>
+                <Head><title>Pending Approval | Teacher Portal</title></Head>
+                <div style={welcomeCard}>
+                    <div style={{ color: '#F2A900', marginBottom: '15px', display: 'flex', justifyContent: 'center' }}>
+                        {SVGS.clock}
+                    </div>
                     <h2 style={{ color: '#002147', margin: '0 0 15px 0' }}>Approval Pending</h2>
                     <p style={{ color: '#555', fontSize: '1rem', lineHeight: '1.5', marginBottom: '25px' }}>
                         Your account has been successfully verified, but an administrator must manually approve your access before you can view your dashboard.
@@ -690,102 +825,252 @@ export default function TeacherLoginAndDashboard() {
         .filter(cls => cls.day === selectedDay)
         .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
 
-    const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
-
     return (
-        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
-          <Head>
-            <title>Teacher Dashboard | IUB</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
-            <link rel="manifest" href="/manifest.json" />
-            <meta name="theme-color" content="#002147" />
-        </Head>
+        <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
+            <Head>
+                <title>Teacher Dashboard | IUB</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+                <link rel="manifest" href="/manifest.json" />
+                <meta name="theme-color" content="#002147" />
+            </Head>
+
+            <style>{`
+                .desktop-nav { display: none; }
+                .mobile-nav { display: flex; }
+                @media (min-width: 768px) {
+                    .desktop-nav { display: flex; align-items: center; gap: 15px; }
+                    .mobile-nav { display: none !important; }
+                    .hamburger-btn { display: none !important; }
+                }
+                .scroll-hide::-webkit-scrollbar { display: none; }
+                @keyframes fadeInSlide {
+                    from { opacity: 0; transform: translateY(-5px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .expand-anim { animation: fadeInSlide 0.3s ease forwards; }
+            `}</style>
 
             <div style={{...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
                 {toast.message}
             </div>
 
-            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>👨‍🏫 Teacher Portal</div>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                    <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
+            <header style={headerStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
+                    </div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.userTie}</span> 
+                        TEACHER PORTAL
+                    </div>
+                </div>
+
+                <div className="desktop-nav">
+                    {allTabs.map(tab => (
+                        <div 
+                            key={tab.id} 
+                            onClick={() => setCurrentTab(tab.id)}
+                            style={{
+                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
+                                background: currentTab === tab.id ? '#F2A900' : 'transparent',
+                                color: currentTab === tab.id ? '#002147' : '#fff',
+                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
+                            }}
+                        >
+                            {tab.icon} {tab.label}
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button onClick={handleLogout} style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
                 </div>
             </header>
 
-            <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
+            {isSidebarOpen && (
+                <div style={sidebarOverlay} onClick={() => setIsSidebarOpen(false)}>
+                    <div style={sidebarMenu} onClick={e => e.stopPropagation()}>
+                        <div style={{ padding: '15px 20px', borderBottom: '1px solid #eee', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
+                            <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
+                        </div>
+                        {allTabs.map(tab => (
+                            <button 
+                                key={tab.id} 
+                                onClick={() => { setCurrentTab(tab.id); setIsSidebarOpen(false); }} 
+                                style={sidebarBtn(currentTab === tab.id)}
+                            >
+                                <span style={{ opacity: 0.7 }}>{tab.icon}</span> <span style={{ marginLeft: '10px' }}>{tab.label}</span>
+                                {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={redBadgeStyle}>{pendingAttendances.length}</span>}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <div className="mobile-nav" style={tabBar}>
+                {allTabs.map(tab => (
+                    <button key={tab.id} onClick={() => setCurrentTab(tab.id)} style={tabBtn(currentTab === tab.id)}>
+                        <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
+                        {tab.label}
+                        {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={newsRedDot}></span>}
+                    </button>
+                ))}
+            </div>
+
+            <div style={{ padding: '10px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
                 
-                {deferredPrompt && (
-                    <div style={{ background: '#17a2b8', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                        <div><b>Install App 📱</b><br/><span style={{ opacity: 0.9 }}>Add IUB Assistant to your home screen for better performance.</span></div>
-                        <button onClick={handleInstallClick} style={{ background: '#fff', color: '#17a2b8', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Install</button>
+                {deferredPrompt && showInstallBanner && (
+                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
+                        <div style={{ flex: 1, paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div>
+                                <b style={{ display: 'block', marginBottom: '2px', fontSize: '0.8rem' }}>Install App</b>
+                                <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add Portal to your home screen for better performance.</span>
+                            </div>
+                        </div>
+                        <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
                     </div>
                 )}
                 {showNotifBanner && (
-                    <div style={{ background: '#002147', color: '#fff', padding: '12px 15px', borderRadius: '10px', marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', border: '2px solid #F2A900' }}>
-                        <div><b>Stay Updated! 🔔</b><br/><span style={{ opacity: 0.9 }}>Allow notifications to get instant lecture reminders.</span></div>
-                        <button onClick={forceNotificationPermission} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 12px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Enable</button>
+                    <div className="expand-anim" style={notifBannerStyle}>
+                        <div style={{ flex: 1, paddingRight: '10px' }}>
+                            <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>Stay Updated! {SVGS.bell}</b>
+                            <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Allow notifications to get instant lecture reminders.</span>
+                        </div>
+                        <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
                     </div>
                 )}
 
-                <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900' }}>
-                    <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.name}</h2>
-                    <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Manage your daily lectures and student attendance.</p>
-                </div>
+                {/* ================= HOME TAB ================= */}
+                {currentTab === 'home' && (
+                    <div className="expand-anim">
+                        <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '15px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
+                            <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                Welcome, {profile?.name}
+                            </h2>
+                            <div style={{ fontSize: '0.8rem', opacity: 0.9, marginBottom: '15px' }}>Manage your daily lectures and student attendance.</div>
+                            
+                            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.1)', padding: '15px', borderRadius: '10px', gap: '15px' }}>
+                                <CircularProgress percentage={weekProgress.pct} subtitle="THIS WEEK'S LECTURES CONDUCTED" />
+                                <div style={{flex: 1}}>
+                                    <div style={{fontSize: '0.8rem', color: '#ddd', marginBottom: '4px'}}>Lectures This Week</div>
+                                    <div style={{fontSize: '1.2rem', fontWeight: 'bold'}}>{weekProgress.conductedThisWeek} / {weekProgress.scheduledThisWeek}</div>
+                                </div>
+                            </div>
+                        </div>
 
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                    <button onClick={() => setActiveTab('weekly')} style={{ flex: 1, padding: '12px', background: activeTab === 'weekly' ? '#002147' : '#ddd', color: activeTab === 'weekly' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
-                        📅 Today / Weekly
-                    </button>
-                    <button onClick={() => setActiveTab('attendance')} style={{ flex: 1, padding: '12px', background: activeTab === 'attendance' ? '#002147' : '#ddd', color: activeTab === 'attendance' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s', position: 'relative' }}>
-                        📝 Attendance & Approvals
-                        {pendingAttendances.length > 0 && (
-                            <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#dc3545', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.75rem', border: '2px solid white' }}>{pendingAttendances.length}</span>
-                        )}
-                    </button>
-                    <button onClick={() => setActiveTab('permanent')} style={{ flex: 1, padding: '12px', background: activeTab === 'permanent' ? '#002147' : '#ddd', color: activeTab === 'permanent' ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' }}>
-                        🏛️ Base Schedule
-                    </button>
-                </div>
+                        <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
+                            <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                                {SVGS.bell} Notice Board (Today's Schedule)
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px' }}>
+                                {todayEvents.length > 0 && (
+                                    <button onClick={prevNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.leftArrow}</button>
+                                )}
+                                
+                                <div style={{ flex: 1, textAlign: 'center', margin: '0 10px' }}>
+                                    {todayEvents.length === 0 ? (
+                                        <div>
+                                            <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                {SVGS.tickCircle} No Classes Scheduled Today
+                                            </h3>
+                                        </div>
+                                    ) : (() => {
+                                        const targetEvent = todayEvents[noticeIndex];
+                                        let noticeState = "Finished";
+                                        let remainingSecs = 0;
+                                        
+                                        if (targetEvent) {
+                                            const currentTotalSecs = currentMins * 60 + currentSecs;
+                                            const startSecs = targetEvent.startMins * 60;
+                                            const endSecs = targetEvent.endMins * 60;
+                                            if (currentTotalSecs < startSecs) {
+                                                noticeState = "Starts In";
+                                                remainingSecs = startSecs - currentTotalSecs;
+                                            } else if (currentTotalSecs >= startSecs && currentTotalSecs < endSecs) {
+                                                noticeState = "Ongoing";
+                                                remainingSecs = endSecs - currentTotalSecs;
+                                            }
+                                        }
+
+                                        return (
+                                            <div className="expand-anim" key={`lec-${noticeIndex}`}>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                    {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Lecture Concluded' : `${noticeState} Lecture`}
+                                                </div>
+                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{targetEvent.title}</h3>
+                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                    {SVGS.location} Room {targetEvent.room} | Sec {targetEvent.section}
+                                                </div>
+                                                {noticeState !== 'Finished' && (
+                                                    <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
+                                                        {formatCountdown(remainingSecs)} <span style={{fontSize: '0.7rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+
+                                {todayEvents.length > 0 && (
+                                    <button onClick={nextNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.rightArrow}</button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                            {[
+                                { id: 'weekly', label: 'Schedule', icon: SVGS.calendar, bg: '#e0f2fe', col: '#0369a1' },
+                                { id: 'attendance', label: 'Attendance', icon: SVGS.attendance, bg: '#dcfce7', col: '#15803d' },
+                                { id: 'permanent', label: 'Base Plan', icon: SVGS.building, bg: '#fef3c7', col: '#a16207' }
+                            ].map(item => (
+                                <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: item.bg, color: item.col, padding: '15px 5px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'transform 0.2s' }}>
+                                    <div style={{ marginBottom: '8px', opacity: 0.9, display: 'flex', justifyContent: 'center' }}>{item.icon}</div>
+                                    <div style={{ fontSize: '0.7rem', fontWeight: '900' }}>{item.label}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
-                {activeTab === 'weekly' && (
-                    <div>
-                        <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '20px', paddingBottom: '10px', scrollbarWidth: 'none' }}>
+                {currentTab === 'weekly' && (
+                    <div className="expand-anim">
+                        <div style={dayFilter}>
                             {days.map(day => (
-                                <button key={`day-${day}`} onClick={() => setSelectedDay(day)}
-                                    style={{ 
-                                        padding: '10px 20px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
-                                        background: selectedDay === day ? '#002147' : '#e9ecef', color: selectedDay === day ? '#F2A900' : '#495057', boxShadow: selectedDay === day ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
-                                    }}>
+                                <button key={`day-${day}`} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>
                                     {day}
                                 </button>
                             ))}
                         </div>
 
                         <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Classes for {selectedDay} (Temp Actions)</h3>
-                        {filteredWeeklySchedule.length === 0 ? <p style={{ textAlign: 'center', padding: '20px', background: 'white', borderRadius: '8px' }}>No classes scheduled for {selectedDay}.</p> : (
+                        {filteredWeeklySchedule.length === 0 ? <div style={emptyState}>No classes scheduled for {selectedDay}.</div> : (
                             filteredWeeklySchedule.map((cls) => (
-                                <div key={cls.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none', opacity: cls.isCancelled ? 0.6 : 1 }}>
+                                <div key={cls.id} style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none', opacity: cls.isCancelled ? 0.6 : 1 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {cls.section} ({cls.session}) | Room {cls.room}</div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
+                                            <div style={{ color: '#666', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                                                {SVGS.users} Sec {cls.section} ({cls.session}) | {SVGS.location} Room {cls.room}
+                                            </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.8rem' }}>{cls.day}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
-                                    {cls.isRescheduled && <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>🔄 Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})</div>}
-                                    {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>✅ Confirmed to be Held on {cls.exceptionDetails?.exception_date}</div>}
+                                    {cls.isRescheduled && <div style={{ background: '#e7f1ff', color: '#004085', padding: '8px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold' }}>Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})</div>}
+                                    {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '8px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold' }}>Confirmed to be Held on {cls.exceptionDetails?.exception_date}</div>}
                                     
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        {cls.isCancelled ? <button onClick={(e) => handleUndoException(cls.id, 'cancelled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button> : cls.isConfirmed ? <button onClick={(e) => handleUndoException(cls.id, 'confirmed', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={(e) => handleUndoException(cls.id, 'rescheduled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button> : (
+                                        {cls.isCancelled ? <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Undo Cancellation</button> : cls.isConfirmed ? <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={() => handleUndoException(cls.id, 'rescheduled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Undo Reschedule</button> : (
                                             <>
-                                                <button onClick={(e) => handleConfirmClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                                <button onClick={(e) => openEditModal(cls)} style={btnStyle('#007bff')}>🕒 Modify Time/Room</button>
-                                                <button onClick={(e) => handleCancelClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#dc3545')}>❌ Cancel Lecture</button>
+                                                <button onClick={() => handleConfirmClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#28a745', SVGS.tickCircle)}>Will Held</button>
+                                                <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff', SVGS.clock)}>Modify</button>
+                                                <button onClick={() => handleCancelClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#dc3545', SVGS.cross)}>Cancel</button>
                                             </>
                                         )}
                                     </div>
@@ -796,41 +1081,50 @@ export default function TeacherLoginAndDashboard() {
                 )}
 
                 {/* ================= COMPREHENSIVE ATTENDANCE TAB ================= */}
-                {activeTab === 'attendance' && (
-                    <div>
-                        {/* Attendance Sub-navigation */}
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px', overflowX: 'auto' }}>
+                {currentTab === 'attendance' && (
+                    <div className="expand-anim">
+                        {/* Attendance Sub-navigation using wide Flexbox */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px' }}>
                             <button onClick={() => setAttendanceView('approve')} style={subTabStyle(attendanceView === 'approve')}>
-                                ✅ Approvals {pendingAttendances.length > 0 && <span style={{ background: '#dc3545', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.7rem', marginLeft: '5px' }}>{pendingAttendances.length}</span>}
+                                <span style={{display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>
+                                    {SVGS.tickCircle} Approvals
+                                    {pendingAttendances.length > 0 && <span style={redBadgeStyle}>{pendingAttendances.length}</span>}
+                                </span>
                             </button>
-                            <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>📝 Mark / Edit</button>
-                            <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>📥 Download CSV</button>
-                            <button onClick={() => setAttendanceView('stats')} style={subTabStyle(attendanceView === 'stats')}>📊 Statistics</button>
+                            <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>
+                                <span style={{display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.edit} Mark/Edit</span>
+                            </button>
+                            <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>
+                                <span style={{display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.download} CSV</span>
+                            </button>
+                            <button onClick={() => setAttendanceView('stats')} style={subTabStyle(attendanceView === 'stats')}>
+                                <span style={{display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.stats} Stats</span>
+                            </button>
                         </div>
 
                         {/* SUB-VIEW 1: APPROVALS */}
                         {attendanceView === 'approve' && (
-                            <div>
+                            <div className="expand-anim">
                                 <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Pending Attendance submitted by CR</h3>
-                                {pendingAttendances.length === 0 ? <p style={{ background: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' }}>No pending attendance to approve.</p> : (
+                                {pendingAttendances.length === 0 ? <div style={emptyState}>No pending attendance to approve.</div> : (
                                     pendingAttendances.map(session => (
-                                        <div key={`pend-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: '5px solid #f59e0b' }}>
+                                        <div key={`pend-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: '5px solid #f59e0b' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                                 <div>
                                                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{session.course}</div>
-                                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>Section {session.section} ({session.session})</div>
+                                                    <div style={{ color: '#666', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.users} Section {session.section} ({session.session})</div>
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
-                                                    <div style={{ color: '#002147', fontWeight: '900' }}>{session.session_date}</div>
-                                                    <div style={{ color: '#666', fontSize: '0.9rem' }}>{session.presentCount} / {session.totalCount} Present</div>
+                                                    <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.85rem' }}>{session.session_date}</div>
+                                                    <div style={{ color: '#666', fontSize: '0.8rem' }}>{session.presentCount} / {session.totalCount} Present</div>
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                                <button onClick={() => handleApproveAttendance(session.id)} style={btnStyle('#28a745')}>✅ Approve Directly</button>
+                                                <button onClick={() => handleApproveAttendance(session.id)} style={btnStyle('#28a745', SVGS.tickCircle)}>Approve Directly</button>
                                                 <button onClick={() => {
                                                     const formattedLecture = { ...session.baseLecture, attendanceSession: session };
                                                     setActiveAttendanceLecture(formattedLecture);
-                                                }} style={btnStyle('#007bff')}>✏️ Review & Edit</button>
+                                                }} style={btnStyle('#007bff', SVGS.edit)}>Review & Edit</button>
                                             </div>
                                         </div>
                                     ))
@@ -840,11 +1134,11 @@ export default function TeacherLoginAndDashboard() {
 
                         {/* SUB-VIEW 2: MARK / EDIT ATTENDANCE */}
                         {attendanceView === 'mark' && (
-                            <div>
+                            <div className="expand-anim">
                                 <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Today's Lectures</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px', marginBottom: '30px' }}>
                                     {attendanceStats.map(stat => {
-                                        const todayClass = schedule.find(c => c.course === stat.subject && c.section === stat.section && c.day === currentDay && !c.isCancelled);
+                                        const todayClass = schedule.find(c => c.course === stat.subject && c.section === stat.section && c.session === stat.session && c.day === currentDayStr && !c.isCancelled);
                                         if (!todayClass) return null;
 
                                         const startMins = parseTime(todayClass.start_time);
@@ -853,47 +1147,47 @@ export default function TeacherLoginAndDashboard() {
                                         const todaySession = todayClass.attendanceSession;
 
                                         return (
-                                            <div key={`mark-today-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #28a745' }}>
-                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
-                                                <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>Sec: {stat.section} | {todayClass.start_time} - {todayClass.end_time}</p>
+                                            <div key={`mark-today-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #28a745' }}>
+                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h3>
+                                                <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>Sec: {stat.section} | {todayClass.start_time} - {todayClass.end_time}</p>
                                                 
                                                 {isOngoing && !todaySession && (
-                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' }}>
-                                                        📝 Mark Attendance (Ongoing)
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '10px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', animation: 'pulse 2s infinite' }}>
+                                                        {SVGS.edit} Mark Attendance (Ongoing)
                                                     </button>
                                                 )}
                                                 {(!isOngoing && !todaySession) && (
-                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                        📝 Mark Attendance
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '10px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                        {SVGS.edit} Mark Attendance
                                                     </button>
                                                 )}
                                                 {todaySession && (
-                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                        ✏️ Edit Today's Attendance
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '10px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                        {SVGS.edit} Edit Today's Attendance
                                                     </button>
                                                 )}
                                             </div>
                                         );
                                     })}
-                                    {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.section === stat.section && c.day === currentDay && !c.isCancelled)).length === 0 && (
-                                        <p style={{textAlign: 'center', width: '100%', padding: '20px', background: 'white', borderRadius: '8px'}}>No classes scheduled for today.</p>
+                                    {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.section === stat.section && c.session === stat.session && c.day === currentDayStr && !c.isCancelled)).length === 0 && (
+                                        <div style={emptyState}>No classes scheduled for today.</div>
                                     )}
                                 </div>
 
                                 <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Edit Past Sessions (Anytime)</h3>
-                                {allSessionsData.length === 0 ? <p style={{textAlign: 'center', padding: '20px', background: 'white', borderRadius: '8px'}}>No past sessions recorded.</p> : (
+                                {allSessionsData.length === 0 ? <div style={emptyState}>No past sessions recorded.</div> : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
                                         {allSessionsData.sort((a,b) => new Date(b.session_date) - new Date(a.session_date)).map(session => (
-                                            <div key={`editpast-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6c757d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div key={`editpast-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6c757d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                                                 <div>
-                                                    <div style={{ fontWeight: 'bold', color: '#000', fontSize: '0.95rem' }}>{session.course}</div>
-                                                    <div style={{ color: '#666', fontSize: '0.8rem' }}>Sec: {session.section} | Date: {session.session_date}</div>
+                                                    <div style={{ fontWeight: 'bold', color: '#000', fontSize: '0.9rem' }}>{session.course}</div>
+                                                    <div style={{ color: '#666', fontSize: '0.75rem' }}>Sec: {session.section} | Date: {session.session_date}</div>
                                                 </div>
                                                 <button onClick={() => {
                                                     const formattedLecture = { ...session.baseLecture, attendanceSession: session };
                                                     setActiveAttendanceLecture(formattedLecture);
-                                                }} style={{ padding: '8px 15px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
-                                                    Edit
+                                                }} style={{ padding: '8px 12px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    {SVGS.edit} Edit
                                                 </button>
                                             </div>
                                         ))}
@@ -904,14 +1198,15 @@ export default function TeacherLoginAndDashboard() {
 
                         {/* SUB-VIEW 3: DOWNLOAD CSV */}
                         {attendanceView === 'download' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                            <div className="expand-anim" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
                                 {attendanceStats.map(stat => (
-                                    <div key={`dl-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #17a2b8' }}>
-                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
-                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>Section: {stat.section}</p>
-                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
-                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                            📥 Download .CSV Report
+                                    <div key={`dl-${stat.subject}-${stat.section}-${stat.session}`} style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #17a2b8' }}>
+                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h3>
+                                        <p style={{ margin: '0 0 5px 0', fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>Session: {stat.session}</p>
+                                        <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>Section: {stat.section}</p>
+                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
+                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                            {SVGS.download} Download .CSV Report
                                         </button>
                                     </div>
                                 ))}
@@ -920,11 +1215,15 @@ export default function TeacherLoginAndDashboard() {
 
                         {/* SUB-VIEW 4: STATISTICS */}
                         {attendanceView === 'stats' && (
-                            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                            <div className="expand-anim" style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-                                    <h3 style={{ margin: 0, color: '#002147' }}>Student Attendance Overview</h3>
-                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold' }}>
+                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Attendance Overview</h3>
+                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
+                                        <select value={attendanceSessionFilter} onChange={(e) => setAttendanceSessionFilter(e.target.value)} style={{ padding: '6px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                            <option value="ALL">All Sessions</option>
+                                            {availableSessions.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '6px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
                                             <option value="ALL">All Sections</option>
                                             {availableSections.map(s => <option key={s} value={s}>Section {s}</option>)}
                                         </select>
@@ -932,24 +1231,26 @@ export default function TeacherLoginAndDashboard() {
                                 </div>
                                 
                                 <div style={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                                         <thead>
                                             <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                                <th style={{ padding: '12px' }}>Registration No.</th>
-                                                <th style={{ padding: '12px' }}>Name</th>
-                                                <th style={{ padding: '12px' }}>Section</th>
-                                                <th style={{ padding: '12px', textAlign: 'right' }}>Overall Att %</th>
+                                                <th style={{ padding: '10px' }}>Registration No.</th>
+                                                <th style={{ padding: '10px' }}>Name</th>
+                                                <th style={{ padding: '10px' }}>Session</th>
+                                                <th style={{ padding: '10px' }}>Section</th>
+                                                <th style={{ padding: '10px', textAlign: 'right' }}>Overall Att %</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {roster.filter(s => attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter).map(student => {
-                                                const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter);
+                                            {roster.filter(s => (attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter) && (attendanceSessionFilter === 'ALL' || s.session === attendanceSessionFilter)).map(student => {
+                                                const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter, attendanceSessionFilter);
                                                 return (
                                                     <tr key={student.registration_number} style={{ borderBottom: '1px solid #eee' }}>
-                                                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.registration_number}</td>
-                                                        <td style={{ padding: '12px' }}>{student.student_name}</td>
-                                                        <td style={{ padding: '12px' }}>{student.section}</td>
-                                                        <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>
+                                                        <td style={{ padding: '10px', fontWeight: 'bold' }}>{student.registration_number}</td>
+                                                        <td style={{ padding: '10px' }}>{student.student_name}</td>
+                                                        <td style={{ padding: '10px' }}>{student.session}</td>
+                                                        <td style={{ padding: '10px' }}>{student.section}</td>
+                                                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>
                                                             {pct}%
                                                         </td>
                                                     </tr>
@@ -964,33 +1265,41 @@ export default function TeacherLoginAndDashboard() {
                 )}
 
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
-                {activeTab === 'permanent' && (
-                    <div>
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Permanent Schedule</h3>
-                        {baseSchedule.length === 0 ? <p>No base schedule found.</p> : (
+                {currentTab === 'permanent' && (
+                    <div className="expand-anim">
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Base Schedule</h3>
+                        {baseSchedule.length === 0 ? <div style={emptyState}>No base schedule found.</div> : (
                             baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                                <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
+                                <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>Sec: {cls.section} | Session: {cls.session} | Room: {cls.room}</div>
+                                            <div style={{ color: '#666', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
+                                                {SVGS.users} Sec {cls.section} ({cls.session}) | {SVGS.location} Room {cls.room}
+                                            </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.85rem' }}>{cls.day}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8')}>✏️ Edit Lecture</button>
-                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course, cls.section)} style={btnStyle('#dc3545')}>🗑️ Delete Lecture</button>
+                                        <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8', SVGS.edit)}>Edit Lecture</button>
+                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course, cls.section)} style={btnStyle('#dc3545', SVGS.trash)}>Delete</button>
                                     </div>
                                 </div>
                             ))
                         )}
-                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>➕ Add New Lecture</button>
+                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '12px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            {SVGS.plus} Add New Lecture
+                        </button>
                     </div>
                 )}
             </div>
+
+            <footer style={footerStyle}>
+                Made with love by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin | Muntaha | Waleeja | Nazakat — BSAI 3RD 3M</a> 
+            </footer>
 
             {/* ATTENDANCE SHEET MODAL */}
             {activeAttendanceLecture && (
@@ -1008,9 +1317,9 @@ export default function TeacherLoginAndDashboard() {
 
             {/* TEMP EXCEPTION EDIT MODAL */}
             {isEditModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
-                        <h3 style={{ marginTop: 0 }}>Modify Lecture Time</h3>
+                <div style={modalOverlayStyle}>
+                    <div style={modalContentStyle}>
+                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.clock} Modify Lecture</h3>
                         <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1021,8 +1330,8 @@ export default function TeacherLoginAndDashboard() {
                                 {availableRooms.length > 0 ? availableRooms.map(r => <option key={r} value={r}>{r}</option>) : <option value={newRoom}>{newRoom}</option>}
                             </select>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
+                                <button type="submit" style={saveBtnStyle}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -1031,9 +1340,9 @@ export default function TeacherLoginAndDashboard() {
 
             {/* BASE MODAL */}
             {isBaseModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box', overflowY: 'auto' }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
+                <div style={modalOverlayStyle}>
+                    <div style={{...modalContentStyle, maxHeight: '90vh', overflowY: 'auto'}}>
+                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.building} {baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
                         <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                             {isManualSession ? <input type="text" placeholder="Session (e.g. Spring 2026)..." required value={baseForm.session} onChange={(e) => setBaseForm({...baseForm, session: e.target.value})} style={inputStyle} /> : <select required value={baseForm.session} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSession(true); setBaseForm({...baseForm, session: ''}); } else setBaseForm({...baseForm, session: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Session --</option>{availableSessions.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualSection ? <input type="text" placeholder="Section (e.g. 1E)..." required value={baseForm.section} onChange={(e) => setBaseForm({...baseForm, section: e.target.value})} style={inputStyle} /> : <select required value={baseForm.section} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSection(true); setBaseForm({...baseForm, section: ''}); } else setBaseForm({...baseForm, section: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Section --</option>{availableSections.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
@@ -1045,8 +1354,8 @@ export default function TeacherLoginAndDashboard() {
                                 <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
+                                <button type="submit" style={saveBtnStyle}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -1056,7 +1365,31 @@ export default function TeacherLoginAndDashboard() {
     );
 }
 
-const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' });
-const inputStyle = { width: '100%', padding: '12px', border: '2px solid #dee2e6', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', boxSizing: 'border-box' };
-const subTabStyle = (isActive) => ({ flex: 1, padding: '10px', background: isActive ? '#fff' : 'transparent', color: isActive ? '#002147' : '#555', border: isActive ? '1px solid #ddd' : '1px solid transparent', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', whiteSpace: 'nowrap' });
-const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.95rem' };
+// STYLES
+const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
+const welcomeCard = { background: '#fff', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '380px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '45px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '6px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '6px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabStyle = (active) => ({ flex: 1, minWidth: '80px', padding: '10px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' });
+const dayFilter = { display: 'flex', gap: '4px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '35px', padding: '6px', borderRadius: '6px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.65rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
+const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' });
+const inputStyle = { width: '100%', padding: '12px', border: '1px solid #dee2e6', borderRadius: '8px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box' };
+const whiteCard = { background: '#fff', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
+const emptyState = { textAlign: 'center', padding: '20px 10px', color: '#999', fontSize: '0.8rem', background: '#fff', borderRadius: '10px' };
+const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
+const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '5px' };
+const newsRedDot = { position: 'absolute', top: '4px', right: '4px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
+const footerStyle = { textAlign: 'center', padding: '12px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' };
+const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' };
+const cancelBtnStyle = { flex: 1, padding: '12px', background: '#eee', color: '#333', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' };
+const saveBtnStyle = { flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' };
+
+// Sidebar Styles
+const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
+const sidebarMenu = { width: '230px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 15px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
