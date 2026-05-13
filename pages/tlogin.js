@@ -72,8 +72,6 @@ export default function TeacherLoginAndDashboard() {
 
     // --- SIGNUP SPECIFIC STATES ---
     const [signupName, setSignupName] = useState('');
-    const [cnic, setCnic] = useState('');
-    const [phone, setPhone] = useState('');
     const [availableTeacherNames, setAvailableTeacherNames] = useState([]);
     const [authError, setAuthError] = useState('');
 
