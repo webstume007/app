@@ -1769,7 +1769,7 @@ export default function Home() {
                                                                         <div style={{ fontWeight: 'bold' }}>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</div>
                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
                                                                             {isExpired ? SVGS.alertCircle : SVGS.clock}
-                                                                            {isExpired ? `❌ Passed` : `Time Remaining: ${timeRemainingDisplay}`}
+                                                                            {isExpired ? `Passed` : `Time Remaining: ${timeRemainingDisplay}`}
                                                                         </div>
                                                                     </div>
                                                                     
