@@ -110,6 +110,7 @@ const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
 
 export default function Home() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [isStandalone, setIsStandalone] = useState(true);
     
     // Core Data States
     const [userSection, setUserSection] = useState(null);
@@ -141,6 +142,7 @@ export default function Home() {
     const [studentsData, setStudentsData] = useState([]);
     const [attSessions, setAttSessions] = useState([]);
     const [attRecords, setAttRecords] = useState([]);
+    const [completedAssignments, setCompletedAssignments] = useState([]);
 
     const [isFirstVisit, setIsFirstVisit] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date()); 
@@ -160,7 +162,7 @@ export default function Home() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     
     const [roomSubTab, setRoomSubTab] = useState('schedule'); 
-    const [roomViewType, setRoomViewType] = useState('Specified'); // All | Specified
+    const [roomViewType, setRoomViewType] = useState('All Rooms'); // All Rooms | Specified
     const [roomTimeFilter, setRoomTimeFilter] = useState('');
 
     const [selectedDay, setSelectedDay] = useState(() => {
@@ -180,6 +182,7 @@ export default function Home() {
 
     // Carousel Notice Board State
     const [noticeIndex, setNoticeIndex] = useState(0);
+    const [eodToggle, setEodToggle] = useState(0);
 
     const [freeDay, setFreeDay] = useState('MON');
     const [freeStart, setFreeStart] = useState('8:00 AM');
@@ -203,6 +206,7 @@ export default function Home() {
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const filterDays = ["ALL", ...days];
+    const roomFilterDays = roomViewType === 'All Rooms' ? days : filterDays;
 
     const timeSlots = [];
     let ts = 8 * 60;
@@ -221,6 +225,10 @@ export default function Home() {
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
 
+        if (typeof window !== 'undefined') {
+            setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
+        }
+
         return () => { 
             window.removeEventListener('online', handleOnline); 
             window.removeEventListener('offline', handleOffline); 
@@ -232,10 +240,25 @@ export default function Home() {
         const handler = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
-            setShowInstallBanner(true); // Banner strictly shows ONLY when native install is physically available via browser
+            if (!isStandalone) setShowInstallBanner(true);
         };
         window.addEventListener('beforeinstallprompt', handler);
+        if (!isStandalone && deferredPrompt) setShowInstallBanner(true);
+
         return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, [isStandalone, deferredPrompt]);
+
+    useEffect(() => {
+        const t = setInterval(() => setEodToggle(v => 1 - v), 7000);
+        return () => clearInterval(t);
+    }, []);
+
+    // Minute-by-Minute Live Sync
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchLiveSchedule();
+        }, 60000);
+        return () => clearInterval(interval);
     }, []);
 
     // Fetch setup students dynamically when session & section selected in Welcome screen
@@ -285,6 +308,9 @@ export default function Home() {
 
         const savedRoll = localStorage.getItem('iub_my_roll');
         if (savedRoll) setMyRollNumber(savedRoll);
+
+        const savedAssn = localStorage.getItem('iub_completed_assignments');
+        if (savedAssn) setCompletedAssignments(JSON.parse(savedAssn));
 
         if ("Notification" in window && Notification.permission === "default") {
             setShowNotifBanner(true);
@@ -491,6 +517,14 @@ export default function Home() {
         }
     };
 
+    const toggleAssignmentComplete = (id) => {
+        let newCompleted;
+        if (completedAssignments.includes(id)) newCompleted = completedAssignments.filter(x => x !== id);
+        else newCompleted = [...completedAssignments, id];
+        setCompletedAssignments(newCompleted);
+        localStorage.setItem('iub_completed_assignments', JSON.stringify(newCompleted));
+    };
+
     const parseTime = (t) => {
         if (!t) return 0;
         const match12 = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
@@ -602,14 +636,34 @@ export default function Home() {
         }
     };
 
+    const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const currentSecs = currentTime.getSeconds();
+
+    const isPassedLectureNotification = (msg) => {
+        const rawMyClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
+        const match = rawMyClasses.find(cls => msg.includes(cls.course));
+        if (match && match.day === currentDayStr) {
+            const endMins = parseTime(match.end_time);
+            if (currentMins >= endMins) return true;
+        }
+        return false;
+    };
+
+    const mySubjects = useMemo(() => {
+        const myClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
+        return [...new Set(myClasses.map(c => c.course))];
+    }, [allBaseSchedule, userSection]);
+
     const relevantNotifs = notifications.filter(n => {
         const msg = n.message || "";
         const sem = getSemesterFromSession(userSection?.session);
         const isGlobal = msg.includes('GLOBAL');
         const hasSection = msg.includes(userSection?.section);
         const hasSession = msg.includes(userSection?.session) || (sem && msg.includes(sem));
+        const isCRUpdate = (msg.includes('Confirmed:') || msg.includes('Cancelled:') || msg.includes('Rescheduled:')) && mySubjects.some(sub => msg.includes(sub));
 
-        return (isGlobal || (hasSection && hasSession)) && !readNotifIds.includes(n.id);
+        return (isGlobal || (hasSection && hasSession) || isCRUpdate) && !readNotifIds.includes(n.id) && !isPassedLectureNotification(msg);
     });
 
     const handleMarkAsRead = () => {
@@ -677,19 +731,17 @@ export default function Home() {
         roomSchedule = getFilteredClasses('room', selectedRoom, allBaseSchedule);
     } else {
         const timeFilterMins = parseTime(roomTimeFilter);
-        roomSchedule = allBaseSchedule.filter(c => c.day === selectedDay && parseTime(c.start_time) <= timeFilterMins && parseTime(c.end_time) > timeFilterMins);
+        roomSchedule = allBaseSchedule.filter(c => (selectedDay === 'ALL' || c.day === selectedDay) && (roomTimeFilter ? parseTime(c.start_time) <= timeFilterMins && parseTime(c.end_time) > timeFilterMins : true));
     }
-
-    const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
-    const currentSecs = currentTime.getSeconds();
     
     const ongoingAllLectures = allBaseSchedule.filter(c => c.day === currentDayStr && parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
 
     // Dynamic Construction of Notice Board Carousel Logic (Events + Strict Filters)
     const todayEvents = useMemo(() => {
         const events = [];
-        const myTodayClasses = mySchedule.filter(c => {
+        // Extract rawData here to bypass the UI `selectedDay` filter allowing Notice Board to truly run on today's Live Clock.
+        const dynamicMyClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
+        const myTodayClasses = dynamicMyClasses.filter(c => {
             if (c.day !== currentDayStr) return false;
             const status = getStatusStyles(c);
             if (status && status.label.toLowerCase().includes('cancelled')) return false;
@@ -715,7 +767,7 @@ export default function Home() {
             }
         }
         return events;
-    }, [mySchedule, currentDayStr, exceptions, pointsData]);
+    }, [allBaseSchedule, currentDayStr, exceptions, pointsData, userSection]);
     
     // Auto-align Notice Index
     useEffect(() => {
@@ -736,7 +788,7 @@ export default function Home() {
     // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
         const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
-        const mySubjects = [...new Set(myClasses.map(c => c.course))];
+        const allMySubjects = [...new Set(myClasses.map(c => c.course))];
         
         let allValidSessions = attSessions.filter(sess => myClasses.some(c => c.id === sess.base_schedule_id));
         let validSessions = allValidSessions;
@@ -748,7 +800,7 @@ export default function Home() {
             validSessions = validSessions.filter(s => (now - new Date(s.session_date)) <= ms);
         }
 
-        const subjectStats = mySubjects.map(sub => {
+        const subjectStats = allMySubjects.map(sub => {
             const subClassIds = myClasses.filter(c => c.course === sub).map(c => c.id);
             const subSessions = allValidSessions.filter(s => subClassIds.includes(s.base_schedule_id));
             
@@ -767,7 +819,7 @@ export default function Home() {
             return { subject: sub, pct, total: totalCount };
         }).filter(stat => stat.total > 0);
 
-        return { subjectStats, validSessions, allValidSessions, mySubjects, myClasses };
+        return { subjectStats, validSessions, allValidSessions, mySubjects: allMySubjects, myClasses };
     };
 
     let overallPct = 0;
@@ -830,7 +882,7 @@ export default function Home() {
         }
 
         if (scheduleList.length === 0) return <div style={emptyState}>No classes scheduled.</div>;
-        const daysToRender = selectedDay === 'ALL' ? days : [selectedDay];
+        const daysToRender = (selectedDay === 'ALL' || displayContext === 'all_rooms') ? days : [selectedDay];
 
         return daysToRender.map(day => {
             const dayClasses = scheduleList.filter(c => c.day === day).sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
@@ -874,7 +926,7 @@ export default function Home() {
                                     </div>
                                     <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '6px 0', color: '#111827' }}>{cls.course}</div>
                                     <div style={{ color: '#555', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        {displayContext !== 'room' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {cls.room}</span>}
+                                        {(displayContext !== 'room_specified') && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {cls.room}</span>}
                                         {displayContext !== 'teacher' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>}
                                         {displayContext !== 'class' && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.users} {getSemesterFromSession(cls.session)}-{cls.section}</span>}
                                     </div>
@@ -903,15 +955,24 @@ export default function Home() {
 
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
                                     <div className="expand-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
-                                        {activeSubjectAssignments.map(ann => (
-                                            <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px dashed #fde68a' }}>
-                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.note} {ann.topics}</div>
-                                                <div style={{ color: '#444', fontSize: '0.75rem', marginTop: '4px', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</div>
-                                                <div style={{ fontSize: '0.65rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
-                                                    Deadline: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
+                                        {activeSubjectAssignments.map(ann => {
+                                            const isComplete = completedAssignments.includes(ann.id);
+                                            return (
+                                                <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px dashed #fde68a' }}>
+                                                    <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.note} {ann.topics}</div>
+                                                    <div style={{ color: '#444', fontSize: '0.75rem', marginTop: '4px', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</div>
+                                                    <div style={{ fontSize: '0.65rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
+                                                        Deadline: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); toggleAssignmentComplete(ann.id); }}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '4px', background: isComplete ? '#dcfce7' : '#f8f9fa', border: `1px solid ${isComplete ? '#86efac' : '#ddd'}`, padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', color: isComplete ? '#15803d' : '#555', marginTop: '10px', transition: '0.3s' }}
+                                                    >
+                                                        {isComplete ? <>{SVGS.tickCircle} Done</> : "Mark Completed"}
+                                                    </button>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
 
@@ -1004,7 +1065,7 @@ export default function Home() {
                         ))}
                     </select>
 
-                    {setupSession && setupSection && (
+                    {setupSession && setupSection && !myRollNumber && (
                         <div className="expand-anim" style={{ marginTop: '5px' }}>
                             <p style={{ fontSize: '0.75rem', color: '#666', margin: '0 0 6px 0', textAlign: 'left' }}>Your Roll Number (For Attendance)</p>
                             <RealtimeSearchSelect 
@@ -1257,6 +1318,27 @@ export default function Home() {
                                                     }
                                                 }
 
+                                                if ((noticeState === 'Finished' || noticeState === 'Departed') && noticeIndex === todayEvents.length - 1) {
+                                                    const lastEventMins = targetEvent.type === 'lecture' ? targetEvent.endMins : targetEvent.timeMins;
+                                                    if (currentMins >= lastEventMins + 30) {
+                                                        const tmrwDayStr = new Date(currentTime.getTime() + 86400000).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+                                                        const tmrwPoints = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === (tmrwDayStr === 'SAT')).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
+                                                        const tmrwBestPoint = tmrwPoints.length > 0 ? convertTo12Hour(tmrwPoints[0].departure_time.slice(0,5)) : 'N/A';
+
+                                                        return eodToggle === 0 && activeAssignments.length > 0 ? (
+                                                            <div className="expand-anim">
+                                                                <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.1rem' }}>{activeAssignments.length} Assignments for Today</h3>
+                                                                <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="expand-anim">
+                                                                <h3 style={{ margin: '0 0 10px 0', color: '#007bff', fontSize: '1.1rem' }}>Tomorrow Morning Point</h3>
+                                                                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#002147' }}>{SVGS.bus} {tmrwBestPoint}</div>
+                                                            </div>
+                                                        );
+                                                    }
+                                                }
+
                                                 return targetEvent.type === 'lecture' ? (
                                                     <div className="expand-anim" key={`lec-${noticeIndex}`}>
                                                         <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
@@ -1475,7 +1557,7 @@ export default function Home() {
                                 {roomSubTab === 'schedule' && (
                                     <div className="expand-anim" style={whiteCard}>
                                         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', background: '#f8f9fa', padding: '5px', borderRadius: '8px' }}>
-                                            {['All', 'Specified'].map(type => (
+                                            {['All Rooms', 'Specified'].map(type => (
                                                 <label key={type} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', color: roomViewType === type ? '#002147' : '#666' }}>
                                                     <input type="radio" name="roomViewType" checked={roomViewType === type} onChange={() => setRoomViewType(type)} />
                                                     {type}
@@ -1498,12 +1580,12 @@ export default function Home() {
                                         )}
                                         
                                         <div style={{...dayFilter, marginTop: '8px', marginBottom: '15px'}}>
-                                            {filterDays.map(day => (
+                                            {roomFilterDays.map(day => (
                                                 <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>{day}</button>
                                             ))}
                                         </div>
 
-                                        {(roomViewType === 'Specified' ? selectedRoom : roomTimeFilter) && renderClassCards(roomSchedule, 'room')}
+                                        {(roomViewType === 'Specified' ? selectedRoom : roomTimeFilter) && renderClassCards(roomSchedule, roomViewType === 'Specified' ? 'room_specified' : 'all_rooms')}
                                     </div>
                                 )}
 
@@ -1540,7 +1622,7 @@ export default function Home() {
                                         <div style={{ marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                                             {SVGS.live} Live Ongoing Lectures
                                         </div>
-                                        {renderClassCards(ongoingAllLectures, 'room')}
+                                        {renderClassCards(ongoingAllLectures, 'ongoing')}
                                         {ongoingAllLectures.length === 0 && <div style={whiteCard}><div style={emptyState}>No lectures are currently ongoing.</div></div>}
                                     </div>
                                 )}
@@ -1556,6 +1638,30 @@ export default function Home() {
                                     options={allTeachers} 
                                     placeholder="🔍 Search teacher name..." 
                                 />
+
+                                {selectedTeacher && (
+                                    <div className="expand-anim" style={{ marginBottom: '15px' }}>
+                                        {(() => {
+                                            let teacherContactNumber = null;
+                                            const teacherFromContacts = contactsData.find(c => c.role && c.role.toLowerCase() === 'teacher' && c.name === selectedTeacher);
+                                            if (teacherFromContacts && teacherFromContacts.contact) {
+                                                teacherContactNumber = teacherFromContacts.contact;
+                                            } else {
+                                                const teacherFromProfiles = teachersData.find(t => t.name === selectedTeacher);
+                                                if (teacherFromProfiles && teacherFromProfiles.phone) teacherContactNumber = teacherFromProfiles.phone;
+                                            }
+                                            
+                                            if (teacherContactNumber) {
+                                                return (
+                                                    <a href={generateWaLink(teacherContactNumber, `Salam Sir/Mam ${selectedTeacher}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, background: '#25D366', color: '#fff', marginTop: '10px'}}>
+                                                        {SVGS.whatsapp} Contact {selectedTeacher}
+                                                    </a>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                    </div>
+                                )}
                                 
                                 <div style={{...dayFilter, marginTop: '8px', marginBottom: '15px'}}>
                                     {filterDays.map(day => (
@@ -1657,13 +1763,22 @@ export default function Home() {
                                                             <p style={{ margin: '0 0 10px 0', fontSize: '0.75rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
                                                             
                                                             {ann.type === 'assignment' && deadlineDate && (
-                                                                <div style={{ background: isExpired ? '#fef2f2' : '#f0f9ff', border: `1px solid ${isExpired ? '#fecaca' : '#bae6fd'}`, color: isExpired ? '#991b1b' : '#0369a1', fontSize: '0.7rem', padding: '8px 10px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                                                                    <div style={{ fontWeight: 'bold' }}>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</div>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
-                                                                        {isExpired ? SVGS.alertCircle : SVGS.clock}
-                                                                        {isExpired ? `❌ Passed` : `Time Remaining: ${timeRemainingDisplay}`}
+                                                                <>
+                                                                    <div style={{ background: isExpired ? '#fef2f2' : '#f0f9ff', border: `1px solid ${isExpired ? '#fecaca' : '#bae6fd'}`, color: isExpired ? '#991b1b' : '#0369a1', fontSize: '0.7rem', padding: '8px 10px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                                                        <div style={{ fontWeight: 'bold' }}>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</div>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
+                                                                            {isExpired ? SVGS.alertCircle : SVGS.clock}
+                                                                            {isExpired ? `❌ Passed` : `Time Remaining: ${timeRemainingDisplay}`}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
+                                                                    
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); toggleAssignmentComplete(ann.id); }}
+                                                                        style={{ display: 'flex', alignItems: 'center', gap: '4px', background: completedAssignments.includes(ann.id) ? '#dcfce7' : '#f8f9fa', border: `1px solid ${completedAssignments.includes(ann.id) ? '#86efac' : '#ddd'}`, padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', color: completedAssignments.includes(ann.id) ? '#15803d' : '#555', marginTop: '10px', transition: '0.3s' }}
+                                                                    >
+                                                                        {completedAssignments.includes(ann.id) ? <>{SVGS.tickCircle} Done</> : "Mark Completed"}
+                                                                    </button>
+                                                                </>
                                                             )}
                                                             
                                                             <div style={{ fontSize: '0.6rem', color: '#9ca3af', marginTop: '8px' }}>Posted: {new Date(ann.created_at).toLocaleDateString()}</div>
