@@ -361,44 +361,43 @@ export default function TeacherLoginAndDashboard() {
     };
 
     const handleSignup = async (e) => {
-        e.preventDefault();
-        if (!signupName) return showToast('Please select your name from the dropdown.', 'error');
+    e.preventDefault();
+    if (!signupName) return showToast('Please select your name from the dropdown.', 'error');
 
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                emailRedirectTo: 'https://mohsinakhtar.me/verify-success',
-                data: { full_name: signupName, phone: phone, cnic: cnic }
-            }
-        });
-
-        if (error) {
-            showToast(error.message, "error");
-            return;
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            emailRedirectTo: 'https://mohsinakhtar.me/verify-success',
+            data: { full_name: signupName } // Removed cnic and phone from here
         }
+    });
 
-        if (data?.user) {
-            const { error: profileError } = await supabase.from('teacher_profiles').insert([{
-                id: data.user.id,
-                name: signupName,
-                email: email,
-                phone: phone,
-                cnic: cnic
-            }]);
+    if (error) {
+        showToast(error.message, "error");
+        return;
+    }
 
-            if (profileError) {
-                console.error("Profile Insert Error:", profileError);
-                showToast("Auth created, but profile failed: " + profileError.message, "error");
-            } else {
-                setUnverifiedEmail(email);
-                setResendTimer(60);
-                showToast("Account created! Verify your email to submit your profile for admin approval.", "success");
-                setIsLoginMode(true);
-                fetchUnclaimedTeachers();
-            }
+    if (data?.user) {
+        const { error: profileError } = await supabase.from('teacher_profiles').insert([{
+            id: data.user.id,
+            name: signupName,
+            email: email
+            // Removed cnic and phone from here
+        }]);
+
+        if (profileError) {
+            console.error("Profile Insert Error:", profileError);
+            showToast("Auth created, but profile failed: " + profileError.message, "error");
+        } else {
+            setUnverifiedEmail(email);
+            setResendTimer(60);
+            showToast("Account created! Verify your email to submit your profile for admin approval.", "success");
+            setIsLoginMode(true);
+            fetchUnclaimedTeachers();
         }
-    };
+    }
+};
 
     const handleResendEmail = async () => {
         if (resendTimer > 0) return;
@@ -979,8 +978,6 @@ export default function TeacherLoginAndDashboard() {
                                     {availableTeacherNames.map(name => <option key={name} value={name}>{name}</option>)}
                                 </select>
                                 {availableTeacherNames.length === 0 && <span style={{ fontSize: '0.75rem', color: 'red' }}>All teachers currently in the record already have accounts.</span>}
-                                <input type="text" placeholder="CNIC Number" required value={cnic} onChange={(e) => setCnic(e.target.value)} style={inputStyle} />
-                                <input type="text" placeholder="Phone Number" required value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
                             </>
                         )}
                         <input type="email" placeholder="Email Address" required value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
