@@ -1094,6 +1094,7 @@ export default function Home() {
                 <title>IUB Assistant</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
                 <meta name="theme-color" content="#002147" />
+                <link rel="manifest" href="/manifest.json" />
             </Head>
 
             <style>{`
