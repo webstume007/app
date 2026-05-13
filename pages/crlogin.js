@@ -3,6 +3,40 @@ import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet';
 
+// --- Custom SVGs for UI ---
+const SVGS = {
+    tick: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
+    cross: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
+    bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    calendar: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
+    attendance: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
+    updates: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
+    clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
+    door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
+    userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
+    home: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
+    cap: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
+    location: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+    live: <svg width="12" height="12" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>,
+    tickCircle: <svg width="16" height="16" fill="none" stroke="#28a745" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+    note: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
+    users: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
+    edit: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
+    trash: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>,
+    upload: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>,
+    download: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>,
+    chart: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>,
+    plus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>,
+    save: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>,
+    lock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>,
+    undo: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>,
+    file: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>,
+    eye: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
+    history: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+    rocket: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z"/></svg>,
+    sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+};
+
 export default function Dashboard() {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
@@ -49,8 +83,8 @@ export default function Dashboard() {
     const [uploadCsvSubject, setUploadCsvSubject] = useState('');
     
     // --- CSV UPLOAD & HISTORY STATES ---
-    const [csvMeta, setCsvMeta] = useState(null); // Holds parsed data waiting for confirmation
-    const [uploadStatus, setUploadStatus] = useState('idle'); // idle, confirm, uploading, success
+    const [csvMeta, setCsvMeta] = useState(null); 
+    const [uploadStatus, setUploadStatus] = useState('idle'); 
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadLogs, setUploadLogs] = useState([]);
 
@@ -175,7 +209,6 @@ export default function Dashboard() {
                     
                     const diffMins = Math.floor((deadlineDate - now) / 60000);
                     
-                    // 2-HOUR ALERT LOGIC
                     if (diffMins === 120 && !notifiedDeadlines.current.has(ann.id)) {
                         notifiedDeadlines.current.add(ann.id);
                         
@@ -216,7 +249,6 @@ export default function Dashboard() {
         }
     }, [announcementForm.subject, schedule]);
 
-    // Dynamic Safe Fetcher to bypass >1000 limit
     const fetchAllRows = async (table, matchObj = null, inObj = null) => {
         let all = []; let from = 0; const step = 1000;
         while(true) {
@@ -276,7 +308,6 @@ export default function Dashboard() {
 
             const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
             
-            // Bypass >1000 limit with fetchAllRows
             const [exceptionsRes, sessionsRes, logsRes] = await Promise.all([
                 fetchAllRows('schedule_exceptions'),
                 fetchAllRows('attendance_sessions', null, { column: 'base_schedule_id', values: baseIds }),
@@ -286,7 +317,6 @@ export default function Dashboard() {
             const exceptionsData = exceptionsRes.data || [];
             const allSessions = sessionsRes.data || [];
             
-            // Strictly fetch records for ONLY the sessions of this section to prevent crushing memory
             const sessionIds = allSessions.map(s => s.id);
             let allRecords = [];
             if (sessionIds.length > 0) {
@@ -477,7 +507,6 @@ export default function Dashboard() {
         a.click();
     };
 
-    // --- PHASE 1: Parse CSV and show Confirmation UI ---
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (!file || !uploadCsvSubject) return;
@@ -503,10 +532,9 @@ export default function Dashboard() {
             setUploadStatus('confirm');
         };
         reader.readAsText(file);
-        e.target.value = null; // reset input
+        e.target.value = null;
     };
 
-    // --- PHASE 2: Execute the overwrite and upload ---
     const executeCsvUpload = async () => {
         if (!csvMeta) return;
         setUploadStatus('uploading');
@@ -518,7 +546,6 @@ export default function Dashboard() {
         const successfulDates = [];
 
         try {
-            // Strictly loop sequentially to guarantee Overwrites don't race
             for (const { index, dateStr } of dateCols) {
                 const parsedDate = new Date(dateStr);
                 if(isNaN(parsedDate)) continue; 
@@ -537,7 +564,6 @@ export default function Dashboard() {
 
                 if (existingSession) {
                     sessionId = existingSession.id;
-                    // CRITICAL FIX: Explicitly guarantee old records are wiped for this date to prevent duplicates
                     await supabase.from('attendance_records').delete().eq('session_id', sessionId);
                 } else {
                     const { data: newSession, error: sessErr } = await supabase.from('attendance_sessions')
@@ -552,7 +578,7 @@ export default function Dashboard() {
                     const row = rows[i];
                     if(row.length < index + 1) continue;
                     
-                    const roll = row[1]; // roll is at index 1
+                    const roll = row[1];
                     const rawStatus = row[index];
                     if(!roll || !rawStatus || rawStatus === 'N/A') continue;
 
@@ -571,11 +597,9 @@ export default function Dashboard() {
                     }
                 }
                 
-                // Update Progress UI
                 setUploadProgress(Math.round(((dateCols.indexOf(dateCols.find(d => d.dateStr === dateStr)) + 1) / totalDates) * 100));
             }
 
-            // Log the upload history for Undo capabilities
             if (successfulDates.length > 0) {
                 await supabase.from('attendance_upload_logs').insert([{
                     subject: uploadCsvSubject,
@@ -610,13 +634,10 @@ export default function Dashboard() {
                 
             if (sessionsToDelete && sessionsToDelete.length > 0) {
                 const sessIds = sessionsToDelete.map(s => s.id);
-                // Wipe records first
                 await supabase.from('attendance_records').delete().in('session_id', sessIds);
-                // Wipe sessions
                 await supabase.from('attendance_sessions').delete().in('id', sessIds);
             }
             
-            // Delete log entry
             await supabase.from('attendance_upload_logs').delete().eq('id', log.id);
             
             alert("Upload reversed successfully.");
@@ -742,20 +763,20 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', fontFamily: 'sans-serif' }}>Loading Dashboard...</div>;
+    if (loading) return <div style={centerStyle}><div className="custom-spinner"></div> Loading Dashboard...</div>;
     if (!session) return null;
 
     if (isPendingApproval) {
         return (
-            <div style={{ background: '#f0f2f5', minHeight: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', fontFamily: "'Roboto', sans-serif", padding: '20px' }}>
+            <div style={welcomeBg}>
                 <Head><title>Pending Approval | IUB Assistant</title></Head>
-                <div style={{ background: 'white', padding: '40px', borderRadius: '12px', textAlign: 'center', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '15px' }}>⏳</div>
+                <div style={welcomeCard}>
+                    <div style={{ fontSize: '3rem', marginBottom: '15px' }}>{SVGS.clock}</div>
                     <h2 style={{ color: '#002147', margin: '0 0 15px 0' }}>Approval Pending</h2>
                     <p style={{ color: '#555', fontSize: '1rem', lineHeight: '1.5', marginBottom: '25px' }}>
                         Your account has been successfully verified, but an administrator must manually approve your access before you can view your dashboard.
                     </p>
-                    <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '12px 25px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}>
+                    <button onClick={handleLogout} style={bigBtn}>
                         Log Out
                     </button>
                 </div>
@@ -770,9 +791,13 @@ export default function Dashboard() {
     const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
     const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
-    const visibleTabs = isMobile 
-        ? ['weekly', 'attendance', 'announcements'] 
-        : ['weekly', 'permanent', 'students', 'attendance', 'announcements'];
+    const visibleTabs = [
+        { id: 'weekly', label: 'Weekly', icon: SVGS.calendar },
+        ...(!isMobile ? [{ id: 'permanent', label: 'Base', icon: SVGS.home }] : []),
+        ...(!isMobile ? [{ id: 'students', label: 'Students', icon: SVGS.users }] : []),
+        { id: 'attendance', label: 'Attendance', icon: SVGS.attendance },
+        { id: 'announcements', label: 'Updates', icon: SVGS.updates }
+    ];
 
     const ongoingClasses = schedule.filter(cls => {
         if (cls.day !== currentDay || cls.isCancelled) return false;
@@ -782,7 +807,7 @@ export default function Dashboard() {
     });
 
     return (
-        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif" }}>
+        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
                 <title>CR Dashboard | IUB</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
@@ -793,49 +818,98 @@ export default function Dashboard() {
                     from { opacity: 0; transform: translateY(-5px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
-                .anim-slide { animation: slideFade 0.3s ease-out forwards; }
+                .expand-anim { animation: slideFade 0.3s ease-out forwards; }
                 
                 @keyframes expandBar {
                     from { width: 0%; }
                 }
+                .scroll-hide::-webkit-scrollbar { display: none; }
+                
+                .desktop-nav { display: none; }
+                .mobile-nav { display: flex; }
+                @media (min-width: 768px) {
+                    .desktop-nav { display: flex; align-items: center; gap: 15px; }
+                    .mobile-nav { display: none !important; }
+                    .hamburger-btn { display: none !important; }
+                }
+                .custom-spinner { width: 45px; height: 45px; border: 4px solid rgba(0, 33, 71, 0.1); border-left-color: #F2A900; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px auto; }
+                @keyframes spin { to { transform: rotate(360deg); } }
             `}</style>
 
-            <header style={{ background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', position: 'relative' }}>
+            <header style={headerStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <button onClick={() => setIsSidebarOpen(true)} style={{ background: 'transparent', border: 'none', color: '#F2A900', fontSize: '1.8rem', cursor: 'pointer', padding: 0 }}>
-                        ☰
-                    </button>
-                    <div style={{ fontWeight: '900', fontSize: '1.2rem' }}>🎓 CR Dashboard</div>
+                    <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
+                    </div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span> 
+                        CR DASHBOARD
+                    </div>
                 </div>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.9rem' }}>🔔 Notifications</a>
-                    <button onClick={handleLogout} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
+
+                <div className="desktop-nav">
+                    {visibleTabs.map(tab => (
+                        <div 
+                            key={tab.id} 
+                            onClick={() => setActiveTab(tab.id)}
+                            style={{
+                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
+                                background: activeTab === tab.id ? '#F2A900' : 'transparent',
+                                color: activeTab === tab.id ? '#002147' : '#fff',
+                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
+                            }}
+                        >
+                            {tab.icon} {tab.label}
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {SVGS.bell} <span className="mobile-hide">Alerts</span>
+                    </a>
+                    <button onClick={handleLogout} style={enableBtnStyle}>Logout</button>
                 </div>
             </header>
 
             {isSidebarOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh', background: 'rgba(0,0,0,0.5)', zIndex: 3000 }} onClick={() => setIsSidebarOpen(false)}>
-                    <div style={{ width: '280px', height: '100vh', background: '#002147', color: 'white', padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px', transform: 'translateX(0)', transition: '0.3s ease-in-out' }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '10px' }}>
-                            <span style={{ fontWeight: 'bold', color: '#F2A900', fontSize: '1.2rem' }}>Menu</span>
-                            <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
+                <div style={sidebarOverlay} onClick={() => setIsSidebarOpen(false)}>
+                    <div style={sidebarMenu} onClick={e => e.stopPropagation()}>
+                        <div style={{ padding: '15px 20px', borderBottom: '1px solid #eee', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
+                            <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
-                        <button onClick={() => { setActiveTab('weekly'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>
-                        <button onClick={() => { setActiveTab('permanent'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>
-                        <button onClick={() => { setActiveTab('students'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'students')}>👥 Manage Students</button>
-                        <button onClick={() => { setActiveTab('attendance'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'attendance')}>📝 Attendance</button>
-                        <button onClick={() => { setActiveTab('announcements'); setIsSidebarOpen(false); }} style={sidebarBtnStyle(activeTab === 'announcements')}>📢 Announcements</button>
+                        {[{id: 'weekly', label: 'Weekly Timetable', icon: SVGS.calendar}, {id: 'permanent', label: 'Base Schedule', icon: SVGS.home}, {id: 'students', label: 'Manage Students', icon: SVGS.users}, {id: 'attendance', label: 'Attendance', icon: SVGS.attendance}, {id: 'announcements', label: 'Announcements', icon: SVGS.updates}].map(tab => (
+                            <button 
+                                key={tab.id} 
+                                onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }} 
+                                style={sidebarBtn(activeTab === tab.id)}
+                            >
+                                <span style={{ opacity: 0.7 }}>{tab.icon}</span> <span style={{ marginLeft: '10px' }}>{tab.label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
             )}
 
-            <div style={{ maxWidth: '1000px', margin: '20px auto', padding: '0 15px' }}>
+            <div className="mobile-nav" style={tabBar}>
+                {visibleTabs.map(tab => (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={tabBtn(activeTab === tab.id)}>
+                        <div style={{ marginBottom: '2px', opacity: activeTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            <div style={{ padding: '15px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
                 
-                <div className="anim-slide" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px', borderLeft: '5px solid #F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div>
-                        <h2 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.5rem' }}>Welcome, {profile?.first_name} {profile?.last_name}</h2>
-                        <p style={{ margin: 0, color: '#555', fontSize: '0.95rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
-                    </div>
+                <div className="expand-anim" style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
+                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        Welcome, {profile?.first_name} {profile?.last_name}
+                    </h2>
+                    <p style={{ margin: 0, color: '#e0e0e0', fontSize: '0.85rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
                 </div>
 
                 {ongoingClasses.length > 0 && (
@@ -852,29 +926,29 @@ export default function Dashboard() {
                             }
 
                             return (
-                                <div key={`global-ongoing-${ongoingClass.id}`} className="anim-slide" style={{ background: '#28a745', padding: '15px 20px', borderRadius: '8px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(40, 167, 69, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                                <div key={`global-ongoing-${ongoingClass.id}`} className="expand-anim" style={{ background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)', padding: '15px 20px', borderRadius: '12px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(21, 128, 61, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
                                     <div style={{ color: 'white' }}>
-                                        <h3 style={{ margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.2rem' }}>
-                                            <span style={{ animation: 'pulse 2s infinite' }}>🔴</span> Ongoing Lecture: {ongoingClass.course}
+                                        <h3 style={{ margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
+                                            {SVGS.live} Ongoing: {ongoingClass.course}
                                         </h3>
-                                        <p style={{ margin: 0, fontSize: '0.95rem', opacity: 0.9 }}>
-                                            {convertTo12Hour(ongoingClass.start_time)} - {convertTo12Hour(ongoingClass.end_time)} | Room {ongoingClass.room}
+                                        <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {SVGS.clock} {convertTo12Hour(ongoingClass.start_time)} - {convertTo12Hour(ongoingClass.end_time)} | {SVGS.location} Room {ongoingClass.room}
                                         </p>
                                     </div>
                                     <div>
                                         {!sessionToday && (
-                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '10px 20px', background: 'white', color: '#28a745', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                                                📝 Mark Attendance
+                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '8px 15px', background: 'white', color: '#15803d', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                                {SVGS.note} Mark Attendance
                                             </button>
                                         )}
                                         {sessionToday && canEdit && (
-                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                                                ✏️ Edit Attendance (Time Remaining)
+                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '8px 15px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                                {SVGS.edit} Edit Attendance
                                             </button>
                                         )}
                                         {sessionToday && !canEdit && (
-                                            <button disabled style={{ padding: '10px 20px', background: '#e9ecef', color: '#6c757d', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'not-allowed' }}>
-                                                🔒 Locked ({sessionToday.status === 'approved' ? 'Approved' : 'Pending'})
+                                            <button disabled style={{ padding: '8px 15px', background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                                {SVGS.lock} Locked ({sessionToday.status === 'approved' ? 'Approved' : 'Pending'})
                                             </button>
                                         )}
                                     </div>
@@ -884,73 +958,63 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                    {visibleTabs.includes('weekly') && <button onClick={() => setActiveTab('weekly')} style={tabStyle(activeTab === 'weekly')}>📅 Weekly Timetable</button>}
-                    {visibleTabs.includes('permanent') && <button onClick={() => setActiveTab('permanent')} style={tabStyle(activeTab === 'permanent')}>🏛️ Base Schedule</button>}
-                    {visibleTabs.includes('students') && <button onClick={() => setActiveTab('students')} style={tabStyle(activeTab === 'students')}>👥 Manage Students</button>}
-                    {visibleTabs.includes('attendance') && <button onClick={() => setActiveTab('attendance')} style={tabStyle(activeTab === 'attendance')}>📝 Attendance</button>}
-                    {visibleTabs.includes('announcements') && <button onClick={() => setActiveTab('announcements')} style={tabStyle(activeTab === 'announcements')}>📢 Announcements</button>}
-                </div>
-
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
-                    <div className="anim-slide">
-                        <div style={{ display: 'flex', overflowX: 'auto', gap: '10px', marginBottom: '20px', paddingBottom: '10px', scrollbarWidth: 'none' }}>
+                    <div className="expand-anim">
+                        <div style={dayFilter}>
                             {days.map(day => (
                                 <button key={day} onClick={() => setSelectedDay(day)}
-                                    style={{ 
-                                        padding: '10px 20px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
-                                        background: selectedDay === day ? '#002147' : '#e9ecef', color: selectedDay === day ? '#F2A900' : '#495057', boxShadow: selectedDay === day ? '0 4px 6px rgba(0,0,0,0.1)' : 'none'
-                                    }}>
+                                    style={dayBtnStyle(selectedDay === day)}>
                                     {day}
                                 </button>
                             ))}
                         </div>
                         
                         {filteredWeeklySchedule.length === 0 ? (
-                            <p style={{ textAlign: 'center', padding: '20px', background: 'white', borderRadius: '8px' }}>No classes scheduled for {selectedDay}.</p>
+                            <div style={whiteCard}><div style={emptyState}>No classes scheduled for {selectedDay}.</div></div>
                         ) : (
                             filteredWeeklySchedule.map((cls) => (
                                 <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
-                                     style={{ 
-                                        background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', transition: '0.2s',
-                                        borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid transparent', opacity: cls.isCancelled ? 0.6 : 1 
+                                     style={{ ...cardBase, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', border: '1px solid #eee',
+                                        borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid #F2A900', opacity: cls.isCancelled ? 0.6 : 1 
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? 'red' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>
+                                            <div style={{ fontWeight: '900', color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                                {SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}
+                                            </div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#111827', textDecoration: cls.isCancelled ? 'line-through' : 'none', marginBottom: '4px' }}>
                                                 {cls.course}
                                             </div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                            <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room {cls.room}</span>
+                                            </div>
                                             
                                             {cls.attendanceSession && (
-                                                <div style={{ display: 'inline-block', marginTop: '5px', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', 
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', 
                                                     background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
                                                     color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
-                                                    {cls.attendanceSession.status === 'approved' ? '✓ Attendance Approved' : '⏳ Attendance Pending'}
+                                                    {cls.attendanceSession.status === 'approved' ? <>{SVGS.tickCircle} Attendance Approved</> : <>{SVGS.clock} Attendance Pending</>}
                                                 </div>
                                             )}
-                                        </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
 
                                     {expandedLectureId === cls.id && (
-                                        <div style={{ marginTop: '15px', animation: 'slideFade 0.3s ease-out' }}>
-                                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                        <div className="expand-anim" style={{ marginTop: '15px' }}>
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                                 {cls.isCancelled ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Cancellation</button>
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Cancel</button>
                                                 ) : cls.isConfirmed ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Mark Not Confirm</button>
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Remove Confirm</button>
                                                 ) : cls.isRescheduled ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={btnStyle('#6c757d')}>↩️ Undo Reschedule</button>
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Reschedule</button>
                                                 ) : (
                                                     <>
-                                                        <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={btnStyle('#28a745')}>✅ Will Held</button>
-                                                        <button onClick={(e) => openEditModal(e, cls)} style={btnStyle('#007bff')}>🕒 Edit Timing</button>
-                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={btnStyle('#dc3545')}>❌ Cancel Class</button>
+                                                        <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#28a745'}}>{SVGS.tickCircle} Confirm</button>
+                                                        <button onClick={(e) => openEditModal(e, cls)} style={{...actionBtn, background: '#007bff'}}>{SVGS.clock} Reschedule</button>
+                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#dc3545'}}>{SVGS.cross} Cancel</button>
                                                     </>
                                                 )}
                                             </div>
@@ -964,17 +1028,17 @@ export default function Dashboard() {
 
                 {/* ================= SPLIT ATTENDANCE TAB ================= */}
                 {activeTab === 'attendance' && (
-                    <div className="anim-slide">
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-                            <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>✅ Mark</button>
-                            <button onClick={() => setAttendanceView('csv_management')} style={subTabStyle(attendanceView === 'csv_management')}>📤 Upload CSV</button>
-                            <button onClick={() => setAttendanceView('csv_history')} style={subTabStyle(attendanceView === 'csv_history')}>🕒 CSV History</button>
-                            <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>📥 Download</button>
-                            <button onClick={() => setAttendanceView('stats')} style={subTabStyle(attendanceView === 'stats')}>📊 Statistics</button>
+                    <div className="expand-anim">
+                        <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', background: '#e9ecef', padding: '5px', borderRadius: '10px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }} className="scroll-hide">
+                            <button onClick={() => setAttendanceView('mark')} style={subTabBtn(attendanceView === 'mark')}>{SVGS.tickCircle} Mark</button>
+                            <button onClick={() => setAttendanceView('csv_management')} style={subTabBtn(attendanceView === 'csv_management')}>{SVGS.upload} Upload</button>
+                            <button onClick={() => setAttendanceView('csv_history')} style={subTabBtn(attendanceView === 'csv_history')}>{SVGS.history} History</button>
+                            <button onClick={() => setAttendanceView('download')} style={subTabBtn(attendanceView === 'download')}>{SVGS.download} Save</button>
+                            <button onClick={() => setAttendanceView('stats')} style={subTabBtn(attendanceView === 'stats')}>{SVGS.chart} Stats</button>
                         </div>
 
                         {attendanceView === 'mark' && (
-                            <div className="anim-slide" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                            <div className="expand-anim" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 {attendanceStats.map(stat => {
                                     const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
                                     let isOngoing = false;
@@ -1000,27 +1064,29 @@ export default function Dashboard() {
                                     if (!todayClass) return null; 
 
                                     return (
-                                        <div key={`mark-${stat.subject}`} style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #28a745' }}>
-                                            <h3 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.2rem' }}>{stat.subject}</h3>
-                                            <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>{todayClass.start_time} - {todayClass.end_time} | Room {todayClass.room}</p>
+                                        <div key={`mark-${stat.subject}`} style={{...whiteCard, borderTop: '4px solid #28a745'}}>
+                                            <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h3>
+                                            <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {SVGS.clock} {todayClass.start_time} - {todayClass.end_time} | {SVGS.location} Room {todayClass.room}
+                                            </p>
                                             
                                             {isOngoing && !todaySession && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', animation: 'pulse 2s infinite' }}>
-                                                    📝 Mark Attendance (Ongoing)
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#28a745', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                                                    {SVGS.note} Mark Attendance (Ongoing)
                                                 </button>
                                             )}
                                             {todaySession && canEdit && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                    ✏️ Edit Attendance (Time Remaining)
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#007bff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                                                    {SVGS.edit} Edit Attendance
                                                 </button>
                                             )}
                                             {todaySession && !canEdit && (
-                                                <button disabled style={{ width: '100%', padding: '12px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'not-allowed', opacity: 0.8 }}>
-                                                    🔒 Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending Teacher'})
+                                                <button disabled style={{...bigBtn, background: '#6c757d', color: 'white', opacity: 0.8, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                                                    {SVGS.lock} Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending'})
                                                 </button>
                                             )}
                                             {!isOngoing && !todaySession && (
-                                                <div style={{ textAlign: 'center', padding: '10px', color: '#856404', background: '#fff3cd', borderRadius: '5px', fontSize: '0.9rem' }}>
+                                                <div style={{ textAlign: 'center', padding: '10px', color: '#856404', background: '#fff3cd', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold' }}>
                                                     Not currently active.
                                                 </div>
                                             )}
@@ -1028,24 +1094,20 @@ export default function Dashboard() {
                                     );
                                 })}
                                 {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled)).length === 0 && (
-                                    <p style={{textAlign: 'center', width: '100%', padding: '20px', background: 'white', borderRadius: '8px'}}>No classes scheduled for today to mark attendance.</p>
+                                    <div style={whiteCard}><div style={emptyState}>No classes scheduled for today to mark attendance.</div></div>
                                 )}
                             </div>
                         )}
 
                         {attendanceView === 'download' && (
-                            <div className="anim-slide" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
+                            <div className="expand-anim" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 {attendanceStats.map(stat => (
-                                    <div key={`dl-${stat.subject}`} style={{ border: '1px solid #eee', background: '#fff', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #17a2b8' }}>
-                                        <h4 style={{ margin: '0 0 10px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h4>
-                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.85rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
+                                    <div key={`dl-${stat.subject}`} style={{...whiteCard, borderLeft: '4px solid #17a2b8'}}>
+                                        <h4 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h4>
+                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
                                         <div style={{ display: 'flex', gap: '10px' }}>
-                                            <button onClick={() => downloadCSV(stat, false)} style={{ flex: 1, padding: '8px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                📥 Download
-                                            </button>
-                                            <button onClick={() => downloadCSV(stat, true)} style={{ flex: 1, padding: '8px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                👁️ View
-                                            </button>
+                                            <button onClick={() => downloadCSV(stat, false)} style={{...actionBtn, background: '#17a2b8'}}>{SVGS.download} Download CSV</button>
+                                            <button onClick={() => downloadCSV(stat, true)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.eye} View Table</button>
                                         </div>
                                     </div>
                                 ))}
@@ -1053,22 +1115,22 @@ export default function Dashboard() {
                         )}
 
                         {attendanceView === 'csv_management' && (
-                            <div className="anim-slide" style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                            <div className="expand-anim" style={whiteCard}>
                                 {uploadStatus === 'idle' && (
                                     <>
-                                        <h3 style={{ color: '#002147', marginTop: 0, borderBottom: '2px solid #eee', paddingBottom: '10px' }}>📤 Upload Attendance (Overwrite Enabled)</h3>
-                                        <p style={{fontSize: '0.9rem', color: '#666', marginBottom: '20px'}}>Select a subject and upload your CSV. If attendance for any dates inside the CSV already exists, it will be <strong>replaced entirely</strong> with the new file's data.</p>
+                                        <h3 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.upload} Upload Attendance CSV</h3>
+                                        <p style={{fontSize: '0.8rem', color: '#666', marginBottom: '15px'}}>Select a subject and upload your CSV. If attendance for any dates inside the CSV already exists, it will be <strong>replaced entirely</strong> with the new file's data.</p>
                                         
-                                        <select value={uploadCsvSubject} onChange={(e) => setUploadCsvSubject(e.target.value)} style={{...inputStyle, marginBottom: '15px', fontWeight: 'bold'}}>
-                                            <option value="">-- Select Subject to Upload For --</option>
+                                        <select value={uploadCsvSubject} onChange={(e) => setUploadCsvSubject(e.target.value)} style={selectStyle}>
+                                            <option value="">-- Select Subject --</option>
                                             {availableCourses.map(c => <option key={`up-${c}`} value={c}>{c}</option>)}
                                         </select>
 
                                         {uploadCsvSubject && (
-                                            <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '2px dashed #ccc', textAlign: 'center', cursor: 'pointer' }} onClick={() => fileInputRef.current.click()}>
-                                                <div style={{ fontSize: '2rem', marginBottom: '10px' }}>📄</div>
-                                                <p style={{ fontSize: '1rem', color: '#002147', fontWeight: 'bold', margin: '0 0 5px 0' }}>Click to select CSV File</p>
-                                                <p style={{ fontSize: '0.8rem', color: '#666', margin: 0 }}>Format: Name, Registration Number, YYYY-MM-DD...</p>
+                                            <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '10px', border: '2px dashed #ccc', textAlign: 'center', cursor: 'pointer', transition: '0.3s ease' }} onClick={() => fileInputRef.current.click()}>
+                                                <div style={{ color: '#002147', marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>{SVGS.file}</div>
+                                                <p style={{ fontSize: '0.9rem', color: '#002147', fontWeight: 'bold', margin: '0 0 5px 0' }}>Click to select CSV File</p>
+                                                <p style={{ fontSize: '0.7rem', color: '#666', margin: 0 }}>Format: Name, Registration Number, YYYY-MM-DD...</p>
                                                 <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} />
                                             </div>
                                         )}
@@ -1076,71 +1138,71 @@ export default function Dashboard() {
                                 )}
 
                                 {uploadStatus === 'confirm' && csvMeta && (
-                                    <div className="anim-slide" style={{textAlign: 'center'}}>
-                                        <h3 style={{color: '#002147'}}>Confirm Upload</h3>
-                                        <div style={{background: '#e7f1ff', padding: '20px', borderRadius: '10px', border: '1px solid #007bff', marginBottom: '20px'}}>
-                                            <p style={{margin: '0 0 10px 0'}}><strong>Subject:</strong> {uploadCsvSubject}</p>
-                                            <p style={{margin: '0 0 10px 0'}}><strong>Total Students/Rows:</strong> {csvMeta.totalRecords}</p>
-                                            <p style={{margin: '0 0 10px 0'}}><strong>Dates to Overwrite/Insert ({csvMeta.dateCols.length}):</strong></p>
-                                            <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                                    <div className="expand-anim" style={{textAlign: 'center'}}>
+                                        <h3 style={{color: '#002147', margin: '0 0 15px 0'}}>Confirm Upload</h3>
+                                        <div style={{background: '#e7f1ff', padding: '15px', borderRadius: '10px', border: '1px solid #b8daff', marginBottom: '15px', textAlign: 'left', fontSize: '0.85rem'}}>
+                                            <p style={{margin: '0 0 8px 0'}}><strong>Subject:</strong> {uploadCsvSubject}</p>
+                                            <p style={{margin: '0 0 8px 0'}}><strong>Total Students/Rows:</strong> {csvMeta.totalRecords}</p>
+                                            <p style={{margin: '0 0 8px 0'}}><strong>Dates to Overwrite/Insert ({csvMeta.dateCols.length}):</strong></p>
+                                            <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
                                                 {csvMeta.dateCols.map(d => (
-                                                    <span key={d.dateStr} style={{background: '#fff', border: '1px solid #ccc', padding: '3px 8px', borderRadius: '15px', fontSize: '0.8rem'}}>{d.dateStr}</span>
+                                                    <span key={d.dateStr} style={{background: '#fff', border: '1px solid #ccc', padding: '3px 8px', borderRadius: '15px', fontSize: '0.7rem', fontWeight: 'bold'}}>{d.dateStr}</span>
                                                 ))}
                                             </div>
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px' }}>
-                                            <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); }} style={{ flex: 1, padding: '12px', background: '#ccc', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Cancel</button>
-                                            <button onClick={executeCsvUpload} style={{ flex: 2, padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>🚀 Confirm & Upload Data</button>
+                                            <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); }} style={{...actionBtn, background: '#ccc', color: '#333'}}>Cancel</button>
+                                            <button onClick={executeCsvUpload} style={{...actionBtn, background: '#28a745', flex: 2}}>{SVGS.upload} Confirm & Upload Data</button>
                                         </div>
                                     </div>
                                 )}
 
                                 {uploadStatus === 'uploading' && (
-                                    <div className="anim-slide" style={{textAlign: 'center', padding: '30px 0'}}>
-                                        <h3 style={{color: '#002147'}}>Processing Data...</h3>
-                                        <div style={{width: '100%', height: '20px', background: '#eee', borderRadius: '10px', overflow: 'hidden', marginTop: '20px'}}>
-                                            <div style={{width: `${uploadProgress}%`, height: '100%', background: '#F2A900', transition: 'width 0.3s ease', animation: 'expandBar 0.5s ease-out'}}></div>
+                                    <div className="expand-anim" style={{textAlign: 'center', padding: '30px 0'}}>
+                                        <h3 style={{color: '#002147', margin: '0 0 15px 0'}}>Processing Data...</h3>
+                                        <div style={{width: '100%', height: '12px', background: '#eee', borderRadius: '6px', overflow: 'hidden'}}>
+                                            <div style={{width: `${uploadProgress}%`, height: '100%', background: '#F2A900', transition: 'width 0.3s ease'}}></div>
                                         </div>
-                                        <p style={{fontWeight: 'bold', marginTop: '10px', color: '#555'}}>{uploadProgress}%</p>
+                                        <p style={{fontWeight: 'bold', marginTop: '8px', color: '#555', fontSize: '0.85rem'}}>{uploadProgress}%</p>
                                     </div>
                                 )}
 
                                 {uploadStatus === 'success' && (
-                                    <div className="anim-slide" style={{textAlign: 'center', padding: '20px 0'}}>
-                                        <div style={{fontSize: '4rem', color: '#28a745', marginBottom: '15px'}}>✅</div>
-                                        <h2 style={{color: '#28a745', margin: '0 0 10px 0'}}>Upload Complete!</h2>
-                                        <p style={{color: '#666', marginBottom: '25px'}}>The attendance data has been successfully stored in the database.</p>
-                                        <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); setUploadCsvSubject(''); }} style={{ padding: '12px 30px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Upload Another File</button>
+                                    <div className="expand-anim" style={{textAlign: 'center', padding: '20px 0'}}>
+                                        <div style={{color: '#28a745', marginBottom: '10px', display: 'flex', justifyContent: 'center', transform: 'scale(2)'}}>{SVGS.tickCircle}</div>
+                                        <h3 style={{color: '#28a745', margin: '0 0 10px 0'}}>Upload Complete!</h3>
+                                        <p style={{color: '#666', marginBottom: '20px', fontSize: '0.85rem'}}>The attendance data has been successfully stored.</p>
+                                        <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); setUploadCsvSubject(''); }} style={bigBtn}>Upload Another File</button>
                                     </div>
                                 )}
                             </div>
                         )}
 
                         {attendanceView === 'csv_history' && (
-                            <div className="anim-slide" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                                <h3 style={{ margin: '0 0 15px 0', color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>CSV Upload History & Undo</h3>
+                            <div className="expand-anim" style={whiteCard}>
+                                <h3 style={{ margin: '0 0 15px 0', color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.history} Upload History & Undo</h3>
                                 {uploadLogs.length === 0 ? (
-                                    <p style={{textAlign: 'center', color: '#999', padding: '20px'}}>No upload history found.</p>
+                                    <div style={emptyState}>No upload history found.</div>
                                 ) : (
-                                    <div style={{ overflowX: 'auto' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                                    <div style={{ overflowX: 'auto' }} className="scroll-hide">
+                                        <table style={tableStyle}>
                                             <thead>
-                                                <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                                    <th style={{ padding: '12px' }}>Date Uploaded</th>
-                                                    <th style={{ padding: '12px' }}>Subject</th>
-                                                    <th style={{ padding: '12px' }}>Dates Processed</th>
-                                                    <th style={{ padding: '12px', textAlign: 'right' }}>Action</th>
+                                                <tr style={tableHeaderRow}>
+                                                    <th style={tableHeaderCell}>Date</th>
+                                                    <th style={tableHeaderCell}>Subject</th>
+                                                    <th style={tableHeaderCell}>Dates Processed</th>
+                                                    <th style={{...tableHeaderCell, textAlign: 'right'}}>Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {uploadLogs.map(log => (
-                                                    <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
-                                                        <td style={{ padding: '12px' }}>{new Date(log.created_at).toLocaleDateString()}</td>
-                                                        <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{log.subject}</td>
-                                                        <td style={{ padding: '12px', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.dates_included}</td>
-                                                        <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                            <button onClick={() => handleUndoUpload(log)} style={{ padding: '6px 12px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                                                ↩️ Undo
+                                                    <tr key={log.id} style={tableDataRow}>
+                                                        <td style={tableDataCell}>{new Date(log.created_at).toLocaleDateString()}</td>
+                                                        <td style={{...tableDataCell, fontWeight: 'bold', color: '#002147'}}>{log.subject}</td>
+                                                        <td style={{...tableDataCell, maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{log.dates_included}</td>
+                                                        <td style={{...tableDataCell, textAlign: 'right'}}>
+                                                            <button onClick={() => handleUndoUpload(log)} style={{ padding: '4px 8px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                                {SVGS.undo} Undo
                                                             </button>
                                                         </td>
                                                     </tr>
@@ -1153,32 +1215,32 @@ export default function Dashboard() {
                         )}
 
                         {attendanceView === 'stats' && (
-                            <div className="anim-slide" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                            <div className="expand-anim" style={whiteCard}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-                                    <h3 style={{ margin: 0, color: '#002147' }}>Student Attendance Overview</h3>
-                                    <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold' }}>
+                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.chart} Student Stats</h3>
+                                    <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.8rem' }}>
                                         <option value="ALL">All Subjects (Overall)</option>
                                         {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                                 
-                                <div style={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <div style={{ overflowX: 'auto' }} className="scroll-hide">
+                                    <table style={tableStyle}>
                                         <thead>
-                                            <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                                <th style={{ padding: '12px' }}>Registration Number</th>
-                                                <th style={{ padding: '12px' }}>Name</th>
-                                                <th style={{ padding: '12px', textAlign: 'right' }}>Attendance %</th>
+                                            <tr style={tableHeaderRow}>
+                                                <th style={tableHeaderCell}>Reg No</th>
+                                                <th style={tableHeaderCell}>Name</th>
+                                                <th style={{...tableHeaderCell, textAlign: 'right'}}>%</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {roster.map(student => {
                                                 const pct = getStudentAttendance(student.registration_number, attendanceSubjectFilter);
                                                 return (
-                                                    <tr key={student.registration_number} style={{ borderBottom: '1px solid #eee' }}>
-                                                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.registration_number}</td>
-                                                        <td style={{ padding: '12px' }}>{student.student_name}</td>
-                                                        <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>
+                                                    <tr key={student.registration_number} style={tableDataRow}>
+                                                        <td style={{...tableDataCell, fontWeight: 'bold'}}>{student.registration_number}</td>
+                                                        <td style={tableDataCell}>{student.student_name}</td>
+                                                        <td style={{...tableDataCell, textAlign: 'right', fontWeight: 'bold', color: pct >= 75 ? '#28a745' : '#dc3545' }}>
                                                             {pct}%
                                                         </td>
                                                     </tr>
@@ -1194,20 +1256,20 @@ export default function Dashboard() {
 
                 {/* ================= ANNOUNCEMENTS TAB ================= */}
                 {activeTab === 'announcements' && (
-                    <div className="anim-slide">
-                        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
-                            <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
-                                {editAnnId ? '✏️ Edit Announcement' : 'Publish Announcement'}
+                    <div className="expand-anim">
+                        <div style={whiteCard}>
+                            <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {editAnnId ? <>{SVGS.edit} Edit Announcement</> : <>{SVGS.updates} Publish Announcement</>}
                             </h3>
-                            <form onSubmit={submitAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            <form onSubmit={submitAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                    <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({...announcementForm, type: e.target.value})} style={{...inputStyle, flex: 1, fontWeight: 'bold'}}>
-                                        <option value="assignment">📝 Assignment</option>
-                                        <option value="message">📢 Simple Message</option>
+                                    <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({...announcementForm, type: e.target.value})} style={{...selectStyle, flex: 1, fontWeight: 'bold', marginBottom: 0}}>
+                                        <option value="assignment">Assignment</option>
+                                        <option value="message">Simple Message</option>
                                     </select>
                                     <select required value={announcementForm.subject} onChange={(e) => {
                                         setAnnouncementForm({...announcementForm, subject: e.target.value, lecture_selector: ''});
-                                    }} style={{...inputStyle, flex: 2}}>
+                                    }} style={{...selectStyle, flex: 2, marginBottom: 0}}>
                                         <option value="" disabled>-- Select Subject --</option>
                                         <option value="General">General / Off-Topic</option>
                                         {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1215,8 +1277,8 @@ export default function Dashboard() {
                                 </div>
 
                                 {announcementForm.type === 'assignment' && announcementForm.subject && (
-                                    <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '5px', border: '1px solid #dee2e6' }}>
-                                        <label style={{display: 'block', fontSize: '0.85rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px'}}>Select Deadline</label>
+                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                                        <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px'}}>Select Deadline</label>
                                         
                                         {upcomingLectures.length > 0 && announcementForm.subject !== 'General' && (
                                             <select 
@@ -1229,7 +1291,7 @@ export default function Dashboard() {
                                                         setAnnouncementForm(prev => ({...prev, deadline_date: d, deadline_time: t}));
                                                     }
                                                 }} 
-                                                style={{...inputStyle, marginBottom: '10px'}}
+                                                style={selectStyle}
                                             >
                                                 <option value="" disabled>-- Select Upcoming Lecture Date --</option>
                                                 {upcomingLectures.map(l => {
@@ -1237,19 +1299,19 @@ export default function Dashboard() {
                                                     const timeFmt = convertTo12Hour(l.start_time);
                                                     return <option key={l.id} value={`${dDate}|${timeFmt}`}>{l.day} {dDate} (By {timeFmt})</option>;
                                                 })}
-                                                <option value="manual">➕ Provide Manual Date & Time</option>
+                                                <option value="manual">+ Provide Manual Date & Time</option>
                                             </select>
                                         )}
 
                                         {(announcementForm.lecture_selector === 'manual' || upcomingLectures.length === 0 || announcementForm.subject === 'General') && (
                                             <div style={{ display: 'flex', gap: '10px' }}>
                                                 <div style={{flex: 1}}>
-                                                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#666', marginBottom: '5px'}}>Manual Date</label>
-                                                    <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_date: e.target.value})} style={inputStyle} />
+                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px'}}>Date</label>
+                                                    <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_date: e.target.value})} style={{...selectStyle, marginBottom: 0}} />
                                                 </div>
                                                 <div style={{flex: 1}}>
-                                                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#666', marginBottom: '5px'}}>Manual Time</label>
-                                                    <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_time: e.target.value})} style={inputStyle}>
+                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px'}}>Time</label>
+                                                    <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_time: e.target.value})} style={{...selectStyle, marginBottom: 0}}>
                                                         {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
                                                         <option value="11:59 PM">11:59 PM (Midnight)</option>
                                                     </select>
@@ -1259,24 +1321,24 @@ export default function Dashboard() {
                                     </div>
                                 )}
 
-                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4 Exercises)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({...announcementForm, topics: e.target.value})} style={inputStyle} />
-                                <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({...announcementForm, details: e.target.value})} style={{...inputStyle, minHeight: '100px', resize: 'vertical'}} />
+                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4 Exercises)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({...announcementForm, topics: e.target.value})} style={{...selectStyle, marginBottom: 0}} />
+                                <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({...announcementForm, details: e.target.value})} style={{...selectStyle, minHeight: '80px', resize: 'vertical', marginBottom: 0}} />
                                 
-                                <div style={{ display: 'flex', gap: '10px' }}>
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
                                     {editAnnId && (
-                                        <button type="button" onClick={() => { setEditAnnId(null); setAnnouncementForm({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' }); }} style={{ padding: '15px', background: '#ccc', color: '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', flex: 1 }}>
-                                            Cancel Edit
+                                        <button type="button" onClick={() => { setEditAnnId(null); setAnnouncementForm({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' }); }} style={{...actionBtn, background: '#ccc', color: '#333'}}>
+                                            Cancel
                                         </button>
                                     )}
-                                    <button type="submit" style={{ padding: '15px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem', flex: 2 }}>
-                                        {editAnnId ? '💾 Update Announcement' : '🚀 Push to Entire Class'}
+                                    <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900', flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                                        {editAnnId ? <>{SVGS.save} Update</> : <>{SVGS.rocket} Push to Class</>}
                                     </button>
                                 </div>
                             </form>
                         </div>
 
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Active Announcements</h3>
-                        {announcements.length === 0 ? <p style={{textAlign: 'center', background: 'white', padding: '20px', borderRadius: '8px'}}>No announcements yet.</p> : (
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '10px', marginLeft: '5px' }}>Active Announcements</h3>
+                        {announcements.length === 0 ? <div style={whiteCard}><div style={emptyState}>No announcements yet.</div></div> : (
                             announcements.map(ann => {
                                 let timeRemainingDisplay = null;
                                 let isExpired = false;
@@ -1292,42 +1354,44 @@ export default function Dashboard() {
                                         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                                         const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
                                         const mins = Math.floor((diffMs / 1000 / 60) % 60);
-                                        timeRemainingDisplay = `⏳ ${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m remaining`;
+                                        timeRemainingDisplay = `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m remaining`;
                                     } else {
                                         isExpired = true;
-                                        timeRemainingDisplay = `❌ Deadline Passed`;
+                                        timeRemainingDisplay = `Deadline Passed`;
                                     }
                                 }
 
                                 return (
-                                    <div key={ann.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: ann.type === 'assignment' ? '5px solid #F2A900' : '5px solid #007bff', opacity: isExpired ? 0.6 : 1 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', background: '#eee', padding: '3px 8px', borderRadius: '12px', color: '#555', textTransform: 'uppercase' }}>
-                                                {ann.subject} • {ann.type}
+                                    <div key={ann.id} style={{ ...whiteCard, borderLeft: ann.type === 'assignment' ? '5px solid #F2A900' : '5px solid #3b82f6', borderTop: 'none', opacity: isExpired ? 0.7 : 1 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 'bold', background: '#f0f2f5', padding: '3px 8px', borderRadius: '12px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                {ann.subject}
                                             </span>
-                                            <span style={{ fontSize: '0.75rem', color: '#999' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
+                                            <span style={{ fontSize: '0.7rem', color: '#999' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
                                         </div>
-                                        <h4 style={{ margin: '0 0 5px 0', fontSize: '1.1rem', color: '#000' }}>{ann.topics}</h4>
-                                        <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#444', whiteSpace: 'pre-wrap' }}>{ann.details}</p>
+                                        <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', color: '#111827' }}>{ann.topics}</h4>
+                                        <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
                                         
                                         {ann.type === 'assignment' && (
-                                            <div style={{ background: isExpired ? '#f8d7da' : '#fff3cd', color: isExpired ? '#721c24' : '#856404', padding: '10px', borderRadius: '5px', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '5px' }}>
-                                                <span>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {ann.deadline_time}</span>
-                                                <span>{timeRemainingDisplay}</span>
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isExpired ? '#fef2f2' : '#fff9e6', border: `1px solid ${isExpired ? '#fecaca' : '#F2A900'}`, borderRadius: '6px', padding: '6px 10px', fontSize: '0.75rem', marginTop: '4px', width: '100%', boxSizing: 'border-box' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isExpired ? '#991b1b' : '#856404', fontWeight: 'bold' }}>
+                                                    {isExpired ? SVGS.alertCircle : SVGS.clock} 
+                                                    {isExpired ? 'Passed: ' : 'Due: '} {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
+                                                </span>
                                             </div>
                                         )}
                                         
-                                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                            <button onClick={() => handleEditAnnouncement(ann)} style={{ ...btnStyle('#17a2b8'), padding: '5px 10px', fontSize: '0.75rem', width: 'auto', flex: 'none' }}>
-                                                ✏️ Edit
+                                        <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                                            <button onClick={() => handleEditAnnouncement(ann)} style={{ ...actionBtn, background: '#f0f2f5', color: '#374151', padding: '6px 10px', fontSize: '0.75rem', width: 'auto', flex: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {SVGS.edit} Edit
                                             </button>
                                             <button onClick={async () => {
                                                 if(window.confirm('Delete this announcement globally?')) {
                                                     await supabase.from('class_announcements').delete().eq('id', ann.id);
                                                     fetchProfileAndSchedule(session.user.id);
                                                 }
-                                            }} style={{ ...btnStyle('#dc3545'), padding: '5px 10px', fontSize: '0.75rem', width: 'auto', flex: 'none' }}>
-                                                🗑️ Delete Post
+                                            }} style={{ ...actionBtn, background: '#fef2f2', color: '#dc3545', padding: '6px 10px', fontSize: '0.75rem', width: 'auto', flex: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {SVGS.trash} Delete
                                             </button>
                                         </div>
                                     </div>
@@ -1339,72 +1403,73 @@ export default function Dashboard() {
 
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
                 {activeTab === 'permanent' && (
-                    <div className="anim-slide">
-                        {baseSchedule.length === 0 ? <p>No base schedule found.</p> : (
+                    <div className="expand-anim">
+                        <button onClick={() => openBaseModal()} style={{...bigBtn, marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.plus} Add New Lecture</button>
+                        
+                        {baseSchedule.length === 0 ? <div style={whiteCard}><div style={emptyState}>No base schedule found.</div></div> : (
                             baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                                <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
+                                <div key={`base-${cls.id}`} style={whiteCard}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.9rem' }}>{cls.teacher} | Room {cls.room}</div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#111827', marginBottom: '4px' }}>{cls.course}</div>
+                                            <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher} | {SVGS.location} Room {cls.room}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold' }}>{convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.85rem' }}>{cls.day}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8')}>✏️ Edit Lecture</button>
-                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course)} style={btnStyle('#dc3545')}>🗑️ Delete Lecture</button>
+                                        <button onClick={() => openBaseModal(cls)} style={{...actionBtn, background: '#f0f2f5', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.edit} Edit</button>
+                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.trash} Delete</button>
                                     </div>
                                 </div>
                             ))
                         )}
-                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '15px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', marginBottom: '30px' }}>➕ Add New Lecture</button>
                     </div>
                 )}
 
                 {/* ================= MANAGE STUDENTS TAB ================= */}
                 {activeTab === 'students' && (
-                    <div className="anim-slide" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                    <div className="expand-anim" style={whiteCard}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                            <h3 style={{ margin: 0, color: '#002147' }}>Add New Student</h3>
+                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.plus} Add Student</h3>
                             <div>
                                 <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
-                                <button onClick={() => fileInputRef.current.click()} style={{ padding: '8px 15px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
-                                    📥 Import CSV
+                                <button onClick={() => fileInputRef.current.click()} style={{ padding: '6px 12px', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {SVGS.upload} Import CSV
                                 </button>
                             </div>
                         </div>
 
-                        <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '25px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
-                            <input type="text" placeholder="Registration No (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...inputStyle, flex: 1, minWidth: '150px'}} />
-                            <input type="text" placeholder="Student Full Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...inputStyle, flex: 2, minWidth: '200px'}} />
-                            <button type="submit" style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>➕ Add</button>
+                        <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
+                            <input type="text" placeholder="Reg No (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...selectStyle, flex: 1, minWidth: '130px', marginBottom: 0}} />
+                            <input type="text" placeholder="Student Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...selectStyle, flex: 2, minWidth: '150px', marginBottom: 0}} />
+                            <button type="submit" style={{...actionBtn, background: '#28a745', flex: 'none', width: 'auto'}}>{SVGS.plus} Add</button>
                         </form>
 
-                        <h3 style={{ color: '#002147' }}>Class Roster ({roster.length} Students)</h3>
-                        {roster.length === 0 ? <p>No students added yet.</p> : (
-                            <div style={{ overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <h3 style={{ color: '#002147', fontSize: '1rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.users} Class Roster ({roster.length})</h3>
+                        {roster.length === 0 ? <div style={emptyState}>No students added yet.</div> : (
+                            <div style={{ overflowX: 'auto' }} className="scroll-hide">
+                                <table style={tableStyle}>
                                     <thead>
-                                        <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                            <th style={{ padding: '12px' }}>Registration Number</th>
-                                            <th style={{ padding: '12px' }}>Name</th>
-                                            <th style={{ padding: '12px', textAlign: 'center' }}>Att %</th>
-                                            <th style={{ padding: '12px', textAlign: 'right' }}>Action</th>
+                                        <tr style={tableHeaderRow}>
+                                            <th style={tableHeaderCell}>Reg Number</th>
+                                            <th style={tableHeaderCell}>Name</th>
+                                            <th style={{...tableHeaderCell, textAlign: 'center'}}>Att %</th>
+                                            <th style={{...tableHeaderCell, textAlign: 'right'}}>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {roster.map(student => {
                                             const pct = getStudentAttendance(student.registration_number, 'ALL');
                                             return (
-                                                <tr key={student.registration_number} style={{ borderBottom: '1px solid #eee' }}>
-                                                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{student.registration_number}</td>
-                                                    <td style={{ padding: '12px' }}>{student.student_name}</td>
-                                                    <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>{pct}%</td>
-                                                    <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                        <button onClick={() => handleDeleteStudent(student.registration_number)} style={{ padding: '5px 10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Delete</button>
+                                                <tr key={student.registration_number} style={tableDataRow}>
+                                                    <td style={{...tableDataCell, fontWeight: 'bold', fontSize: '0.8rem'}}>{student.registration_number}</td>
+                                                    <td style={{...tableDataCell, fontSize: '0.8rem'}}>{student.student_name}</td>
+                                                    <td style={{...tableDataCell, textAlign: 'center', fontWeight: 'bold', color: pct >= 75 ? '#28a745' : '#dc3545', fontSize: '0.8rem' }}>{pct}%</td>
+                                                    <td style={{...tableDataCell, textAlign: 'right'}}>
+                                                        <button onClick={() => handleDeleteStudent(student.registration_number)} style={{ padding: '4px 8px', background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}>Delete</button>
                                                     </td>
                                                 </tr>
                                             )
@@ -1432,16 +1497,15 @@ export default function Dashboard() {
                 />
             )}
 
-            {/* TEMP EXCEPTION MODAL */}
             {isEditModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
-                        <h3 style={{ marginTop: 0 }}>Reschedule Class (Temp)</h3>
-                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
+                <div style={sidebarOverlay}>
+                    <div className="expand-anim" style={{ background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '400px', margin: 'auto', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>{SVGS.clock} Reschedule Class (Temp)</h3>
+                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={selectStyle} />
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             <select required value={newRoom} onChange={(e) => {
                                 if (e.target.value === 'MANUAL') {
@@ -1449,41 +1513,38 @@ export default function Dashboard() {
                                 } else {
                                     setNewRoom(e.target.value);
                                 }
-                            }} style={inputStyle}>
+                            }} style={selectStyle}>
                                 <option value="" disabled>-- Select Dept Room --</option>
                                 {allDepartmentRooms.map(r => <option key={`resch-${r}`} value={r}>{r}</option>)}
-                                <option value="MANUAL">➕ Add Room Manually</option>
+                                <option value="MANUAL">+ Add Room Manually</option>
                             </select>
-                            {isManualRoom && <input type="text" placeholder="Type Room Name Manually..." required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={{...inputStyle, border: '2px solid #007bff'}} />}
+                            {isManualRoom && <input type="text" placeholder="Type Room Name Manually..." required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={{...selectStyle, border: '1px solid #007bff'}} />}
                             
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => { setIsEditModalOpen(false); setIsManualRoom(false); }} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => { setIsEditModalOpen(false); setIsManualRoom(false); }} style={{...actionBtn, background: '#f0f2f5', color: '#333'}}>Cancel</button>
+                                <button type="submit" style={{...actionBtn, background: '#F2A900', color: '#002147'}}>{SVGS.save} Save</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* BASE MODAL */}
             {isBaseModalOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' }}>
-                    <div style={{ background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' }}>
-                        <h3 style={{ marginTop: 0 }}>{baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
-                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {/* Course Dropdown */}
-                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={{...inputStyle, border: '2px solid #007bff'}} /> : 
+                <div style={sidebarOverlay}>
+                    <div className="expand-anim" style={{ background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '400px', margin: 'auto', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>{baseForm.id ? <>{SVGS.edit} Edit Base Lecture</> : <>{SVGS.plus} Add New Lecture</>}</h3>
+                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
                             <select required value={baseForm.course} onChange={(e) => { 
                                 if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } 
                                 else setBaseForm({...baseForm, course: e.target.value}); 
-                            }} style={inputStyle}>
+                            }} style={{...selectStyle, marginBottom: 0}}>
                                 <option value="" disabled>-- Select Subject --</option>
                                 {availableCourses.map(c => <option key={`bc-${c}`} value={c}>{c}</option>)}
-                                <option value="MANUAL">➕ Add Manually</option>
+                                <option value="MANUAL">+ Add Manually</option>
                             </select>}
 
-                            {/* Teacher Dropdown (Auto-fills Course) */}
-                            {isManualTeacher ? <input type="text" placeholder="Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={{...inputStyle, border: '2px solid #007bff'}} /> : 
+                            {isManualTeacher ? <input type="text" placeholder="Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
                             <select required value={baseForm.teacher} onChange={(e) => { 
                                 if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); } 
                                 else {
@@ -1491,33 +1552,32 @@ export default function Dashboard() {
                                     const autoCourse = teacherCourseMap[selectedTeacher];
                                     setBaseForm({...baseForm, teacher: selectedTeacher, course: autoCourse || baseForm.course});
                                 }
-                            }} style={inputStyle}>
+                            }} style={{...selectStyle, marginBottom: 0}}>
                                 <option value="" disabled>-- Select Teacher --</option>
                                 {availableTeachers.map(t => <option key={`bt-${t}`} value={t}>{t}</option>)}
-                                <option value="MANUAL">➕ Add Manually</option>
+                                <option value="MANUAL">+ Add Manually</option>
                             </select>}
 
-                            {/* Room Dropdown (Shows all Dept Rooms) */}
-                            {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={{...inputStyle, border: '2px solid #007bff'}} /> : 
+                            {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
                             <select required value={baseForm.room} onChange={(e) => { 
                                 if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } 
                                 else setBaseForm({...baseForm, room: e.target.value}); 
-                            }} style={inputStyle}>
+                            }} style={{...selectStyle, marginBottom: 0}}>
                                 <option value="" disabled>-- Select Room --</option>
                                 {allDepartmentRooms.map(r => <option key={`br-${r}`} value={r}>{r}</option>)}
-                                <option value="MANUAL">➕ Add Manually</option>
+                                <option value="MANUAL">+ Add Manually</option>
                             </select>}
 
-                            <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                            <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={{...selectStyle, marginBottom: 0}}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
                             
                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{ flex: 1, padding: '12px', background: '#eee', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Cancel</button>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#F2A900', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>Save</button>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{...actionBtn, background: '#f0f2f5', color: '#333'}}>Cancel</button>
+                                <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900'}}>{SVGS.save} Save</button>
                             </div>
                         </form>
                     </div>
@@ -1527,8 +1587,32 @@ export default function Dashboard() {
     );
 }
 
-const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' });
-const inputStyle = { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', outline: 'none', fontSize: '1rem', boxSizing: 'border-box' };
-const tabStyle = (isActive) => ({ flex: 1, padding: '12px', background: isActive ? '#002147' : '#ddd', color: isActive ? 'white' : '#333', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.3s' });
-const subTabStyle = (isActive) => ({ flex: 1, padding: '10px', background: isActive ? '#fff' : 'transparent', color: isActive ? '#002147' : '#555', border: isActive ? '1px solid #ddd' : '1px solid transparent', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', transition: '0.2s', boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' });
-const sidebarBtnStyle = (isActive) => ({ width: '100%', padding: '12px', background: isActive ? '#F2A900' : 'transparent', color: isActive ? '#002147' : 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', textAlign: 'left', transition: '0.2s' });
+// --- STYLES ---
+const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
+const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '48px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabBtn = (active) => ({ flex: 1, padding: '8px 12px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' });
+const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
+const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
+const cardBase = { padding: '15px', borderRadius: '12px', transition: 'all 0.3s ease' };
+const bigBtn = { width: '100%', padding: '12px', background: '#002147', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#fff', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
+const actionBtn = { flex: 1, minWidth: '80px', padding: '10px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.3s ease' };
+const selectStyle = { width: '100%', padding: '10px 12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#f8f9fa', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease', color: '#333' };
+const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem', background: '#f8f9fa', borderRadius: '8px', border: '1px dashed #dee2e6' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
+const centerStyle = { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', fontSize: '0.9rem', color: '#002147', fontWeight: 'bold' };
+
+// Sidebar
+const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
+const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
+
+// Tables
+const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
+const tableHeaderRow = { background: '#f8f9fa', borderBottom: '2px solid #dee2e6' };
+const tableHeaderCell = { padding: '10px 12px', fontSize: '0.75rem', color: '#495057', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const tableDataRow = { borderBottom: '1px solid #eee', transition: 'background 0.2s' };
+const tableDataCell = { padding: '12px', color: '#333' };
