@@ -1620,7 +1620,7 @@ export default function Home() {
                                 {roomSubTab === 'ongoing' && (
                                     <div className="expand-anim">
                                         <div style={{ marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                                            {SVGS.live} Live Ongoing Lectures
+                                            {SVGS.live} Live Ongoing Lectures (Refresh to see)
                                         </div>
                                         {renderClassCards(ongoingAllLectures, 'ongoing')}
                                         {ongoingAllLectures.length === 0 && <div style={whiteCard}><div style={emptyState}>No lectures are currently ongoing.</div></div>}
