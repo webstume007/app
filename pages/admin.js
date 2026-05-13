@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 
@@ -6,18 +6,15 @@ import { supabase } from '../lib/supabase';
 const SVGS = {
     tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
     cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
-    bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
     calendar: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
     attendance: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
-    updates: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
     clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
     door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
+    userTie: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
     bus: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 11h8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM8 19v2a1 1 0 01-2 0v-2M18 19v2a1 1 0 01-2 0v-2"></path></svg>,
     cap: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
     location: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
     tickCircle: <svg width="16" height="16" fill="none" stroke="#28a745" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
-    note: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
     users: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
     edit: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
     trash: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>,
@@ -25,69 +22,55 @@ const SVGS = {
     chart: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>,
     plus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>,
     save: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>,
-    undo: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>,
     alertCircle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>,
-    broadcast: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+    phone: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>,
+    star: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.898 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
 };
 
 export default function AdminDashboard() {
     // ==========================================
     // 1. STATE MANAGEMENT
     // ==========================================
-    
-    // Auth State
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loginUsername, setLoginUsername] = useState('');
     const [loginPassword, setLoginPassword] = useState('');
     const [authError, setAuthError] = useState('');
 
-    // Global UI State
     const [activeTab, setActiveTab] = useState('overview'); 
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
 
-    // Global Data States
+    // Database States
     const [crs, setCrs] = useState([]);
     const [teachers, setTeachers] = useState([]);
     const [baseSchedule, setBaseSchedule] = useState([]);
     const [exceptions, setExceptions] = useState([]);
     const [roster, setRoster] = useState([]); 
     const [attendanceSessions, setAttendanceSessions] = useState([]);
+    const [attendanceRecords, setAttendanceRecords] = useState([]);
     const [pointSchedules, setPointSchedules] = useState([]);
 
-    // Module Specific States
+    // Sub-Tabs & Filters
     const [userSubTab, setUserSubTab] = useState('crs'); 
     const [scheduleSubTab, setScheduleSubTab] = useState('base'); 
-    
-    // Filters for Modules
     const [filterSem, setFilterSem] = useState(''); 
     const [filterSec, setFilterSec] = useState('');
     const [filterDay, setFilterDay] = useState('ALL');
+    const [analyticsView, setAnalyticsView] = useState('attendance'); // 'attendance' | 'teachers'
 
-    // Modals & Forms
+    // Forms & Modals
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
     const [baseForm, setBaseForm] = useState({ id: null, semester: '', section: '', course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
     
-    const [isPointModalOpen, setIsPointModalOpen] = useState(false);
-    const [pointForm, setPointForm] = useState({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
-
-    const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
-    const [studentForm, setStudentForm] = useState({ original_reg: null, student_name: '', registration_number: '', session: '', section: '' });
-
-    const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
-    const [attendanceEditData, setAttendanceEditData] = useState({ session: null, recordsMap: {}, students: [] });
-
     const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
-    const [userEditForm, setUserEditForm] = useState({ id: null, type: 'cr', first_name: '', last_name: '', name: '', department: '', semester: '', section: '', phone: '', cnic: '' });
+    const [userEditForm, setUserEditForm] = useState({ id: null, type: 'cr', first_name: '', last_name: '', name: '', department: '', semester: '', section: '', phone: '', email: '', cnic: '' });
 
-    const [globalAlertMsg, setGlobalAlertMsg] = useState('');
     const fileInputRef = useRef(null);
-    const pointsFileInputRef = useRef(null); 
+    const scheduleFileInputRef = useRef(null);
 
-    // Extracted Dropdown Data
+    // Computed Globals
     const availableSemesters = [...new Set(baseSchedule.map(x => x.semester))].filter(Boolean).sort();
     const availableSections = [...new Set(baseSchedule.map(x => x.section))].filter(Boolean).sort();
-
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
     const timeSlots = [];
     let ts = 8 * 60; 
@@ -99,9 +82,8 @@ export default function AdminDashboard() {
     }
 
     // ==========================================
-    // 2. AUTHENTICATION & DATA FETCHING
+    // 2. FETCHING ENGINE (Infinite Paginator)
     // ==========================================
-    
     const handleLogin = (e) => {
         e.preventDefault();
         if (loginUsername === 'admin' && loginPassword === 'admin123') {
@@ -119,32 +101,47 @@ export default function AdminDashboard() {
         setLoginPassword('');
     };
 
+    // Universal fetcher to completely bypass 1000 row limit
+    const fetchAllRows = async (table, selectQuery = '*') => {
+        let allData = [];
+        let from = 0;
+        const step = 1000;
+        
+        while (true) {
+            const { data, error } = await supabase.from(table).select(selectQuery).range(from, from + step - 1);
+            if (error || !data || data.length === 0) break;
+            allData = [...allData, ...data];
+            if (data.length < step) break;
+            from += step;
+        }
+        return allData;
+    };
+
     const fetchAllData = async () => {
         setLoading(true);
         try {
-            const [
-                { data: crData }, { data: teacherData }, { data: scheduleData }, 
-                { data: exceptionsData }, { data: rosterData }, { data: sessionsData }, { data: pointsData }
-            ] = await Promise.all([
-                supabase.from('cr_profiles').select('*'),
-                supabase.from('teacher_profiles').select('*'),
-                supabase.from('base_schedule').select('*'),
-                supabase.from('schedule_exceptions').select('*'),
-                supabase.from('students').select('*').order('registration_number', { ascending: true }), 
-                supabase.from('attendance_sessions').select('*, teacher_profiles(name), auth_users:submitted_by(email)'),
-                supabase.from('point_schedules').select('*')
+            const [crData, teacherData, scheduleData, exceptionsData, rosterData, sessionsData, pointsData, recordsData] = await Promise.all([
+                fetchAllRows('cr_profiles'),
+                fetchAllRows('teacher_profiles'),
+                fetchAllRows('base_schedule'),
+                fetchAllRows('schedule_exceptions'),
+                fetchAllRows('students'),
+                fetchAllRows('attendance_sessions', '*, teacher_profiles(name), auth_users:submitted_by(email)'),
+                fetchAllRows('point_schedules'),
+                fetchAllRows('attendance_records') // Heavy table, handled by fetchAllRows
             ]);
 
             setCrs(crData || []);
             setTeachers(teacherData || []);
             setBaseSchedule(scheduleData || []);
             setExceptions(exceptionsData || []);
-            setRoster(rosterData || []);
+            setRoster((rosterData || []).sort((a,b) => a.registration_number.localeCompare(b.registration_number)));
             setAttendanceSessions(sessionsData || []);
             setPointSchedules(pointsData || []);
+            setAttendanceRecords(recordsData || []);
         } catch (error) {
-            console.error("Error fetching admin data:", error);
-            alert("Database connection error.");
+            console.error("Database connection error:", error);
+            alert("Database connection error. Check console.");
         }
         setLoading(false);
     };
@@ -159,14 +156,51 @@ export default function AdminDashboard() {
     };
 
     // ==========================================
-    // 3. MODULE FUNCTIONS: USERS
+    // 3. HOD ANALYTICS ENGINE
     // ==========================================
-    
+    const calculateOverallAttendance = () => {
+        if (!filterSem || !filterSec) return null;
+        const relevantClasses = baseSchedule.filter(b => b.semester === filterSem && b.section === filterSec).map(b => b.id);
+        const relevantSessions = attendanceSessions.filter(s => relevantClasses.includes(s.base_schedule_id) && s.status === 'approved').map(s => s.id);
+        
+        if (relevantSessions.length === 0) return 0;
+
+        const relevantRecords = attendanceRecords.filter(r => relevantSessions.includes(r.session_id));
+        if (relevantRecords.length === 0) return 0;
+
+        const presents = relevantRecords.filter(r => r.status === 'Present' || r.status === 'Leave').length;
+        return Math.round((presents / relevantRecords.length) * 100);
+    };
+
+    const getTeacherPerformance = () => {
+        const performanceMap = {};
+        
+        // Initialize map
+        teachers.forEach(t => {
+            performanceMap[t.name] = { totalConducted: 0, dates: [] };
+        });
+        
+        // Count approved sessions mapped to base schedule teachers
+        attendanceSessions.filter(s => s.status === 'approved').forEach(session => {
+            const base = baseSchedule.find(b => b.id === session.base_schedule_id);
+            if (base && base.teacher && performanceMap[base.teacher]) {
+                performanceMap[base.teacher].totalConducted += 1;
+                performanceMap[base.teacher].dates.push({ date: session.session_date, course: base.course, section: base.section });
+            }
+        });
+
+        return Object.entries(performanceMap)
+            .map(([name, data]) => ({ name, ...data }))
+            .sort((a,b) => b.totalConducted - a.totalConducted);
+    };
+
+    // ==========================================
+    // 4. USERS & DIRECTORY MANAGEMENT
+    // ==========================================
     const approveUser = async (table, id) => {
         setActionLoading(true);
-        const { error } = await supabase.from(table).update({ is_approved: true }).eq('id', id);
-        if (error) alert("Failed to approve user. Error: " + error.message);
-        else await fetchAllData();
+        await supabase.from(table).update({ is_approved: true }).eq('id', id);
+        await fetchAllData();
         setActionLoading(false);
     };
 
@@ -181,6 +215,7 @@ export default function AdminDashboard() {
             semester: user.semester || '',
             section: user.section || '',
             phone: user.phone || '',
+            email: user.email || '',
             cnic: user.cnic || ''
         });
         setIsUserEditModalOpen(true);
@@ -189,40 +224,19 @@ export default function AdminDashboard() {
     const saveEditedUser = async (e) => {
         e.preventDefault();
         setActionLoading(true);
-        
         const table = userEditForm.type === 'cr' ? 'cr_profiles' : 'teacher_profiles';
-        let payload = {};
-        
-        if (userEditForm.type === 'cr') {
-            payload = { 
-                first_name: userEditForm.first_name, 
-                last_name: userEditForm.last_name, 
-                department: userEditForm.department, 
-                semester: userEditForm.semester, 
-                section: userEditForm.section, 
-                phone: userEditForm.phone, 
-                is_approved: true
-            };
-        } else {
-            payload = { 
-                name: userEditForm.name, 
-                phone: userEditForm.phone, 
-                cnic: userEditForm.cnic, 
-                is_approved: true 
-            };
-        }
+        let payload = userEditForm.type === 'cr' 
+            ? { first_name: userEditForm.first_name, last_name: userEditForm.last_name, department: userEditForm.department, semester: userEditForm.semester, section: userEditForm.section, phone: userEditForm.phone, is_approved: true }
+            : { name: userEditForm.name, phone: userEditForm.phone, cnic: userEditForm.cnic, email: userEditForm.email, is_approved: true };
 
-        const { error } = await supabase.from(table).update(payload).eq('id', userEditForm.id);
-        if (error) alert("Error saving: " + error.message);
-        else {
-            setIsUserEditModalOpen(false);
-            await fetchAllData();
-        }
+        await supabase.from(table).update(payload).eq('id', userEditForm.id);
+        setIsUserEditModalOpen(false);
+        await fetchAllData();
         setActionLoading(false);
     };
 
     const rejectUser = async (table, id, name) => {
-        if(!window.confirm(`Are you sure you want to reject and delete ${name}? This removes their profile completely.`)) return;
+        if(!window.confirm(`Permanently delete ${name}'s profile?`)) return;
         setActionLoading(true);
         await supabase.from(table).delete().eq('id', id);
         await fetchAllData();
@@ -230,17 +244,60 @@ export default function AdminDashboard() {
     };
 
     // ==========================================
-    // 4. MODULE FUNCTIONS: SCHEDULE
+    // 5. BULK INFRASTRUCTURE: SCHEDULE CSV UPLOAD
     // ==========================================
+    const handleScheduleCSVUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            setActionLoading(true);
+            try {
+                const text = event.target.result;
+                const rows = text.split('\n').map(r => r.split(',').map(c => c?.trim()));
+                const payloads = [];
+                
+                // Expecting: Semester, Section, Course, Teacher, Room, Day, Start_Time, End_Time
+                let startIndex = rows[0].join('').toLowerCase().includes('semester') ? 1 : 0;
+
+                for(let i = startIndex; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length >= 8 && row[0] && row[1] && row[2]) {
+                        payloads.push({ 
+                            semester: row[0], section: row[1].toUpperCase(), course: row[2], 
+                            teacher: row[3], room: row[4], day: row[5].toUpperCase(), 
+                            start_time: row[6], end_time: row[7] 
+                        });
+                    }
+                }
+
+                if (payloads.length > 0) {
+                    const { error } = await supabase.from('base_schedule').insert(payloads);
+                    if (error) alert("Error importing schedule: " + error.message);
+                    else {
+                        alert(`Successfully imported ${payloads.length} lectures!`);
+                        await fetchAllData();
+                    }
+                } else {
+                    alert("No valid data found matching the format.");
+                }
+            } catch (err) {
+                alert("Failed to parse CSV.");
+            }
+            setActionLoading(false);
+            e.target.value = null;
+        };
+        reader.readAsText(file);
+    };
+
     const saveBaseSchedule = async (e) => {
         e.preventDefault();
         setActionLoading(true);
         const payload = { ...baseForm };
         delete payload.id;
-
         if (baseForm.id) await supabase.from('base_schedule').update(payload).eq('id', baseForm.id);
         else await supabase.from('base_schedule').insert([payload]);
-        
         setIsBaseModalOpen(false);
         await fetchAllData();
         setActionLoading(false);
@@ -254,244 +311,18 @@ export default function AdminDashboard() {
         setActionLoading(false);
     };
 
-    const deleteException = async (id) => {
-        if(!window.confirm('Force delete this exception and restore base schedule?')) return;
-        setActionLoading(true);
-        await supabase.from('schedule_exceptions').delete().eq('id', id);
-        await fetchAllData();
-        setActionLoading(false);
-    };
-
     // ==========================================
-    // 5. MODULE FUNCTIONS: ACADEMIC RECORDS (STUDENTS)
+    // RENDERERS
     // ==========================================
-    const saveStudent = async (e) => {
-        e.preventDefault();
-        setActionLoading(true);
-        const payload = { 
-            registration_number: studentForm.registration_number,
-            student_name: studentForm.student_name,
-            session: studentForm.session,
-            section: studentForm.section
-        };
-
-        const { error } = await supabase.from('students').upsert([payload]);
-        
-        if(error) alert("Error: " + error.message);
-        else {
-            setIsStudentModalOpen(false);
-            await fetchAllData();
-        }
-        setActionLoading(false);
-    };
-
-    const handleCSVUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        if (!filterSem || !filterSec) {
-            alert("Please select a Semester/Session and Section from the dropdowns first before importing CSV.");
-            e.target.value = null;
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            setActionLoading(true);
-            try {
-                const text = event.target.result;
-                const rows = text.split('\n').map(r => r.split(','));
-                const payloads = [];
-                
-                let startIndex = rows[0].join('').toLowerCase().includes('regist') || rows[0].join('').toLowerCase().includes('roll') ? 1 : 0;
-
-                for(let i = startIndex; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (row.length >= 2) {
-                        const reg = row[0].trim();
-                        const name = row[1].trim();
-                        if (reg && name) {
-                            payloads.push({ student_name: name, registration_number: reg, session: filterSem, section: filterSec });
-                        }
-                    }
-                }
-
-                if (payloads.length > 0) {
-                    const { error } = await supabase.from('students').upsert(payloads);
-                    if (error) alert("Error importing: " + error.message);
-                    else {
-                        alert(`Successfully imported/updated ${payloads.length} students!`);
-                        await fetchAllData();
-                    }
-                } else {
-                    alert("No valid data found in CSV.");
-                }
-            } catch (err) {
-                alert("Failed to parse CSV.");
-            }
-            setActionLoading(false);
-            e.target.value = null;
-        };
-        reader.readAsText(file);
-    };
-
-    // -- Attendance Logic --
-    const openAttendanceEditor = async (session) => {
-        setActionLoading(true);
-        const base = baseSchedule.find(b => b.id === session.base_schedule_id);
-        
-        const { data: records } = await supabase.from('attendance_records').select('*').eq('session_id', session.id);
-        
-        const { data: students } = await supabase.from('students')
-            .select('*')
-            .eq('session', base.semester) 
-            .eq('section', base.section)
-            .order('registration_number', { ascending: true });
-
-        const recordsMap = {};
-        if (records) {
-            records.forEach(r => recordsMap[r.student_id] = r.status);
-        }
-        
-        if (students) {
-            students.forEach(s => {
-                if (!recordsMap[s.registration_number]) recordsMap[s.registration_number] = 'Absent';
-            });
-        }
-
-        setAttendanceEditData({ session, recordsMap, students: students || [] });
-        setIsAttendanceModalOpen(true);
-        setActionLoading(false);
-    };
-
-    const handleAttendanceStatusChange = (studentReg, status) => {
-        setAttendanceEditData(prev => ({
-            ...prev,
-            recordsMap: { ...prev.recordsMap, [studentReg]: status }
-        }));
-    };
-
-    const saveAttendanceEdits = async () => {
-        setActionLoading(true);
-        const { session, recordsMap, students } = attendanceEditData;
-        
-        await supabase.from('attendance_records').delete().eq('session_id', session.id);
-        
-        const payloads = students.map(s => ({
-            session_id: session.id,
-            student_id: s.registration_number,
-            status: recordsMap[s.registration_number]
-        }));
-
-        const { error } = await supabase.from('attendance_records').insert(payloads);
-        
-        if (error) alert("Error saving attendance: " + error.message);
-        else {
-            alert("Attendance successfully updated!");
-            setIsAttendanceModalOpen(false);
-            await fetchAllData();
-        }
-        setActionLoading(false);
-    };
-
-    // ==========================================
-    // 6. MODULE FUNCTIONS: INFRASTRUCTURE (ROUTES)
-    // ==========================================
-    const savePointSchedule = async (e) => {
-        e.preventDefault();
-        setActionLoading(true);
-        const payload = { route: pointForm.route, departure_time: pointForm.departure_time, is_saturday: pointForm.is_saturday };
-        if (pointForm.id) await supabase.from('point_schedules').update(payload).eq('id', pointForm.id);
-        else await supabase.from('point_schedules').insert([payload]);
-        setIsPointModalOpen(false);
-        await fetchAllData();
-        setActionLoading(false);
-    };
-
-    const deletePointSchedule = async (id) => {
-        if(!window.confirm('Delete this point timing?')) return;
-        setActionLoading(true);
-        await supabase.from('point_schedules').delete().eq('id', id);
-        await fetchAllData();
-        setActionLoading(false);
-    };
-
-    const handlePointsCSVUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            setActionLoading(true);
-            try {
-                const text = event.target.result;
-                const rows = text.split('\n').map(r => r.split(','));
-                const payloads = [];
-                
-                let startIndex = rows[0].join('').toLowerCase().includes('route') ? 1 : 0;
-
-                for(let i = startIndex; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (row.length >= 2) {
-                        const routeStr = row[0].trim();
-                        const timeStr = row[1].trim();
-                        const isSatStr = row.length > 2 ? row[2].trim().toLowerCase() : 'false';
-                        const isSat = isSatStr === 'true' || isSatStr === '1' || isSatStr === 'yes' || isSatStr === 'y';
-
-                        if (routeStr && timeStr) {
-                            payloads.push({ route: routeStr, departure_time: timeStr, is_saturday: isSat });
-                        }
-                    }
-                }
-
-                if (payloads.length > 0) {
-                    const { error } = await supabase.from('point_schedules').insert(payloads);
-                    if (error) alert("Error importing routes: " + error.message);
-                    else {
-                        alert(`Successfully imported ${payloads.length} routes!`);
-                        await fetchAllData();
-                    }
-                } else {
-                    alert("No valid data found in CSV.");
-                }
-            } catch (err) {
-                alert("Failed to parse Routes CSV.");
-            }
-            setActionLoading(false);
-            e.target.value = null;
-        };
-        reader.readAsText(file);
-    };
-
-    const sendGlobalAlert = async (e) => {
-        e.preventDefault();
-        if(!globalAlertMsg) return;
-        if(!window.confirm('Push this alert to ALL active devices?')) return;
-        setActionLoading(true);
-        
-        const sectionsToAlert = [...new Set(baseSchedule.map(s => s.section))];
-        const payloads = sectionsToAlert.map(sec => ({
-            message: `🔴 ADMIN BROADCAST [${sec}]: ${globalAlertMsg}`
-        }));
-
-        await supabase.from('notifications').insert(payloads);
-        setGlobalAlertMsg('');
-        alert('Global Alert Dispatched!');
-        setActionLoading(false);
-    };
-
-    // ==========================================
-    // 7. RENDERERS
-    // ==========================================
-
     if (!isAuthenticated) {
         return (
             <div style={welcomeBg}>
-                <Head><title>Admin Login | IUB</title></Head>
+                <Head><title>Admin Gateway | IUB</title></Head>
                 <div className="expand-anim" style={welcomeCard}>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px', color: '#002147', transform: 'scale(2)' }}>
-                        {SVGS.lock}
+                        {SVGS.cap}
                     </div>
-                    <h2 style={{ color: '#002147', textAlign: 'center', margin: '0 0 20px 0', fontWeight: '900' }}>Admin Gateway</h2>
+                    <h2 style={{ color: '#002147', textAlign: 'center', margin: '0 0 20px 0', fontWeight: '900' }}>Admin God-Mode</h2>
                     {authError && <div style={{ background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.85rem', fontWeight: 'bold' }}>{authError}</div>}
                     <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <input type="text" placeholder="Username" value={loginUsername} onChange={e=>setLoginUsername(e.target.value)} required style={inputStyle} />
@@ -506,7 +337,7 @@ export default function AdminDashboard() {
     if (loading) {
         return (
             <div style={{ ...welcomeBg, flexDirection: 'column', gap: '20px' }}>
-                <Head><title>Loading Database | IUB Admin</title></Head>
+                <Head><title>Syncing | IUB Admin</title></Head>
                 <div className="custom-spinner"></div>
                 <h2 style={{ color: '#F2A900', margin: 0, fontSize: '1.2rem', animation: 'pulseText 1.5s infinite ease-in-out' }}>
                     Syncing Global Database...
@@ -524,18 +355,15 @@ export default function AdminDashboard() {
     }
 
     const today = new Date().toLocaleDateString('en-CA');
-    const todaysExceptions = exceptions.filter(e => e.exception_date === today);
-    const classesCancelledToday = todaysExceptions.filter(e => e.status === 'cancelled').length;
-    
+    const classesCancelledToday = exceptions.filter(e => e.exception_date === today && e.status === 'cancelled').length;
     const pendingCrsCount = crs.filter(c => !c.is_approved).length;
     const pendingTeachersCount = teachers.filter(t => !t.is_approved).length;
 
     const visibleTabs = [
-        { id: 'overview', label: 'Overview', icon: SVGS.chart },
-        { id: 'users', label: 'Users', icon: SVGS.users, badge: pendingCrsCount + pendingTeachersCount },
-        { id: 'schedule', label: 'Schedule', icon: SVGS.calendar },
-        { id: 'records', label: 'Records', icon: SVGS.note },
-        { id: 'infrastructure', label: 'Infra', icon: SVGS.bus }
+        { id: 'overview', label: 'HOD Analytics', icon: SVGS.chart },
+        { id: 'users', label: 'Directory', icon: SVGS.users, badge: pendingCrsCount + pendingTeachersCount },
+        { id: 'schedule', label: 'Matrix', icon: SVGS.calendar },
+        { id: 'records', label: 'Records', icon: SVGS.note }
     ];
 
     return (
@@ -547,30 +375,22 @@ export default function AdminDashboard() {
                 .scroll-hide::-webkit-scrollbar { display: none; }
                 .desktop-nav { display: none; }
                 .mobile-nav { display: flex; }
-                @media (min-width: 768px) {
-                    .desktop-nav { display: flex; align-items: center; gap: 15px; }
-                    .mobile-nav { display: none !important; }
-                }
+                @media (min-width: 768px) { .desktop-nav { display: flex; align-items: center; gap: 15px; } .mobile-nav { display: none !important; } }
             `}</style>
             
             <header style={headerStyle}>
-                <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span> 
-                    IUB ADMIN CONSOLE
+                <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '1.4rem', display: 'flex' }}>{SVGS.cap}</span> HOD & ADMIN CONSOLE
                 </div>
                 
                 <div className="desktop-nav">
                     {visibleTabs.map(tab => (
-                        <div 
-                            key={tab.id} 
-                            onClick={() => setActiveTab(tab.id)}
+                        <div key={tab.id} onClick={() => setActiveTab(tab.id)}
                             style={{
-                                cursor: 'pointer', padding: '8px 12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.8rem',
-                                background: activeTab === tab.id ? '#F2A900' : 'transparent',
-                                color: activeTab === tab.id ? '#002147' : '#fff',
+                                cursor: 'pointer', padding: '8px 12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem',
+                                background: activeTab === tab.id ? '#F2A900' : 'transparent', color: activeTab === tab.id ? '#002147' : '#fff',
                                 transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px', position: 'relative'
-                            }}
-                        >
+                            }}>
                             {tab.icon} {tab.label}
                             {tab.badge > 0 && <span style={redDot}>{tab.badge}</span>}
                         </div>
@@ -592,83 +412,99 @@ export default function AdminDashboard() {
 
             <div style={{ maxWidth: '1200px', margin: '20px auto', padding: '0 15px', flex: 1, width: '100%', boxSizing: 'border-box' }}>
                 
-                {/* ACTION LOADER */}
                 {actionLoading && (
                     <div className="expand-anim" style={{ background: '#fff3cd', color: '#856404', padding: '12px', borderRadius: '10px', textAlign: 'center', fontWeight: 'bold', marginBottom: '20px', border: '1px solid #ffeeba', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        <div className="custom-spinner" style={{width: '20px', height: '20px', borderWidth: '3px', margin: 0}}></div>
-                        Processing Database Request...
+                        Processing Sync...
                     </div>
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 1: OVERVIEW */}
+                {/* MODULE 1: HOD OVERVIEW & ANALYTICS */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'overview' && (
                     <div className="expand-anim">
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
                             <div style={kpiCard}>
-                                <div style={kpiTitle}>{SVGS.users} Total Students</div>
+                                <div style={kpiTitle}>{SVGS.users} Registered Students</div>
                                 <div style={kpiValue}>{roster.length}</div>
                             </div>
                             <div style={kpiCard}>
-                                <div style={kpiTitle}>{SVGS.door} Total Sections</div>
+                                <div style={kpiTitle}>{SVGS.door} Active Sections</div>
                                 <div style={kpiValue}>{availableSections.length}</div>
                             </div>
                             <div style={kpiCard}>
-                                <div style={kpiTitle}>{SVGS.userTie} Class Reps</div>
-                                <div style={kpiValue}>{crs.length}</div>
-                            </div>
-                            <div style={kpiCard}>
-                                <div style={kpiTitle}>{SVGS.userTie} Teachers</div>
+                                <div style={kpiTitle}>{SVGS.userTie} Instructors</div>
                                 <div style={kpiValue}>{teachers.length}</div>
                             </div>
-                            <div style={kpiCard}>
-                                <div style={kpiTitle}>{SVGS.calendar} Base Lectures</div>
-                                <div style={kpiValue}>{baseSchedule.length}</div>
-                            </div>
                             <div style={{...kpiCard, borderLeft: '5px solid #dc3545', background: '#fef2f2'}}>
-                                <div style={{...kpiTitle, color: '#dc3545'}}>{SVGS.alertCircle} Cancelled Today</div>
+                                <div style={{...kpiTitle, color: '#dc3545'}}>{SVGS.alertCircle} Cancellations Today</div>
                                 <div style={{...kpiValue, color: '#dc3545'}}>{classesCancelledToday}</div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                            <div style={contentCard}>
-                                <h3 style={cardHeader}>{SVGS.history} Recent Exception Activity</h3>
-                                {exceptions.slice(0, 5).map(ex => {
-                                    const base = baseSchedule.find(b => b.id === ex.base_schedule_id);
-                                    return (
-                                        <div key={ex.id} style={{ padding: '12px', background: '#f8f9fa', borderRadius: '8px', marginBottom: '10px', fontSize: '0.85rem', borderLeft: '4px solid #002147', border: '1px solid #eee' }}>
-                                            <strong style={{color: '#002147'}}>{base?.course || 'Unknown'} (Sec {base?.section})</strong><br/>
-                                            <span style={{ display: 'inline-block', marginTop: '5px', fontWeight: 'bold', color: ex.status === 'cancelled' ? '#dc3545' : '#007bff' }}>
-                                                {ex.status.toUpperCase()}
-                                            </span> <span style={{color: '#666'}}>on {ex.exception_date}</span>
-                                        </div>
-                                    );
-                                })}
-                                {exceptions.length === 0 && <div style={emptyState}>No recent exceptions.</div>}
+                        <div style={contentCard}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderBottom: '2px solid #f0f2f5', paddingBottom: '15px', marginBottom: '20px' }}>
+                                <h3 style={{ margin: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px' }}>{SVGS.chart} Deep Analytics</h3>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    <button onClick={() => setAnalyticsView('attendance')} style={subTabBtn(analyticsView === 'attendance')}>Class Health</button>
+                                    <button onClick={() => setAnalyticsView('teachers')} style={subTabBtn(analyticsView === 'teachers')}>Teacher Eval</button>
+                                </div>
                             </div>
-                            <div style={contentCard}>
-                                <h3 style={cardHeader}>{SVGS.clock} Pending Attendance Approvals</h3>
-                                {attendanceSessions.filter(s => s.status === 'pending').map(session => {
-                                    const base = baseSchedule.find(b => b.id === session.base_schedule_id);
-                                    return (
-                                        <div key={session.id} style={{ padding: '12px', background: '#fff9e6', borderLeft: '4px solid #F2A900', borderRadius: '8px', marginBottom: '10px', fontSize: '0.85rem', border: '1px solid #fde68a' }}>
-                                            <strong style={{color: '#856404'}}>{base?.course || 'Unknown'} (Sec {base?.section})</strong><br/>
-                                            <div style={{color: '#666', marginTop: '5px'}}>
-                                                Submitted: {session.session_date} <br/> Teacher: {session.teacher_profiles?.name}
+
+                            {analyticsView === 'attendance' && (
+                                <div className="expand-anim">
+                                    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                                        <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...selectStyle, flex:1, marginBottom: 0}}>
+                                            <option value="">Select Semester...</option>
+                                            {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                        <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...selectStyle, flex:1, marginBottom: 0}}>
+                                            <option value="">Select Section...</option>
+                                            {availableSections.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                    
+                                    {filterSem && filterSec ? (
+                                        <div style={{ textAlign: 'center', padding: '30px', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e9ecef' }}>
+                                            <div style={{ fontSize: '1rem', color: '#666', fontWeight: 'bold', marginBottom: '10px' }}>Overall Attendance Health for {filterSem} - {filterSec}</div>
+                                            <div style={{ fontSize: '4rem', fontWeight: '900', color: calculateOverallAttendance() >= 75 ? '#15803d' : '#dc3545' }}>
+                                                {calculateOverallAttendance()}%
                                             </div>
                                         </div>
-                                    );
-                                })}
-                                {attendanceSessions.filter(s => s.status === 'pending').length === 0 && <div style={{...emptyState, background: '#f0fdf4', color: '#15803d', border: '1px dashed #bbf7d0'}}>{SVGS.tickCircle} All caught up.</div>}
-                            </div>
+                                    ) : <div style={emptyState}>Select a Semester and Section to view attendance health.</div>}
+                                </div>
+                            )}
+
+                            {analyticsView === 'teachers' && (
+                                <div className="expand-anim scroll-hide" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                    <table style={tableStyle}>
+                                        <thead>
+                                            <tr style={tableHeaderRow}>
+                                                <th style={tableHeaderCell}>Teacher Name</th>
+                                                <th style={{...tableHeaderCell, textAlign: 'center'}}>Verified Conducted Lectures</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {getTeacherPerformance().map(tp => (
+                                                <tr key={tp.name} style={tableDataRow}>
+                                                    <td style={{...tableDataCell, fontWeight: 'bold'}}>{tp.name}</td>
+                                                    <td style={{...tableDataCell, textAlign: 'center'}}>
+                                                        <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 12px', borderRadius: '15px', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                                            {tp.totalConducted}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 2: USERS */}
+                {/* MODULE 2: DIRECTORY & USERS */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'users' && (
                     <div className="expand-anim" style={contentCard}>
@@ -682,60 +518,46 @@ export default function AdminDashboard() {
                                 <thead>
                                     <tr style={tableHeaderRow}>
                                         <th style={tableHeaderCell}>Status</th>
-                                        <th style={tableHeaderCell}>Name</th>
-                                        <th style={tableHeaderCell}>Contact</th>
-                                        <th style={tableHeaderCell}>{userSubTab === 'crs' ? 'Dept / Sem / Sec' : 'CNIC'}</th>
-                                        <th style={{...tableHeaderCell, textAlign: 'right'}}>Actions</th>
+                                        <th style={tableHeaderCell}>Profile Details</th>
+                                        <th style={tableHeaderCell}>Contact Info</th>
+                                        <th style={{...tableHeaderCell, textAlign: 'right'}}>Admin Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {userSubTab === 'crs' ? crs.map(cr => (
                                         <tr key={cr.id} style={tableDataRow}>
+                                            <td style={tableDataCell}>{cr.is_approved ? <span style={statusGreen}>Active</span> : <span style={statusYellow}>Pending</span>}</td>
                                             <td style={tableDataCell}>
-                                                {cr.is_approved ? <span style={statusGreen}>Active</span> : <span style={statusYellow}>Pending</span>}
+                                                <div style={{fontWeight: 'bold', fontSize: '0.95rem'}}>{cr.first_name || 'N/A'} {cr.last_name || ''}</div>
+                                                <div style={{fontSize: '0.75rem', color: '#666', marginTop: '4px'}}>{cr.department} • {cr.semester} • Sec {cr.section}</div>
                                             </td>
-                                            <td style={{...tableDataCell, fontWeight: 'bold'}}>{cr.first_name || 'N/A'} {cr.last_name || ''}</td>
-                                            <td style={tableDataCell}>{cr.phone || 'No Phone'}</td>
-                                            <td style={{...tableDataCell, fontSize: '0.8rem', color: '#555'}}>{cr.department} | {cr.semester} | Sec {cr.section}</td>
+                                            <td style={tableDataCell}>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem'}}>{SVGS.phone} {cr.phone || 'N/A'}</div>
+                                            </td>
                                             <td style={{...tableDataCell, textAlign: 'right'}}>
                                                 <div style={{display: 'flex', gap: '5px', justifyContent: 'flex-end'}}>
-                                                    {!cr.is_approved ? (
-                                                        <>
-                                                            <button onClick={() => approveUser('cr_profiles', cr.id)} style={{...actionBtn, background: '#28a745', color: '#fff'}}>{SVGS.tick} Approve</button>
-                                                            <button onClick={() => openEditUserModal(cr, 'cr')} style={{...actionBtn, background: '#007bff', color: '#fff'}}>{SVGS.edit} Edit</button>
-                                                            <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={{...actionBtn, background: '#dc3545', color: '#fff'}}>{SVGS.trash}</button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => openEditUserModal(cr, 'cr')} style={{...actionBtn, background: '#f0f2f5', color: '#333'}}>{SVGS.edit} Edit</button>
-                                                            <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545'}}>{SVGS.trash} Revoke</button>
-                                                        </>
-                                                    )}
+                                                    {!cr.is_approved && <button onClick={() => approveUser('cr_profiles', cr.id)} style={{...actionBtn, background: '#28a745', color: '#fff'}}>{SVGS.tick} Appr</button>}
+                                                    <button onClick={() => openEditUserModal(cr, 'cr')} style={{...actionBtn, background: '#f0f2f5', color: '#007bff'}}>{SVGS.edit}</button>
+                                                    <button onClick={() => rejectUser('cr_profiles', cr.id, cr.first_name)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545'}}>{SVGS.trash}</button>
                                                 </div>
                                             </td>
                                         </tr>
                                     )) : teachers.map(teacher => (
                                         <tr key={teacher.id} style={tableDataRow}>
+                                            <td style={tableDataCell}>{teacher.is_approved ? <span style={statusGreen}>Active</span> : <span style={statusYellow}>Pending</span>}</td>
                                             <td style={tableDataCell}>
-                                                {teacher.is_approved ? <span style={statusGreen}>Active</span> : <span style={statusYellow}>Pending</span>}
+                                                <div style={{fontWeight: 'bold', fontSize: '0.95rem'}}>{teacher.name}</div>
+                                                <div style={{fontSize: '0.75rem', color: '#666', marginTop: '4px'}}>CNIC: {teacher.cnic}</div>
                                             </td>
-                                            <td style={{...tableDataCell, fontWeight: 'bold'}}>{teacher.name}</td>
-                                            <td style={tableDataCell}>{teacher.email}<br/><span style={{fontSize:'0.8rem', color:'#666'}}>{teacher.phone}</span></td>
-                                            <td style={tableDataCell}>{teacher.cnic}</td>
+                                            <td style={tableDataCell}>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', marginBottom: '4px'}}>{SVGS.phone} {teacher.phone || 'N/A'}</div>
+                                                <div style={{fontSize: '0.75rem', color: '#666'}}>{teacher.email}</div>
+                                            </td>
                                             <td style={{...tableDataCell, textAlign: 'right'}}>
                                                 <div style={{display: 'flex', gap: '5px', justifyContent: 'flex-end'}}>
-                                                    {!teacher.is_approved ? (
-                                                        <>
-                                                            <button onClick={() => approveUser('teacher_profiles', teacher.id)} style={{...actionBtn, background: '#28a745', color: '#fff'}}>{SVGS.tick} Approve</button>
-                                                            <button onClick={() => openEditUserModal(teacher, 'teacher')} style={{...actionBtn, background: '#007bff', color: '#fff'}}>{SVGS.edit} Edit</button>
-                                                            <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={{...actionBtn, background: '#dc3545', color: '#fff'}}>{SVGS.trash}</button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <button onClick={() => openEditUserModal(teacher, 'teacher')} style={{...actionBtn, background: '#f0f2f5', color: '#333'}}>{SVGS.edit} Edit</button>
-                                                            <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545'}}>{SVGS.trash} Revoke</button>
-                                                        </>
-                                                    )}
+                                                    {!teacher.is_approved && <button onClick={() => approveUser('teacher_profiles', teacher.id)} style={{...actionBtn, background: '#28a745', color: '#fff'}}>{SVGS.tick} Appr</button>}
+                                                    <button onClick={() => openEditUserModal(teacher, 'teacher')} style={{...actionBtn, background: '#f0f2f5', color: '#007bff'}}>{SVGS.edit}</button>
+                                                    <button onClick={() => rejectUser('teacher_profiles', teacher.id, teacher.name)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545'}}>{SVGS.trash}</button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -747,18 +569,35 @@ export default function AdminDashboard() {
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 3: SCHEDULE */}
+                {/* MODULE 3: SCHEDULE MATRIX */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'schedule' && (
                     <div className="expand-anim" style={contentCard}>
-                        <div style={dayFilter}>
-                            <button onClick={() => setScheduleSubTab('base')} style={subTabBtn(scheduleSubTab === 'base')}>Base Matrix</button>
-                            <button onClick={() => setScheduleSubTab('exceptions')} style={subTabBtn(scheduleSubTab === 'exceptions')}>Global Exceptions</button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+                            <div style={dayFilter} style={{marginBottom: 0}}>
+                                <button onClick={() => setScheduleSubTab('base')} style={subTabBtn(scheduleSubTab === 'base')}>Base Matrix</button>
+                                <button onClick={() => setScheduleSubTab('exceptions')} style={subTabBtn(scheduleSubTab === 'exceptions')}>Exceptions</button>
+                            </div>
+                            
+                            {scheduleSubTab === 'base' && (
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input type="file" accept=".csv" ref={scheduleFileInputRef} onChange={handleScheduleCSVUpload} style={{ display: 'none' }} />
+                                    <button onClick={() => scheduleFileInputRef.current.click()} style={{...actionBtn, background: '#e0f2fe', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                        {SVGS.upload} Bulk CSV
+                                    </button>
+                                    <button onClick={() => {
+                                        setBaseForm({ id: null, semester: '', section: '', course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
+                                        setIsBaseModalOpen(true);
+                                    }} style={{...actionBtn, background: '#002147', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                        {SVGS.plus} Add Form
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                             <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...selectStyle, flex: 1, marginBottom: 0}}>
-                                <option value="">All Sessions/Semesters</option>
+                                <option value="">All Semesters</option>
                                 {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                             <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...selectStyle, flex: 1, marginBottom: 0}}>
@@ -769,21 +608,15 @@ export default function AdminDashboard() {
                                 <option value="ALL">All Days</option>
                                 {days.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
-                            {scheduleSubTab === 'base' && (
-                                <button onClick={() => {
-                                    setBaseForm({ id: null, semester: '', section: '', course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
-                                    setIsBaseModalOpen(true);
-                                }} style={{...actionBtn, background: '#002147', color: '#F2A900', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.plus} Add Lecture</button>
-                            )}
                         </div>
 
                         <div style={{ overflowX: 'auto' }} className="scroll-hide">
                             <table style={tableStyle}>
                                 <thead>
                                     <tr style={tableHeaderRow}>
-                                        <th style={tableHeaderCell}>Loc</th>
+                                        <th style={tableHeaderCell}>Location</th>
                                         <th style={tableHeaderCell}>Course & Teacher</th>
-                                        <th style={tableHeaderCell}>Timing / Day</th>
+                                        <th style={tableHeaderCell}>Timing</th>
                                         <th style={{...tableHeaderCell, textAlign: 'right'}}>Actions</th>
                                     </tr>
                                 </thead>
@@ -795,15 +628,15 @@ export default function AdminDashboard() {
                                                 <tr key={cls.id} style={tableDataRow}>
                                                     <td style={tableDataCell}>
                                                         <div style={{fontWeight: 'bold', color: '#002147'}}>{cls.semester}</div>
-                                                        <div style={{fontSize: '0.8rem', color: '#666'}}>Sec {cls.section}</div>
+                                                        <div style={{fontSize: '0.8rem', color: '#666', marginTop: '2px'}}>Sec {cls.section}</div>
                                                     </td>
                                                     <td style={tableDataCell}>
                                                         <div style={{fontWeight: 'bold'}}>{cls.course}</div>
-                                                        <div style={{fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px'}}>{SVGS.userTie} {cls.teacher} | {SVGS.location} Rm: {cls.room}</div>
+                                                        <div style={{fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px'}}>{SVGS.userTie} {cls.teacher} | {SVGS.location} Rm: {cls.room}</div>
                                                     </td>
                                                     <td style={tableDataCell}>
                                                         <div style={{fontWeight: '900', color: '#F2A900'}}>{cls.day}</div>
-                                                        <div style={{fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px'}}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                                        <div style={{fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px'}}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                                     </td>
                                                     <td style={{...tableDataCell, textAlign: 'right'}}>
                                                         <div style={{display:'flex', gap:'5px', justifyContent: 'flex-end'}}>
@@ -838,7 +671,7 @@ export default function AdminDashboard() {
                                                         {ex.status === 'rescheduled' && <span style={statusBlue}>MOVED: {convertTo12Hour(ex.new_start_time)} (Rm {ex.new_room})</span>}
                                                     </td>
                                                     <td style={{...tableDataCell, textAlign: 'right'}}>
-                                                        <button onClick={() => deleteException(ex.id)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', width: 'auto'}}>{SVGS.undo} Undo Exception</button>
+                                                        <button onClick={() => deleteException(ex.id)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', width: 'auto'}}>{SVGS.undo} Undo</button>
                                                     </td>
                                                 </tr>
                                             )})
@@ -850,172 +683,71 @@ export default function AdminDashboard() {
                 )}
 
                 {/* ---------------------------------------------------- */}
-                {/* MODULE 4: RECORDS */}
+                {/* MODULE 4: RECORDS & ATTENDANCE VAULT */}
                 {/* ---------------------------------------------------- */}
                 {activeTab === 'records' && (
-                    <div className="expand-anim" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '20px' }}>
-                        
-                        {/* ROSTER VIEWER */}
-                        <div style={contentCard}>
-                            <h3 style={cardHeader}>{SVGS.users} Global Roster Index</h3>
-                            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                                <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...selectStyle, flex:1, marginBottom: 0}}>
-                                    <option value="">Select Session</option>
-                                    {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                                <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...selectStyle, flex:1, marginBottom: 0}}>
-                                    <option value="">Select Section</option>
-                                    {availableSections.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
-                                <button onClick={() => {
-                                    setStudentForm({ original_reg: null, student_name: '', registration_number: '', session: filterSem || '', section: filterSec || '' });
-                                    setIsStudentModalOpen(true);
-                                }} style={{...actionBtn, background: '#002147', color: '#F2A900', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.plus} Add Student</button>
-                                
-                                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
-                                <button onClick={() => fileInputRef.current.click()} style={{...actionBtn, background: '#28a745', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.upload} CSV Import</button>
-                            </div>
-
-                            <div style={{ maxHeight: '400px', overflowY: 'auto' }} className="scroll-hide">
-                                {(!filterSem || !filterSec) ? <div style={emptyState}>Select Session & Section to view roster.</div> : (
-                                    <table style={tableStyle}>
-                                        <tbody>
-                                            {roster.filter(r => r.session === filterSem && r.section === filterSec).map(s => (
-                                                <tr key={s.registration_number} style={tableDataRow}>
-                                                    <td style={{...tableDataCell, fontWeight: 'bold'}}>{s.registration_number}</td>
-                                                    <td style={tableDataCell}>{s.student_name}</td>
-                                                    <td style={{...tableDataCell, textAlign:'right', display:'flex', gap:'5px', justifyContent:'flex-end'}}>
-                                                        <button onClick={() => { setStudentForm({...s, original_reg: s.registration_number}); setIsStudentModalOpen(true); }} style={{...actionBtn, background: '#f0f2f5', minWidth:'auto', padding:'6px'}}>{SVGS.edit}</button>
-                                                        <button onClick={async ()=>{
-                                                            if(window.confirm('Delete student?')) {
-                                                                await supabase.from('students').delete().eq('registration_number', s.registration_number);
-                                                                fetchAllData();
-                                                            }
-                                                        }} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', minWidth:'auto', padding:'6px'}}>{SVGS.trash}</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
+                    <div className="expand-anim" style={contentCard}>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                            <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...selectStyle, flex:1, marginBottom: 0}}>
+                                <option value="">Isolate Semester...</option>
+                                {availableSemesters.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...selectStyle, flex:1, marginBottom: 0}}>
+                                <option value="">Isolate Section...</option>
+                                {availableSections.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
                         </div>
 
-                        {/* ATTENDANCE VAULT */}
-                        <div style={contentCard}>
-                            <h3 style={cardHeader}>{SVGS.attendance} Attendance Vault (Raw Data)</h3>
-                            <div style={{ maxHeight: '500px', overflowY: 'auto' }} className="scroll-hide">
-                                {attendanceSessions.length === 0 ? <div style={emptyState}>No sessions recorded yet.</div> : (
-                                    attendanceSessions.sort((a,b) => new Date(b.session_date) - new Date(a.session_date)).map(session => {
-                                        const base = baseSchedule.find(b => b.id === session.base_schedule_id);
-                                        return (
-                                            <div key={session.id} style={{ background:'#f8f9fa', padding:'15px', borderRadius:'10px', marginBottom:'12px', borderLeft: session.status === 'approved' ? '5px solid #28a745' : '5px solid #F2A900', borderTop: '1px solid #eee', borderRight: '1px solid #eee', borderBottom: '1px solid #eee', boxShadow: '0 2px 5px rgba(0,0,0,0.02)'}}>
-                                                <div style={{display:'flex', justifyContent:'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                                    <strong style={{color: '#002147', fontSize: '1.05rem'}}>{base?.course || 'Deleted Course'}</strong>
-                                                    <span style={{fontSize:'0.75rem', color:'#666', fontWeight: 'bold', background: '#e9ecef', padding: '3px 8px', borderRadius: '12px'}}>{session.session_date}</span>
-                                                </div>
-                                                <div style={{fontSize:'0.8rem', color:'#555', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                                                    <span><strong>Class:</strong> Sec {base?.section} ({base?.semester})</span>
-                                                    <span><strong>By:</strong> {session.auth_users?.email || 'Unknown'}</span>
-                                                </div>
-                                                <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
-                                                    <button onClick={async () => {
-                                                        const status = session.status === 'approved' ? 'pending' : 'approved';
-                                                        await supabase.from('attendance_sessions').update({status}).eq('id', session.id);
-                                                        fetchAllData();
-                                                    }} style={{...actionBtn, background: session.status === 'approved' ? '#f0f2f5' : '#dcfce7', color: session.status === 'approved' ? '#333' : '#15803d', border: `1px solid ${session.status === 'approved' ? '#ddd' : '#86efac'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>
-                                                        {session.status === 'approved' ? <>{SVGS.cross} Unapprove</> : <>{SVGS.tickCircle} Force Approve</>}
-                                                    </button>
-                                                    
-                                                    <button onClick={() => openAttendanceEditor(session)} style={{...actionBtn, background: '#eff6ff', color: '#0369a1', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>
-                                                        {SVGS.edit} Edit Data
-                                                    </button>
-                                                    
-                                                    <button onClick={async () => {
-                                                        if(window.confirm('Wipe this attendance record entirely?')) {
-                                                            await supabase.from('attendance_sessions').delete().eq('id', session.id);
-                                                            fetchAllData();
-                                                        }
-                                                    }} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>
-                                                        {SVGS.trash} Wipe
-                                                    </button>
-                                                </div>
+                        <h3 style={{...cardHeader, borderTop: '2px solid #f0f2f5', paddingTop: '20px'}}>{SVGS.attendance} Master Attendance Log</h3>
+                        <div style={{ maxHeight: '600px', overflowY: 'auto' }} className="scroll-hide">
+                            {attendanceSessions.filter(s => {
+                                const b = baseSchedule.find(bs => bs.id === s.base_schedule_id);
+                                if (!b) return false;
+                                return (filterSem ? b.semester === filterSem : true) && (filterSec ? b.section === filterSec : true);
+                            }).length === 0 ? <div style={emptyState}>No session logs found for applied filters.</div> : (
+                                attendanceSessions.filter(s => {
+                                    const b = baseSchedule.find(bs => bs.id === s.base_schedule_id);
+                                    if (!b) return false;
+                                    return (filterSem ? b.semester === filterSem : true) && (filterSec ? b.section === filterSec : true);
+                                }).sort((a,b) => new Date(b.session_date) - new Date(a.session_date)).map(session => {
+                                    const base = baseSchedule.find(b => b.id === session.base_schedule_id);
+                                    return (
+                                        <div key={session.id} style={{ background:'#fff', padding:'15px', borderRadius:'10px', marginBottom:'12px', borderLeft: session.status === 'approved' ? '5px solid #28a745' : '5px solid #F2A900', border: '1px solid #e9ecef', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'}}>
+                                            <div style={{display:'flex', justifyContent:'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                                <strong style={{color: '#002147', fontSize: '1.05rem'}}>{base?.course || 'Deleted Course'}</strong>
+                                                <span style={{fontSize:'0.75rem', color:'#666', fontWeight: 'bold', background: '#f8f9fa', padding: '4px 10px', borderRadius: '12px', border: '1px solid #dee2e6'}}>{session.session_date}</span>
                                             </div>
-                                        )
-                                    })
-                                )}
-                            </div>
+                                            <div style={{fontSize:'0.85rem', color:'#555', marginBottom: '15px', display: 'flex', gap: '15px'}}>
+                                                <span><strong>Class:</strong> {base?.semester} - Sec {base?.section}</span>
+                                                <span><strong>Teacher:</strong> {session.teacher_profiles?.name || 'Unknown'}</span>
+                                            </div>
+                                            <div style={{display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                                                <button onClick={async () => {
+                                                    const status = session.status === 'approved' ? 'pending' : 'approved';
+                                                    await supabase.from('attendance_sessions').update({status}).eq('id', session.id);
+                                                    fetchAllData();
+                                                }} style={{...actionBtn, background: session.status === 'approved' ? '#f0f2f5' : '#dcfce7', color: session.status === 'approved' ? '#333' : '#15803d', border: `1px solid ${session.status === 'approved' ? '#ddd' : '#86efac'}`, display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                                    {session.status === 'approved' ? <>{SVGS.cross} Unapprove</> : <>{SVGS.tickCircle} Force Approve</>}
+                                                </button>
+                                                
+                                                <button onClick={() => openAttendanceEditor(session)} style={{...actionBtn, background: '#eff6ff', color: '#0369a1', border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                                    {SVGS.edit} Edit Data
+                                                </button>
+                                                
+                                                <button onClick={async () => {
+                                                    if(window.confirm('Wipe this attendance record entirely?')) {
+                                                        await supabase.from('attendance_sessions').delete().eq('id', session.id);
+                                                        fetchAllData();
+                                                    }
+                                                }} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '4px'}}>
+                                                    {SVGS.trash} Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            )}
                         </div>
-                    </div>
-                )}
-
-                {/* ---------------------------------------------------- */}
-                {/* MODULE 5: INFRASTRUCTURE */}
-                {/* ---------------------------------------------------- */}
-                {activeTab === 'infrastructure' && (
-                    <div className="expand-anim" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                        
-                        {/* GLOBAL BROADCAST */}
-                        <div style={contentCard}>
-                            <h3 style={{...cardHeader, color: '#dc3545', display: 'flex', alignItems: 'center', gap: '8px'}}>{SVGS.broadcast} Global Emergency Broadcast</h3>
-                            <p style={{ fontSize: '0.85rem', color: '#666', marginBottom: '15px' }}>Push a high-priority notification to every single registered section simultaneously.</p>
-                            <form onSubmit={sendGlobalAlert}>
-                                <textarea 
-                                    required 
-                                    value={globalAlertMsg}
-                                    onChange={e=>setGlobalAlertMsg(e.target.value)}
-                                    placeholder="Enter emergency message here... (e.g. University closed today)"
-                                    style={{...selectStyle, minHeight: '120px', resize: 'vertical'}}
-                                />
-                                <button type="submit" style={{...bigBtn, background: '#dc3545', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
-                                    {SVGS.alertCircle} DISPATCH GLOBAL ALERT
-                                </button>
-                            </form>
-                        </div>
-
-                        {/* BUS POINTS */}
-                        <div style={contentCard}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
-                                <h3 style={{ margin: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.bus} Bus Point Engine</h3>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input type="file" accept=".csv" ref={pointsFileInputRef} onChange={handlePointsCSVUpload} style={{ display: 'none' }} />
-                                    <button onClick={() => pointsFileInputRef.current.click()} style={{...actionBtn, background: '#e0f2fe', color: '#0369a1', minWidth: 'auto', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '4px'}}>{SVGS.upload} Bulk CSV</button>
-                                    <button onClick={() => {
-                                        setPointForm({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
-                                        setIsPointModalOpen(true);
-                                    }} style={{...actionBtn, background: '#002147', color: '#F2A900', minWidth: 'auto', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '4px'}}>{SVGS.plus} Route</button>
-                                </div>
-                            </div>
-                            
-                            <div style={{ maxHeight: '400px', overflowY: 'auto' }} className="scroll-hide">
-                                <table style={tableStyle}>
-                                    <thead>
-                                        <tr style={tableHeaderRow}>
-                                            <th style={tableHeaderCell}>Route</th>
-                                            <th style={tableHeaderCell}>Time</th>
-                                            <th style={tableHeaderCell}>Type</th>
-                                            <th style={tableHeaderCell}>Act</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pointSchedules.sort((a,b) => a.departure_time.localeCompare(b.departure_time)).map(p => (
-                                            <tr key={p.id} style={tableDataRow}>
-                                                <td style={{...tableDataCell, fontSize: '0.8rem', color: '#002147', fontWeight: 'bold'}}>{p.route === 'AC_to_BJC' ? 'AC ➔ BJC' : 'BJC ➔ AC'}</td>
-                                                <td style={tableDataCell}><strong>{convertTo12Hour(p.departure_time.slice(0,5))}</strong></td>
-                                                <td style={tableDataCell}>{p.is_saturday ? <span style={{color:'#d97706', background: '#fef3c7', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight:'bold'}}>Weekend</span> : <span style={{color:'#15803d', background: '#dcfce7', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight:'bold'}}>Weekday</span>}</td>
-                                                <td style={{...tableDataCell, display:'flex', gap:'5px'}}>
-                                                    <button onClick={() => {setPointForm(p); setIsPointModalOpen(true);}} style={{...actionBtn, background: '#f0f2f5', padding: '6px', minWidth:'auto'}}>{SVGS.edit}</button>
-                                                    <button onClick={() => deletePointSchedule(p.id)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', padding: '6px', minWidth:'auto'}}>{SVGS.trash}</button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
                     </div>
                 )}
             </div>
@@ -1024,7 +756,6 @@ export default function AdminDashboard() {
             {/* MODALS */}
             {/* ========================================== */}
             
-            {/* USER EDIT & APPROVE MODAL */}
             {isUserEditModalOpen && (
                 <div style={modalBackdrop}>
                     <div className="expand-anim" style={modalContent}>
@@ -1047,6 +778,7 @@ export default function AdminDashboard() {
                             ) : (
                                 <>
                                     <input type="text" placeholder="Full Name" required value={userEditForm.name} onChange={e=>setUserEditForm({...userEditForm, name:e.target.value})} style={{...selectStyle, marginBottom: 0}} />
+                                    <input type="email" placeholder="Email" value={userEditForm.email} onChange={e=>setUserEditForm({...userEditForm, email:e.target.value})} style={{...selectStyle, marginBottom: 0}} />
                                     <input type="text" placeholder="CNIC" value={userEditForm.cnic} onChange={e=>setUserEditForm({...userEditForm, cnic:e.target.value})} style={{...selectStyle, marginBottom: 0}} />
                                 </>
                             )}
@@ -1054,15 +786,14 @@ export default function AdminDashboard() {
                             <input type="text" placeholder="Phone Number" required value={userEditForm.phone} onChange={e=>setUserEditForm({...userEditForm, phone:e.target.value})} style={{...selectStyle, marginBottom: 0}} />
                             
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={()=>setIsUserEditModalOpen(false)} style={{...actionBtn, background: '#f0f2f5'}}>Cancel</button>
-                                <button type="submit" style={{...actionBtn, background: '#28a745', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>{SVGS.tickCircle} Save & Approve</button>
+                                <button type="button" onClick={()=>setIsUserEditModalOpen(false)} style={{...actionBtn, background: '#f0f2f5', padding: '12px', flex: 1}}>Cancel</button>
+                                <button type="submit" style={{...actionBtn, background: '#28a745', color: '#fff', padding: '12px', flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>{SVGS.tickCircle} Save & Approve</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* BASE LECTURE MODAL */}
             {isBaseModalOpen && (
                 <div style={modalBackdrop}>
                     <div className="expand-anim" style={modalContent}>
@@ -1083,80 +814,14 @@ export default function AdminDashboard() {
                                 <select required value={baseForm.end_time} onChange={e=>setBaseForm({...baseForm, end_time:e.target.value})} style={{...selectStyle, flex:1, marginBottom: 0}}>{timeSlots.map(t=><option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={()=>setIsBaseModalOpen(false)} style={{...actionBtn, background: '#f0f2f5'}}>Cancel</button>
-                                <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>{SVGS.save} Save to DB</button>
+                                <button type="button" onClick={()=>setIsBaseModalOpen(false)} style={{...actionBtn, background: '#f0f2f5', padding: '12px', flex: 1}}>Cancel</button>
+                                <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900', padding: '12px', flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>{SVGS.save} Save to Matrix</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* POINT SCHEDULE MODAL */}
-            {isPointModalOpen && (
-                <div style={modalBackdrop}>
-                    <div className="expand-anim" style={modalContent}>
-                        <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>{pointForm.id ? <>{SVGS.edit} Edit Bus Route</> : <>{SVGS.plus} Add Bus Route</>}</h3>
-                        <form onSubmit={savePointSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div>
-                                <label style={{fontWeight:'bold', fontSize:'0.8rem', color: '#666', marginBottom: '4px', display: 'block'}}>Route Direction</label>
-                                <select value={pointForm.route} onChange={e=>setPointForm({...pointForm, route:e.target.value})} style={{...selectStyle, marginBottom: 0}}>
-                                    <option value="AC_to_BJC">Abbasia Campus ➔ Baghdad</option>
-                                    <option value="BJC_to_AC">Baghdad ➔ Abbasia Campus</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={{fontWeight:'bold', fontSize:'0.8rem', color: '#666', marginBottom: '4px', display: 'block'}}>Departure Time (24H format)</label>
-                                <input type="time" required value={pointForm.departure_time} onChange={e=>setPointForm({...pointForm, departure_time:e.target.value})} style={{...selectStyle, marginBottom: 0}} />
-                            </div>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '10px', background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee'}}>
-                                <input type="checkbox" id="isSat" checked={pointForm.is_saturday} onChange={e=>setPointForm({...pointForm, is_saturday:e.target.checked})} style={{width:'18px', height:'18px', accentColor: '#002147'}} />
-                                <label htmlFor="isSat" style={{fontWeight:'bold', color:'#333', fontSize: '0.9rem', cursor: 'pointer'}}>Is this a Saturday-only timing?</label>
-                            </div>
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-                                <button type="button" onClick={()=>setIsPointModalOpen(false)} style={{...actionBtn, background: '#f0f2f5'}}>Cancel</button>
-                                <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>{SVGS.save} Save Route</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* STUDENT FORM MODAL */}
-            {isStudentModalOpen && (
-                <div style={modalBackdrop}>
-                    <div className="expand-anim" style={modalContent}>
-                        <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>{studentForm.original_reg ? <>{SVGS.edit} Edit Student</> : <>{SVGS.users} Add Student</>}</h3>
-                        <form onSubmit={saveStudent} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{display:'flex', gap:'10px'}}>
-                                <input type="text" placeholder="Session (e.g. Spring 2026)" required value={studentForm.session} onChange={e=>setStudentForm({...studentForm, session:e.target.value})} style={{...selectStyle, flex:1, marginBottom: 0}} />
-                                <input type="text" placeholder="Sec (e.g. 1E)" required value={studentForm.section} onChange={e=>setStudentForm({...studentForm, section:e.target.value.toUpperCase()})} style={{...selectStyle, flex:1, marginBottom: 0}} />
-                            </div>
-                            
-                            <div>
-                                <input 
-                                    type="text" 
-                                    placeholder="Registration No. (e.g. FA23-BSE-001)" 
-                                    required 
-                                    value={studentForm.registration_number} 
-                                    onChange={e=>setStudentForm({...studentForm, registration_number:e.target.value})} 
-                                    style={{...selectStyle, marginBottom: 0, background: studentForm.original_reg ? '#e9ecef' : '#f8f9fa', cursor: studentForm.original_reg ? 'not-allowed' : 'text'}} 
-                                    disabled={studentForm.original_reg !== null} 
-                                />
-                                {studentForm.original_reg && <div style={{fontSize: '0.7rem', color: '#dc3545', marginTop: '4px', fontWeight: 'bold'}}>*Registration number is fixed. Delete and recreate if incorrect.</div>}
-                            </div>
-                            
-                            <input type="text" placeholder="Student Full Name" required value={studentForm.student_name} onChange={e=>setStudentForm({...studentForm, student_name:e.target.value})} style={{...selectStyle, marginBottom: 0}} />
-                            
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={()=>setIsStudentModalOpen(false)} style={{...actionBtn, background: '#f0f2f5'}}>Cancel</button>
-                                <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px'}}>{SVGS.save} Save Student</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* ATTENDANCE EDITOR MODAL */}
             {isAttendanceModalOpen && (
                 <div style={modalBackdrop}>
                     <div className="expand-anim" style={{...modalContent, maxWidth: '600px', display: 'flex', flexDirection: 'column', height: '85vh'}}>
@@ -1179,12 +844,8 @@ export default function AdminDashboard() {
                                                         onClick={() => handleAttendanceStatusChange(student.registration_number, status)}
                                                         style={{
                                                             flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.2s',
-                                                            background: currentStatus === status 
-                                                                ? (status === 'Present' ? '#dcfce7' : status === 'Absent' ? '#fef2f2' : '#fef3c7') 
-                                                                : '#f8f9fa',
-                                                            color: currentStatus === status 
-                                                                ? (status === 'Present' ? '#15803d' : status === 'Absent' ? '#dc3545' : '#b45309') 
-                                                                : '#6b7280',
+                                                            background: currentStatus === status ? (status === 'Present' ? '#dcfce7' : status === 'Absent' ? '#fef2f2' : '#fef3c7') : '#f8f9fa',
+                                                            color: currentStatus === status ? (status === 'Present' ? '#15803d' : status === 'Absent' ? '#dc3545' : '#b45309') : '#6b7280',
                                                             border: `1px solid ${currentStatus === status ? (status === 'Present' ? '#86efac' : status === 'Absent' ? '#fecaca' : '#fde68a') : '#e5e7eb'}`
                                                         }}
                                                     >
@@ -1214,7 +875,7 @@ export default function AdminDashboard() {
 // 8. IUB THEME STYLES
 // ==========================================
 
-const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
+const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
 const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', boxSizing: 'border-box' };
 const headerStyle = { background: '#002147', color: '#F2A900', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 4px 15px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.85rem' };
@@ -1222,14 +883,12 @@ const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none'
 const tabBar = { background: '#fff', padding: '8px 4px', gap: '6px', position: 'sticky', top: '55px', zIndex: 999, boxShadow: '0 4px 10px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
 const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '65px', padding: '8px 2px', border: 'none', background: active ? '#002147' : 'transparent', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
 
-const btnStyle = (bg) => ({ flex: 1, minWidth: '100px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.3s ease' });
 const actionBtn = { padding: '8px 12px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.2s ease', display: 'flex', alignItems: 'center', gap: '4px' };
 const bigBtn = { width: '100%', padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '8px', fontWeight: 900, cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.9rem' };
 
 const inputStyle = { width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', boxSizing: 'border-box', background: '#f8f9fa', transition: 'all 0.3s ease' };
 const selectStyle = { width: '100%', padding: '10px 12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#f8f9fa', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease', color: '#333' };
 
-const tabStyle = (isActive) => ({ flex: 1, padding: '12px', background: isActive ? '#002147' : '#fff', color: isActive ? 'white' : '#555', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', boxShadow: isActive ? '0 4px 10px rgba(0,33,71,0.2)' : '0 2px 5px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' });
 const subTabBtn = (isActive) => ({ padding: '8px 15px', border: 'none', background: isActive ? '#002147' : '#e9ecef', color: isActive ? '#F2A900' : '#555', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px' });
 const dayFilter = { display: 'flex', gap: '8px', marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
 
