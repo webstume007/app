@@ -72,6 +72,8 @@ export default function TeacherLoginAndDashboard() {
 
     // --- SIGNUP SPECIFIC STATES ---
     const [signupName, setSignupName] = useState('');
+    const [cnic, setCnic] = useState('');
+    const [phone, setPhone] = useState('');
     const [availableTeacherNames, setAvailableTeacherNames] = useState([]);
     const [authError, setAuthError] = useState('');
 
@@ -1235,24 +1237,6 @@ export default function TeacherLoginAndDashboard() {
                             )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', background: '#f8f9fa', padding: '10px 15px', borderRadius: '12px', border: '1px solid #e9ecef', alignItems: 'center', justifyContent: 'space-around' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ background: '#dcfce7', color: '#15803d', padding: '6px', borderRadius: '8px' }}>{SVGS.tickCircle}</div>
-                                <div>
-                                    <div style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Conducted</div>
-                                    <div style={{ fontSize: '1rem', fontWeight: '900', color: '#15803d', lineHeight: '1' }}>{monthlyProgress.conductedThisMonth}</div>
-                                </div>
-                            </div>
-                            <div style={{ width: '1px', background: '#ddd', height: '30px' }}></div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ background: '#fef2f2', color: '#dc3545', padding: '6px', borderRadius: '8px' }}>{SVGS.cross}</div>
-                                <div>
-                                    <div style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Cancelled</div>
-                                    <div style={{ fontSize: '1rem', fontWeight: '900', color: '#dc3545', lineHeight: '1' }}>{monthlyProgress.cancelledThisMonth}</div>
-                                </div>
-                            </div>
-                        </div>
-
                         <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
                             <div style={{ background: '#f8f9fa', padding: '12px 16px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                                 {SVGS.bell} Notice Board (Today's Schedule)
@@ -1363,6 +1347,16 @@ export default function TeacherLoginAndDashboard() {
                                     <div style={{ fontSize: '0.7rem', fontWeight: '900' }}>{item.label}</div>
                                 </div>
                             ))}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                            <div onClick={() => { setCurrentTab('attendance'); setAttendanceView('approve'); }} style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', color: '#065f46', padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s', border: '1px solid #a7f3d0' }}>
+                                <div style={{ marginBottom: '8px', opacity: 0.95, display: 'flex', justifyContent: 'center' }}>{SVGS.tickCircle}</div>
+                                <div style={{ fontSize: '0.72rem', fontWeight: '900' }}>Approve Attendance</div>
+                            </div>
+                            <div onClick={() => { setCurrentTab('attendance'); setAttendanceView('stats'); }} style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', color: '#3730a3', padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s', border: '1px solid #c7d2fe' }}>
+                                <div style={{ marginBottom: '8px', opacity: 0.95, display: 'flex', justifyContent: 'center' }}>{SVGS.stats}</div>
+                                <div style={{ fontSize: '0.72rem', fontWeight: '900' }}>Stats</div>
+                            </div>
                         </div>
                     </div>
                 )}
