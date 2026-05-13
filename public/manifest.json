@@ -1,7 +1,7 @@
 {
   "name": "IUB Assistant Dashboard",
   "short_name": "IUB Assistant",
-  "description": "Student and CR Management Dashboard for IUB.",
+  "description": "Student and CR Management Dashboard for BSAI IUB.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f0f2f5",
@@ -11,13 +11,25 @@
       "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
