@@ -1,30 +1,30 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
-import AttendanceSheet from '../components/AttendanceSheet';
+import AttendanceSheet from '../components/AttendanceSheet'; 
 
 // Helper function to dynamically calculate Semester
 const getSemesterFromSession = (session) => {
     if (!session) return "";
     const match = session.match(/20\d{2}/);
-    if (!match) return session;
+    if (!match) return session; 
 
     const startYear = parseInt(match[0], 10);
     const isSpringStart = session.toLowerCase().includes('spring') || session.toLowerCase().includes('sp');
-
+    
     const d = new Date();
     const currYear = d.getFullYear();
-    const currMonth = d.getMonth();
-
+    const currMonth = d.getMonth(); 
+    
     let semestersPassed = (currYear - startYear) * 2;
     if (currMonth >= 7) semestersPassed += 1;
     if (isSpringStart) semestersPassed += 1;
     if (semestersPassed <= 0) return "1ST";
-
+    
     const suffixes = ["TH", "ST", "ND", "RD"];
     const v = semestersPassed % 100;
     const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
-
+    
     return `${semestersPassed}${suffix}`;
 };
 
@@ -56,7 +56,8 @@ const SVGS = {
     building: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
     alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3"/></svg>,
     rocket: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z"/></svg>,
-    eye: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+    eye: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
+    cap: <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>
 };
 
 export default function TeacherLoginAndDashboard() {
@@ -85,9 +86,9 @@ export default function TeacherLoginAndDashboard() {
     const [profile, setProfile] = useState(null);
     const [schedule, setSchedule] = useState([]);
     const [baseSchedule, setBaseSchedule] = useState([]);
-    const [roster, setRoster] = useState([]);
+    const [roster, setRoster] = useState([]); 
     const [loading, setLoading] = useState(true);
-    const alertedClasses = useRef(new Set());
+    const alertedClasses = useRef(new Set()); 
     const [currentTime, setCurrentTime] = useState(new Date());
 
     // --- PWA & NOTIFICATION STATES ---
@@ -99,19 +100,19 @@ export default function TeacherLoginAndDashboard() {
     // --- DROPDOWN STATES ---
     const [availableRooms, setAvailableRooms] = useState([]);
     const [availableCourses, setAvailableCourses] = useState([]);
-    const [availableSessions, setAvailableSessions] = useState([]);
+    const [availableSessions, setAvailableSessions] = useState([]); 
     const [availableSections, setAvailableSections] = useState([]);
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
     const [isManualRoom, setIsManualRoom] = useState(false);
-    const [isManualSession, setIsManualSession] = useState(false);
+    const [isManualSession, setIsManualSession] = useState(false); 
     const [isManualSection, setIsManualSection] = useState(false);
 
     // --- TAB STATES ---
     const [currentTab, setCurrentTab] = useState('home');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
+    
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
     const isMobile = windowWidth < 768;
 
@@ -127,13 +128,14 @@ export default function TeacherLoginAndDashboard() {
     const [noticeIndex, setNoticeIndex] = useState(0);
 
     // --- ATTENDANCE & APPROVAL STATES ---
-    const [attendanceView, setAttendanceView] = useState('approve');
+    const [attendanceView, setAttendanceView] = useState('approve'); 
     const [pendingAttendances, setPendingAttendances] = useState([]);
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
     const [attendanceStats, setAttendanceStats] = useState([]);
     const [allSessionsData, setAllSessionsData] = useState([]);
     const [allExceptionsData, setAllExceptionsData] = useState([]);
-
+    const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false);
+    
     // --- Filter States based on actual teaching data ---
     const [attendanceSectionFilter, setAttendanceSectionFilter] = useState('ALL');
     const [attendanceSessionFilter, setAttendanceSessionFilter] = useState('ALL');
@@ -142,8 +144,9 @@ export default function TeacherLoginAndDashboard() {
 
     // --- ANNOUNCEMENT STATES ---
     const [announcements, setAnnouncements] = useState([]);
-    const [announcementForm, setAnnouncementForm] = useState({ type: 'assignment', subject: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
-    const [selectedSectionsForAnn, setSelectedSectionsForAnn] = useState([]);
+    const [upcomingLectures, setUpcomingLectures] = useState([]);
+    const [announcementForm, setAnnouncementForm] = useState({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
+    const [annSectionsList, setAnnSectionsList] = useState(['']);
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -167,11 +170,11 @@ export default function TeacherLoginAndDashboard() {
     const filterDays = ["ALL", ...days];
 
     const timeSlots = [];
-    let ts = 8 * 60;
+    let ts = 8 * 60; 
     while (ts < 18 * 60) {
         let h = Math.floor(ts / 60), m = ts % 60, amp = h >= 12 ? 'PM' : 'AM', dh = h > 12 ? h - 12 : h;
-        if (dh === 0) dh = 12;
-        timeSlots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`);
+        if (dh === 0) dh = 12; 
+        timeSlots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`); 
         ts += 30;
     }
 
@@ -215,10 +218,10 @@ export default function TeacherLoginAndDashboard() {
     const getDateForCurrentWeekDay = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
-        const currentDay = today.getDay();
+        const currentDay = today.getDay(); 
         const targetDay = dayMap[dayName.toUpperCase()];
         const diff = targetDay - currentDay;
-
+        
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + diff);
         return targetDate.toLocaleDateString('en-CA');
@@ -288,8 +291,8 @@ export default function TeacherLoginAndDashboard() {
         const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session) {
                 verifyTeacherAndLoad(session.user.id, session);
-            } else {
-                setSession(null); setProfile(null); setLoading(false);
+            } else { 
+                setSession(null); setProfile(null); setLoading(false); 
             }
         });
 
@@ -495,17 +498,11 @@ export default function TeacherLoginAndDashboard() {
             setAttendanceStats(stats);
         }
 
-        // Fetch announcements matching teacher's sessions/sections
-        const tGroups = [...new Set(scheduleData.map(s => JSON.stringify({ session: s.session, section: s.section })))].map(str => JSON.parse(str));
-        let allAnns = [];
-        for (const tg of tGroups) {
-            const { data: aData } = await supabase.from('class_announcements').select('*').eq('session', tg.session).eq('section', tg.section);
-            if (aData) allAnns = [...allAnns, ...aData];
+        // Fetch announcements
+        const { data: aData } = await supabase.from('class_announcements').select('*');
+        if (aData) {
+            setAnnouncements(aData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
         }
-        // Deduplicate announcements by ID
-        const uniqueAnnsMap = new Map();
-        allAnns.forEach(a => uniqueAnnsMap.set(a.id, a));
-        setAnnouncements(Array.from(uniqueAnnsMap.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
 
         const mergedSchedule = (scheduleData || []).map(cls => {
             const targetDate = getDateForCurrentWeekDay(cls.day);
@@ -776,46 +773,67 @@ export default function TeacherLoginAndDashboard() {
     // --- Announcement Logic ---
     const submitAnnouncement = async (e) => {
         e.preventDefault();
-        if (selectedSectionsForAnn.length === 0) return showToast("Please select at least one section.", "error");
+        
+        // Remove empty strings from the list
+        const validSelections = annSectionsList.filter(s => s !== '');
+        
+        if (announcementForm.subject !== 'General' && validSelections.length === 0) {
+            return showToast("Please select at least one section.", "error");
+        }
 
-        const payloads = selectedSectionsForAnn.map(ss => ({
-            session: ss.session,
-            section: ss.section,
-            type: announcementForm.type,
-            subject: announcementForm.subject,
-            deadline_date: announcementForm.type === 'assignment' ? announcementForm.deadline_date : null,
-            deadline_time: announcementForm.type === 'assignment' ? announcementForm.deadline_time : null,
-            topics: announcementForm.topics,
-            details: announcementForm.details
-        }));
+        let payloads = [];
+        let notifyMessages = [];
+
+        if (announcementForm.subject === 'General') {
+            payloads = [{
+                session: 'ALL',
+                section: 'ALL',
+                type: announcementForm.type,
+                subject: announcementForm.subject,
+                deadline_date: announcementForm.type === 'assignment' ? announcementForm.deadline_date : null,
+                deadline_time: announcementForm.type === 'assignment' ? announcementForm.deadline_time : null,
+                topics: announcementForm.topics,
+                details: announcementForm.details
+            }];
+            notifyMessages = [
+                announcementForm.type === 'assignment'
+                ? `NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
+                : `MESSAGE from Teacher: ${announcementForm.topics}`
+            ];
+        } else {
+            payloads = validSelections.map(ssStr => {
+                const ss = JSON.parse(ssStr);
+                return {
+                    session: ss.session,
+                    section: ss.section,
+                    type: announcementForm.type,
+                    subject: announcementForm.subject,
+                    deadline_date: announcementForm.type === 'assignment' ? announcementForm.deadline_date : null,
+                    deadline_time: announcementForm.type === 'assignment' ? announcementForm.deadline_time : null,
+                    topics: announcementForm.topics,
+                    details: announcementForm.details
+                };
+            });
+            notifyMessages = validSelections.map(ssStr => {
+                const ss = JSON.parse(ssStr);
+                return announcementForm.type === 'assignment'
+                ? `NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
+                : `MESSAGE from Teacher: ${announcementForm.topics} - Section ${ss.section}`;
+            });
+        }
 
         const { error } = await supabase.from('class_announcements').insert(payloads);
         if (error) return showToast("Failed to add announcement: " + error.message, "error");
 
-        for (const ss of selectedSectionsForAnn) {
-            const notifMsg = announcementForm.type === 'assignment'
-                ? `NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
-                : `MESSAGE from Teacher: ${announcementForm.topics} - Section ${ss.section}`;
-
-            await supabase.from('notifications').insert([{ message: notifMsg }]);
+        for (const msg of notifyMessages) {
+            await supabase.from('notifications').insert([{ message: msg }]);
         }
 
         showToast("Announcement posted and selected classes notified!", "success");
-        setAnnouncementForm({ type: 'assignment', subject: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
-        setSelectedSectionsForAnn([]);
+        setAnnouncementForm({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' });
+        setAnnSectionsList(['']);
         fetchProfileAndSchedule(session.user.id);
     };
-
-    const handleSectionSelectionToggle = (ssStr) => {
-        const obj = JSON.parse(ssStr);
-        const exists = selectedSectionsForAnn.some(x => x.session === obj.session && x.section === obj.section);
-        if (exists) {
-            setSelectedSectionsForAnn(selectedSectionsForAnn.filter(x => !(x.session === obj.session && x.section === obj.section)));
-        } else {
-            setSelectedSectionsForAnn([...selectedSectionsForAnn, obj]);
-        }
-    };
-
 
     // --- Notice Board Math ---
     const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -863,13 +881,14 @@ export default function TeacherLoginAndDashboard() {
             scheduledThisMonth += classesOnDay;
         }
 
-        let cancelledThisMonth = 0;
-        allExceptionsData.forEach(e => {
+        const myBaseIds = baseSchedule.map(b => b.id);
+
+        const cancelledThisMonth = allExceptionsData.filter(e => {
+            if (!myBaseIds.includes(e.base_schedule_id)) return false;
+            if (e.status !== 'cancelled') return false;
             const ed = new Date(e.exception_date);
-            if (ed.getMonth() === currentMonth && ed.getFullYear() === currentYear && e.status === 'cancelled') {
-                if (baseSchedule.find(b => b.id === e.base_schedule_id)) cancelledThisMonth++;
-            }
-        });
+            return ed.getMonth() === currentMonth && ed.getFullYear() === currentYear;
+        }).length;
 
         const conductedThisMonth = allSessionsData.filter(s => {
             const sd = new Date(s.session_date);
@@ -901,6 +920,29 @@ export default function TeacherLoginAndDashboard() {
     const mySections = useMemo(() => [...new Set(baseSchedule.map(c => c.section))].sort(), [baseSchedule]);
     const mySectionSessions = useMemo(() => [...new Set(baseSchedule.map(c => JSON.stringify({ session: c.session, section: c.section })))].map(str => JSON.parse(str)), [baseSchedule]);
     const mySubjects = useMemo(() => [...new Set(baseSchedule.map(c => c.course))].sort(), [baseSchedule]);
+
+    // Updates logic
+    const validSectionsForSubject = announcementForm.subject === 'General' 
+        ? mySectionSessions.map(ss => JSON.stringify(ss)) 
+        : baseSchedule.filter(b => b.course === announcementForm.subject).map(b => JSON.stringify({ session: b.session, section: b.section }));
+    const uniqueValidSections = [...new Set(validSectionsForSubject)];
+
+    useEffect(() => {
+        if(announcementForm.subject && announcementForm.subject !== 'General') {
+            const relatedLectures = schedule.filter(c => c.course === announcementForm.subject);
+            setUpcomingLectures(relatedLectures);
+        } else {
+            setUpcomingLectures([]);
+        }
+    }, [announcementForm.subject, schedule]);
+
+    const filteredAnnouncements = announcements.filter(ann => {
+        const isMySubject = mySubjects.includes(ann.subject) || ann.subject === 'General';
+        const isMySection = mySectionSessions.some(ss => ss.session === ann.session && ss.section === ann.section) || (ann.session === 'ALL' && ann.section === 'ALL');
+        return isMySubject && isMySection;
+    });
+
+    const visibleTabs = isMobile ? allTabs.filter(t => t.id !== 'permanent') : allTabs;
 
 
     if (loading) {
@@ -1041,8 +1083,8 @@ export default function TeacherLoginAndDashboard() {
                         </svg>
                     </div>
                     <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.userTie}</span>
-                        TEACHER PORTAL
+                        <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span>
+                        IUB ASSISTANT
                     </div>
                 </div>
 
@@ -1090,7 +1132,7 @@ export default function TeacherLoginAndDashboard() {
             )}
 
             <div className="mobile-nav" style={tabBar}>
-                {allTabs.map(tab => (
+                {visibleTabs.map(tab => (
                     <button key={tab.id} onClick={() => setCurrentTab(tab.id)} style={tabBtn(currentTab === tab.id)}>
                         <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
                         {tab.label}
@@ -1126,27 +1168,64 @@ export default function TeacherLoginAndDashboard() {
                 {currentTab === 'home' && (
                     <div className="expand-anim">
                         <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '16px', padding: '20px', color: '#fff', marginBottom: '16px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
-                            <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1px', color: '#F2A900', marginBottom: '5px', textTransform: 'uppercase' }}>Teacher Portal</div>
+                            <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 Welcome, {profile?.name}
                             </h2>
                         </div>
 
-                        <div style={{ padding: '16px', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #eee' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#002147', fontWeight: '900', fontSize: '0.9rem' }}>
-                                <div style={{ background: '#e0f2fe', padding: '8px', borderRadius: '50%', color: '#0369a1' }}>{SVGS.attendance}</div>
-                                Overall Students Attendance
+                        <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '1px solid #eee', marginBottom: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                            <div 
+                                onClick={() => setIsAttendanceExpanded(!isAttendanceExpanded)}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                            >
+                                <div style={{ flex: 1, paddingRight: '15px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '6px' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.attendance} Overall Students Attendance</span>
+                                        <span>{overallAttPct}%</span>
+                                    </div>
+                                    <div style={{ height: '6px', background: '#f0f2f5', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${overallAttPct}%`, height: '100%', background: overallAttPct >= 75 ? '#28a745' : '#dc3545', transition: 'width 0.5s ease' }}></div>
+                                    </div>
+                                </div>
+                                <div style={{ color: '#999', transition: 'transform 0.3s ease', transform: isAttendanceExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                    {SVGS.chevronDown}
+                                </div>
                             </div>
-                            <div style={{ fontSize: '1.2rem', fontWeight: '900', color: overallAttPct >= 75 ? '#28a745' : '#dc3545' }}>{overallAttPct}%</div>
+                            
+                            {isAttendanceExpanded && (
+                                <div className="expand-anim" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed #eee', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {attendanceStats.map((stat, idx) => (
+                                        <div key={idx}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
+                                                <span>{stat.subject} (Sec {stat.section})</span>
+                                                <span>{stat.percentage}%</span>
+                                            </div>
+                                            <div style={{ height: '4px', background: '#f0f2f5', borderRadius: '2px', overflow: 'hidden' }}>
+                                                <div style={{ width: `${stat.percentage}%`, height: '100%', background: stat.percentage >= 75 ? '#28a745' : '#F2A900', transition: 'width 0.5s ease' }}></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {attendanceStats.length === 0 && <div style={{fontSize: '0.7rem', color: '#999'}}>No attendance records found yet.</div>}
+                                </div>
+                            )}
                         </div>
 
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-                            <div style={{ flex: 1, background: '#fff', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid #eee', textAlign: 'center' }}>
-                                <div style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>Conducted Lectures</div>
-                                <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#002147' }}>{monthlyProgress.conductedThisMonth}</div>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', background: '#f8f9fa', padding: '10px 15px', borderRadius: '12px', border: '1px solid #e9ecef', alignItems: 'center', justifyContent: 'space-around' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ background: '#dcfce7', color: '#15803d', padding: '6px', borderRadius: '8px' }}>{SVGS.tickCircle}</div>
+                                <div>
+                                    <div style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Conducted</div>
+                                    <div style={{ fontSize: '1rem', fontWeight: '900', color: '#15803d', lineHeight: '1' }}>{monthlyProgress.conductedThisMonth}</div>
+                                </div>
                             </div>
-                            <div style={{ flex: 1, background: '#fff', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid #eee', textAlign: 'center' }}>
-                                <div style={{ fontSize: '0.7rem', color: '#666', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '6px' }}>Cancelled Lectures</div>
-                                <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#dc3545' }}>{monthlyProgress.cancelledThisMonth}</div>
+                            <div style={{ width: '1px', background: '#ddd', height: '30px' }}></div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ background: '#fef2f2', color: '#dc3545', padding: '6px', borderRadius: '8px' }}>{SVGS.cross}</div>
+                                <div>
+                                    <div style={{ fontSize: '0.65rem', color: '#666', fontWeight: 'bold', textTransform: 'uppercase' }}>Cancelled</div>
+                                    <div style={{ fontSize: '1rem', fontWeight: '900', color: '#dc3545', lineHeight: '1' }}>{monthlyProgress.cancelledThisMonth}</div>
+                                </div>
                             </div>
                         </div>
 
@@ -1534,7 +1613,10 @@ export default function TeacherLoginAndDashboard() {
                                         <option value="assignment">Assignment</option>
                                         <option value="message">Simple Message</option>
                                     </select>
-                                    <select required value={announcementForm.subject} onChange={(e) => setAnnouncementForm({ ...announcementForm, subject: e.target.value })} style={{ ...inputStyle, flex: 2, marginBottom: 0 }}>
+                                    <select required value={announcementForm.subject} onChange={(e) => {
+                                        setAnnouncementForm({ ...announcementForm, subject: e.target.value });
+                                        setAnnSectionsList(['']);
+                                    }} style={{ ...inputStyle, flex: 2, marginBottom: 0 }}>
                                         <option value="" disabled>-- Select Subject --</option>
                                         <option value="General">General / Off-Topic</option>
                                         {mySubjects.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1542,32 +1624,85 @@ export default function TeacherLoginAndDashboard() {
                                 </div>
 
                                 <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px' }}>Select Class Sections to Notify</label>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                        {mySectionSessions.map(ss => {
-                                            const isChecked = selectedSectionsForAnn.some(x => x.session === ss.session && x.section === ss.section);
-                                            return (
-                                                <label key={`${ss.session}-${ss.section}`} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', cursor: 'pointer', background: isChecked ? '#e7f1ff' : '#fff', border: isChecked ? '1px solid #b8daff' : '1px solid #ccc', padding: '4px 8px', borderRadius: '4px' }}>
-                                                    <input type="checkbox" checked={isChecked} onChange={() => handleSectionSelectionToggle(JSON.stringify(ss))} style={{ margin: 0 }} />
-                                                    {getSemesterFromSession(ss.session)} - Sec {ss.section}
-                                                </label>
-                                            );
-                                        })}
-                                    </div>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px' }}>Select Class Sections</label>
+                                    
+                                    {annSectionsList.map((selectedVal, idx) => (
+                                        <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                            <select 
+                                                required 
+                                                value={selectedVal} 
+                                                onChange={(e) => {
+                                                    const newList = [...annSectionsList];
+                                                    newList[idx] = e.target.value;
+                                                    setAnnSectionsList(newList);
+                                                }} 
+                                                style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                                            >
+                                                <option value="" disabled>-- Select Section --</option>
+                                                {uniqueValidSections.map(ss => (
+                                                    <option key={ss} value={ss} disabled={annSectionsList.includes(ss) && ss !== selectedVal}>
+                                                        {getSemesterFromSession(JSON.parse(ss).session)} - Sec {JSON.parse(ss).section}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {annSectionsList.length > 1 && (
+                                                <button type="button" onClick={() => {
+                                                    const newList = annSectionsList.filter((_, i) => i !== idx);
+                                                    setAnnSectionsList(newList);
+                                                }} style={{ background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}>
+                                                    {SVGS.cross}
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {annSectionsList.length < uniqueValidSections.length && annSectionsList[annSectionsList.length - 1] !== '' && (
+                                        <button type="button" onClick={() => setAnnSectionsList([...annSectionsList, ''])} style={{ background: '#e0f2fe', color: '#0369a1', border: '1px dashed #bae6fd', borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', width: 'max-content' }}>
+                                            {SVGS.plus} Add Another Section
+                                        </button>
+                                    )}
                                 </div>
 
                                 {announcementForm.type === 'assignment' && announcementForm.subject && (
                                     <div style={{ display: 'flex', gap: '10px' }}>
                                         <div style={{ flex: 1 }}>
                                             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px' }}>Deadline Date</label>
-                                            <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({ ...announcementForm, deadline_date: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }} />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px' }}>Deadline Time</label>
-                                            <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({ ...announcementForm, deadline_time: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }}>
-                                                {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                                                <option value="11:59 PM">11:59 PM (Midnight)</option>
+                                            <select 
+                                                required 
+                                                value={`${announcementForm.deadline_date}|${announcementForm.deadline_time}`} 
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val !== 'manual') {
+                                                        const [d, t] = val.split('|');
+                                                        setAnnouncementForm(prev => ({...prev, deadline_date: d, deadline_time: t}));
+                                                    } else {
+                                                        setAnnouncementForm(prev => ({...prev, deadline_date: '', deadline_time: '8:00 AM'}));
+                                                    }
+                                                }} 
+                                                style={{...inputStyle, marginBottom: 0}}
+                                            >
+                                                <option value="|" disabled>-- Select Upcoming Lecture Date --</option>
+                                                {upcomingLectures.map(l => {
+                                                    const dDate = getNextLectureDate(l.day);
+                                                    const timeFmt = convertTo12Hour(l.start_time);
+                                                    return <option key={l.id} value={`${dDate}|${l.start_time}`}>{l.day} {dDate} (By {timeFmt})</option>;
+                                                })}
+                                                <option value="manual">+ Provide Manual Date & Time</option>
                                             </select>
+
+                                            {(!upcomingLectures.some(l => getNextLectureDate(l.day) === announcementForm.deadline_date) && announcementForm.deadline_date !== '') && (
+                                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                                    <div style={{flex: 1}}>
+                                                        <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({ ...announcementForm, deadline_date: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }} />
+                                                    </div>
+                                                    <div style={{flex: 1}}>
+                                                        <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({ ...announcementForm, deadline_time: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }}>
+                                                            {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                                            <option value="11:59 PM">11:59 PM (Midnight)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -1582,8 +1717,8 @@ export default function TeacherLoginAndDashboard() {
                         </div>
 
                         <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '10px', marginLeft: '5px' }}>Active Announcements</h3>
-                        {announcements.length === 0 ? <div style={whiteCard}><div style={emptyState}>No announcements yet.</div></div> : (
-                            announcements.map(ann => {
+                        {filteredAnnouncements.length === 0 ? <div style={whiteCard}><div style={emptyState}>No announcements yet.</div></div> : (
+                            filteredAnnouncements.map(ann => {
                                 let timeRemainingDisplay = null;
                                 let isExpired = false;
 
@@ -1778,5 +1913,5 @@ const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '
 
 // Sidebar Styles
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
-const sidebarMenu = { width: '230px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
+const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
 const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '14px 18px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #f8f9fa', transition: 'all 0.3s ease' });
