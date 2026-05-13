@@ -89,6 +89,8 @@ export default function TeacherLoginAndDashboard() {
     const [currentTime, setCurrentTime] = useState(new Date());
 
     // --- PWA & NOTIFICATION STATES ---
+    const [isStandalone, setIsStandalone] = useState(true);
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showNotifBanner, setShowNotifBanner] = useState(false);
 
@@ -221,6 +223,10 @@ export default function TeacherLoginAndDashboard() {
     }, []);
 
     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
+        }
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js').catch((err) => console.error('SW Registration Failed', err));
         }
@@ -228,6 +234,7 @@ export default function TeacherLoginAndDashboard() {
         const handleInstall = (e) => {
             e.preventDefault();
             setDeferredPrompt(e);
+            setShowInstallBanner(true);
         };
         window.addEventListener('beforeinstallprompt', handleInstall);
 
