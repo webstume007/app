@@ -139,6 +139,9 @@ export default function TeacherLoginAndDashboard() {
     const [attendanceSessionFilter, setAttendanceSessionFilter] = useState('ALL');
     const [editSectionFilter, setEditSectionFilter] = useState('ALL');
     const [editSubjectFilter, setEditSubjectFilter] = useState('ALL');
+    
+    // --- Matching Base IDs State to securely pull CR data ---
+    const [allMatchingBaseIds, setAllMatchingBaseIds] = useState([]);
 
     // --- ANNOUNCEMENT STATES ---
     const [announcements, setAnnouncements] = useState([]);
@@ -344,7 +347,7 @@ export default function TeacherLoginAndDashboard() {
     const fetchUnclaimedTeachers = async () => {
         const { data: allLectures } = await supabase.from('base_schedule').select('teacher');
         const { data: claimedProfiles } = await supabase.from('teacher_profiles').select('name');
-
+        
         if (allLectures) {
             const allTeacherNames = [...new Set(allLectures.map(x => x.teacher))].filter(Boolean);
             const claimedNames = claimedProfiles ? claimedProfiles.map(p => p.name) : [];
@@ -361,43 +364,42 @@ export default function TeacherLoginAndDashboard() {
     };
 
     const handleSignup = async (e) => {
-    e.preventDefault();
-    if (!signupName) return showToast('Please select your name from the dropdown.', 'error');
+        e.preventDefault();
+        if (!signupName) return showToast('Please select your name from the dropdown.', 'error');
 
-    const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-            emailRedirectTo: 'https://mohsinakhtar.me/verify-success',
-            data: { full_name: signupName } // Removed cnic and phone from here
+        const { data, error } = await supabase.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                emailRedirectTo: 'https://mohsinakhtar.me/verify-success',
+                data: { full_name: signupName } 
+            }
+        });
+    
+        if (error) {
+            showToast(error.message, "error");
+            return;
         }
-    });
 
-    if (error) {
-        showToast(error.message, "error");
-        return;
-    }
+        if (data?.user) {
+            const { error: profileError } = await supabase.from('teacher_profiles').insert([{
+                id: data.user.id, 
+                name: signupName,
+                email: email
+            }]);
 
-    if (data?.user) {
-        const { error: profileError } = await supabase.from('teacher_profiles').insert([{
-            id: data.user.id,
-            name: signupName,
-            email: email
-            // Removed cnic and phone from here
-        }]);
-
-        if (profileError) {
-            console.error("Profile Insert Error:", profileError);
-            showToast("Auth created, but profile failed: " + profileError.message, "error");
-        } else {
-            setUnverifiedEmail(email);
-            setResendTimer(60);
-            showToast("Account created! Verify your email to submit your profile for admin approval.", "success");
-            setIsLoginMode(true);
-            fetchUnclaimedTeachers();
+            if (profileError) {
+                console.error("Profile Insert Error:", profileError);
+                showToast("Auth created, but profile failed: " + profileError.message, "error");
+            } else {
+                setUnverifiedEmail(email);
+                setResendTimer(60); 
+                showToast("Account created! Verify your email to submit your profile for admin approval.", "success");
+                setIsLoginMode(true);
+                fetchUnclaimedTeachers(); 
+            }
         }
-    }
-};
+    };
 
     const handleResendEmail = async () => {
         if (resendTimer > 0) return;
@@ -438,14 +440,20 @@ export default function TeacherLoginAndDashboard() {
         const { data: exceptionsData } = await fetchAllRows('schedule_exceptions');
         setAllExceptionsData(exceptionsData || []);
 
-        const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
+        let matchingIds = [];
+        if (allData && scheduleData && scheduleData.length > 0) {
+            const uniqueClasses = [...new Set(scheduleData.map(s => JSON.stringify({ course: s.course, section: s.section, session: s.session })))].map(str => JSON.parse(str));
+            matchingIds = allData.filter(b => uniqueClasses.some(c => c.course === b.course && c.section === b.section && c.session === b.session)).map(b => b.id);
+        }
+        setAllMatchingBaseIds(matchingIds);
+
         let sessionsWithRecords = [];
         let stats = [];
         let pending = [];
 
-        if (baseIds.length > 0) {
+        if (matchingIds.length > 0) {
             const [sessionsRes, recordsRes] = await Promise.all([
-                fetchAllRows('attendance_sessions', null, { column: 'base_schedule_id', values: baseIds }),
+                fetchAllRows('attendance_sessions', null, { column: 'base_schedule_id', values: matchingIds }),
                 fetchAllRows('attendance_records')
             ]);
 
@@ -453,7 +461,7 @@ export default function TeacherLoginAndDashboard() {
             const allRecords = recordsRes.data || [];
 
             sessionsWithRecords = allSessions.map(s => {
-                const base = scheduleData.find(b => b.id === s.base_schedule_id);
+                const base = allData.find(b => b.id === s.base_schedule_id);
                 return {
                     ...s,
                     course: base?.course,
@@ -476,7 +484,7 @@ export default function TeacherLoginAndDashboard() {
             const uniqueClasses = [...new Set(scheduleData.map(s => JSON.stringify({ course: s.course, section: s.section, session: s.session })))].map(str => JSON.parse(str));
 
             stats = uniqueClasses.map(cls => {
-                const classBaseIds = scheduleData.filter(s => s.course === cls.course && s.section === cls.section && s.session === cls.session).map(s => s.id);
+                const classBaseIds = allData.filter(b => b.course === cls.course && b.section === cls.section && b.session === cls.session).map(b => b.id);
                 const classSessions = sessionsWithRecords.filter(s => classBaseIds.includes(s.base_schedule_id));
 
                 let totalRecords = 0;
@@ -495,16 +503,24 @@ export default function TeacherLoginAndDashboard() {
             setAttendanceStats(stats);
         }
 
-        // Fetch announcements
-        const { data: aData } = await supabase.from('class_announcements').select('*');
-        if (aData) {
-            setAnnouncements(aData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+        // Fetch announcements matching teacher's sessions/sections
+        const tGroups = [...new Set(scheduleData.map(s => JSON.stringify({ session: s.session, section: s.section })))].map(str => JSON.parse(str));
+        let allAnns = [];
+        for (const tg of tGroups) {
+            const { data: aData } = await supabase.from('class_announcements').select('*').eq('session', tg.session).eq('section', tg.section);
+            if (aData) allAnns = [...allAnns, ...aData];
         }
+        // Deduplicate announcements by ID
+        const uniqueAnnsMap = new Map();
+        allAnns.forEach(a => uniqueAnnsMap.set(a.id, a));
+        setAnnouncements(Array.from(uniqueAnnsMap.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
 
         const mergedSchedule = (scheduleData || []).map(cls => {
             const targetDate = getDateForCurrentWeekDay(cls.day);
             const exception = (exceptionsData || []).find(ex => ex.base_schedule_id === cls.id && ex.exception_date === targetDate);
-            const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === targetDate);
+            
+            const classBaseIds = allData.filter(b => b.course === cls.course && b.section === cls.section && b.session === cls.session).map(b => b.id);
+            const sessionToday = sessionsWithRecords.find(s => classBaseIds.includes(s.base_schedule_id) && s.session_date === targetDate);
 
             return {
                 ...cls,
@@ -625,7 +641,7 @@ export default function TeacherLoginAndDashboard() {
                     }
                 }
             });
-        }, 60000);
+        }, 60000); 
 
         return () => clearInterval(interval);
     }, [schedule, session, currentTime]);
@@ -832,6 +848,17 @@ export default function TeacherLoginAndDashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
+    const handleSectionSelectionToggle = (ssStr) => {
+        const obj = JSON.parse(ssStr);
+        const exists = selectedSectionsForAnn.some(x => x.session === obj.session && x.section === obj.section);
+        if (exists) {
+            setSelectedSectionsForAnn(selectedSectionsForAnn.filter(x => !(x.session === obj.session && x.section === obj.section)));
+        } else {
+            setSelectedSectionsForAnn([...selectedSectionsForAnn, obj]);
+        }
+    };
+
+
     // --- Notice Board Math ---
     const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
     const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
@@ -850,7 +877,7 @@ export default function TeacherLoginAndDashboard() {
         if (todayEvents.length > 0 && currentTab === 'home') {
             const currentTotalSecs = currentMins * 60 + currentSecs;
             let activeIdx = todayEvents.findIndex(e => (e.endMins * 60) > currentTotalSecs);
-            if (activeIdx === -1) activeIdx = todayEvents.length - 1;
+            if (activeIdx === -1) activeIdx = todayEvents.length - 1; 
             setNoticeIndex(activeIdx);
         }
     }, [todayEvents.length, currentTab, currentMins, currentSecs]);
@@ -867,7 +894,7 @@ export default function TeacherLoginAndDashboard() {
         const today = new Date();
         const currentMonth = today.getMonth();
         const currentYear = today.getFullYear();
-
+        
         const startDate = new Date(currentYear, currentMonth, 1);
         const endDate = new Date(currentYear, currentMonth + 1, 0);
 
@@ -878,18 +905,18 @@ export default function TeacherLoginAndDashboard() {
             scheduledThisMonth += classesOnDay;
         }
 
-        const myBaseIds = baseSchedule.map(b => b.id);
-
         const cancelledThisMonth = allExceptionsData.filter(e => {
-            if (!myBaseIds.includes(e.base_schedule_id)) return false;
+            if (!allMatchingBaseIds.includes(e.base_schedule_id)) return false;
             if (e.status !== 'cancelled') return false;
-            const ed = new Date(e.exception_date);
-            return ed.getMonth() === currentMonth && ed.getFullYear() === currentYear;
+            if (!e.exception_date) return false;
+            const [y, m] = e.exception_date.split('-').map(Number);
+            return (m - 1) === currentMonth && y === currentYear;
         }).length;
 
         const conductedThisMonth = allSessionsData.filter(s => {
-            const sd = new Date(s.session_date);
-            return sd.getMonth() === currentMonth && sd.getFullYear() === currentYear;
+            if (!s.session_date) return false;
+            const [y, m] = s.session_date.split('-').map(Number);
+            return (m - 1) === currentMonth && y === currentYear;
         }).length;
 
         const pct = scheduledThisMonth === 0 ? 0 : Math.min(100, Math.round((conductedThisMonth / scheduledThisMonth) * 100));
@@ -978,6 +1005,8 @@ export default function TeacherLoginAndDashboard() {
                                     {availableTeacherNames.map(name => <option key={name} value={name}>{name}</option>)}
                                 </select>
                                 {availableTeacherNames.length === 0 && <span style={{ fontSize: '0.75rem', color: 'red' }}>All teachers currently in the record already have accounts.</span>}
+                                <input type="text" placeholder="CNIC Number" required value={cnic} onChange={(e) => setCnic(e.target.value)} style={inputStyle} />
+                                <input type="text" placeholder="Phone Number" required value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
                             </>
                         )}
                         <input type="email" placeholder="Email Address" required value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
@@ -1481,21 +1510,24 @@ export default function TeacherLoginAndDashboard() {
                                     <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', margin: 0, fontWeight: '900' }}>Edit Past Sessions</h3>
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
                                         <select value={editSectionFilter} onChange={(e) => setEditSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem', flex: 1 }}>
-                                            <option value="ALL">All Sections</option>
+                                            <option value="ALL">Select Section</option>
                                             {mySectionSessions.map(s => <option key={`${s.session}-${s.section}`} value={`${s.session}-${s.section}`}>{getSemesterFromSession(s.session)} - Sec {s.section}</option>)}
                                         </select>
                                         <select value={editSubjectFilter} onChange={(e) => setEditSubjectFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem', flex: 1 }}>
-                                            <option value="ALL">All Subjects</option>
+                                            <option value="ALL">Select Subject</option>
                                             {mySubjects.map(s => <option key={s} value={s}>{s}</option>)}
                                         </select>
                                     </div>
                                 </div>
 
-                                {allSessionsData.length === 0 ? <div style={emptyState}>No past sessions recorded.</div> : (
+                                {(editSectionFilter === 'ALL' || editSubjectFilter === 'ALL') ? (
+                                    <div style={emptyState}>Please select a Section and Subject from the filters above to view past sessions.</div>
+                                ) : allSessionsData.filter(session => `${session.session}-${session.section}` === editSectionFilter && session.course === editSubjectFilter).length === 0 ? (
+                                    <div style={emptyState}>No matching records found.</div>
+                                ) : (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
                                         {allSessionsData
-                                            .filter(session => (editSectionFilter === 'ALL' || `${session.session}-${session.section}` === editSectionFilter))
-                                            .filter(session => (editSubjectFilter === 'ALL' || session.course === editSubjectFilter))
+                                            .filter(session => `${session.session}-${session.section}` === editSectionFilter && session.course === editSubjectFilter)
                                             .sort((a, b) => new Date(b.session_date) - new Date(a.session_date))
                                             .map(session => (
                                                 <div key={`editpast-${session.id}`} style={{ background: 'white', padding: '16px', borderRadius: '12px', borderLeft: session.status === 'pending' ? '4px solid #f59e0b' : '4px solid #6c757d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
@@ -1512,9 +1544,6 @@ export default function TeacherLoginAndDashboard() {
                                                     </button>
                                                 </div>
                                             ))}
-                                        {allSessionsData.filter(session => (editSectionFilter === 'ALL' || `${session.session}-${session.section}` === editSectionFilter)).filter(session => (editSubjectFilter === 'ALL' || session.course === editSubjectFilter)).length === 0 && (
-                                            <div style={emptyState}>No matching records found.</div>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1544,52 +1573,50 @@ export default function TeacherLoginAndDashboard() {
 
                         {/* SUB-VIEW 4: STATISTICS */}
                         {attendanceView === 'stats' && (
-                            <div className="expand-anim">
-                                <div style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
-                                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '16px', gap: '10px' }}>
-                                        <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem', fontWeight: '900' }}>Attendance Overview</h3>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: isMobile ? '100%' : '300px' }}>
-                                            <select value={attendanceSessionFilter} onChange={(e) => setAttendanceSessionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                                                <option value="ALL">All Sessions</option>
-                                                {mySessions.map(s => <option key={s} value={s}>{getSemesterFromSession(s)} ({s})</option>)}
-                                            </select>
-                                            <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                                                <option value="ALL">All Sections</option>
-                                                {mySections.map(s => <option key={s} value={s}>Section {s}</option>)}
-                                            </select>
-                                        </div>
+                            <div className="expand-anim" style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
+                                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '16px', gap: '10px' }}>
+                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem', fontWeight: '900' }}>Attendance Overview</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: isMobile ? '100%' : '300px' }}>
+                                        <select value={attendanceSessionFilter} onChange={(e) => setAttendanceSessionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                            <option value="ALL">All Sessions</option>
+                                            {mySessions.map(s => <option key={s} value={s}>{getSemesterFromSession(s)} ({s})</option>)}
+                                        </select>
+                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                            <option value="ALL">All Sections</option>
+                                            {mySections.map(s => <option key={s} value={s}>Section {s}</option>)}
+                                        </select>
                                     </div>
-
-                                    {(attendanceSectionFilter !== 'ALL' || attendanceSessionFilter !== 'ALL') ? (
-                                        <div style={{ overflowX: 'auto' }}>
-                                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
-                                                <thead>
-                                                    <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                                        <th style={{ padding: '12px' }}>Registration No.</th>
-                                                        <th style={{ padding: '12px' }}>Name</th>
-                                                        <th style={{ padding: '12px', textAlign: 'right' }}>Overall Att %</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {roster.filter(s => (attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter) && (attendanceSessionFilter === 'ALL' || s.session === attendanceSessionFilter)).map(student => {
-                                                        const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter, attendanceSessionFilter);
-                                                        return (
-                                                            <tr key={student.registration_number} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                                                <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{student.registration_number}</td>
-                                                                <td style={{ padding: '12px', color: '#333' }}>{student.student_name}</td>
-                                                                <td style={{ padding: '12px', textAlign: 'right', fontWeight: '900', color: pct > 75 ? '#28a745' : '#dc3545' }}>
-                                                                    {pct}%
-                                                                </td>
-                                                            </tr>
-                                                        )
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    ) : (
-                                        <div style={emptyState}>Select a session or section filter to view statistics.</div>
-                                    )}
                                 </div>
+
+                                {(attendanceSectionFilter !== 'ALL' || attendanceSessionFilter !== 'ALL') ? (
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
+                                            <thead>
+                                                <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                                                    <th style={{ padding: '12px' }}>Registration No.</th>
+                                                    <th style={{ padding: '12px' }}>Name</th>
+                                                    <th style={{ padding: '12px', textAlign: 'right' }}>Overall Att %</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {roster.filter(s => (attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter) && (attendanceSessionFilter === 'ALL' || s.session === attendanceSessionFilter)).map(student => {
+                                                    const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter, attendanceSessionFilter);
+                                                    return (
+                                                        <tr key={student.registration_number} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                                            <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{student.registration_number}</td>
+                                                            <td style={{ padding: '12px', color: '#333' }}>{student.student_name}</td>
+                                                            <td style={{ padding: '12px', textAlign: 'right', fontWeight: '900', color: pct > 75 ? '#28a745' : '#dc3545' }}>
+                                                                {pct}%
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div style={emptyState}>Select a session or section filter to view statistics.</div>
+                                )}
                             </div>
                         )}
                     </div>
