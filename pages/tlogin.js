@@ -3,58 +3,58 @@ import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet'; 
 
-// --- Custom SVGs for UI (NO EMOJIS) ---
+// Helper function to dynamically calculate Semester
+const getSemesterFromSession = (session) => {
+    if (!session) return "";
+    const match = session.match(/20\d{2}/);
+    if (!match) return session; 
+
+    const startYear = parseInt(match[0], 10);
+    const isSpringStart = session.toLowerCase().includes('spring') || session.toLowerCase().includes('sp');
+    
+    const d = new Date();
+    const currYear = d.getFullYear();
+    const currMonth = d.getMonth(); 
+    
+    let semestersPassed = (currYear - startYear) * 2;
+    if (currMonth >= 7) semestersPassed += 1;
+    if (isSpringStart) semestersPassed += 1;
+    if (semestersPassed <= 0) return "1ST";
+    
+    const suffixes = ["TH", "ST", "ND", "RD"];
+    const v = semestersPassed % 100;
+    const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
+    
+    return `${semestersPassed}${suffix}`;
+};
+
+// --- Custom Nano SVGs for UI ---
 const SVGS = {
     tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
     cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
-    chevronDown: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
-    chevronUp: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
-    bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
-    calendar: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
-    attendance: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
-    updates: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
-    clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
-    home: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
-    userTie: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
-    location: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
-    live: <svg width="10" height="10" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>,
-    tickCircle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
-    users: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
-    leftArrow: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>,
-    rightArrow: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
-    cap: <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
-    edit: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
-    trash: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
-    download: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
-    stats: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
-    plus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>,
-    undo: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>,
-    building: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-};
-
-const CircularProgress = ({ percentage, subtitle }) => {
-    const radius = 35;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (percentage / 100) * circumference;
-    const color = percentage < 50 ? '#dc3545' : percentage < 80 ? '#F2A900' : '#28a745';
-    const size = 90;
-
-    return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ position: 'relative', width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width={size} height={size} viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="50" cy="50" r={radius} stroke="#e9ecef" strokeWidth="8" fill="transparent" />
-                    <circle cx="50" cy="50" r={radius} stroke={color} strokeWidth="8" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
-                </svg>
-                <span style={{ position: 'absolute', fontWeight: '900', fontSize: '1.1rem', color: '#002147' }}>
-                    {Math.round(percentage)}%
-                </span>
-            </div>
-            <div style={{ fontSize: '0.7rem', marginTop: '8px', fontWeight: 'bold', color: '#555', textAlign: 'center', maxWidth: '100px', lineHeight: '1.2' }}>
-                {subtitle}
-            </div>
-        </div>
-    );
+    chevronDown: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+    chevronUp: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
+    bell: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
+    attendance: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
+    updates: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
+    clock: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
+    home: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
+    userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
+    location: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+    live: <svg width="8" height="8" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>,
+    tickCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+    users: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
+    leftArrow: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>,
+    rightArrow: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
+    edit: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
+    trash: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+    download: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
+    stats: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+    plus: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>,
+    undo: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>,
+    building: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>,
+    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3"/></svg>
 };
 
 export default function TeacherLoginAndDashboard() {
@@ -116,6 +116,8 @@ export default function TeacherLoginAndDashboard() {
         return ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].includes(today) ? today : "MON";
     });
 
+    const [basePlanDayFilter, setBasePlanDayFilter] = useState('ALL');
+
     // --- NOTICE BOARD STATE ---
     const [noticeIndex, setNoticeIndex] = useState(0);
 
@@ -125,8 +127,12 @@ export default function TeacherLoginAndDashboard() {
     const [activeAttendanceLecture, setActiveAttendanceLecture] = useState(null);
     const [attendanceStats, setAttendanceStats] = useState([]);
     const [allSessionsData, setAllSessionsData] = useState([]);
+    
+    // --- NEW: Filter States based on actual teaching data ---
     const [attendanceSectionFilter, setAttendanceSectionFilter] = useState('ALL');
     const [attendanceSessionFilter, setAttendanceSessionFilter] = useState('ALL');
+    const [editSectionFilter, setEditSectionFilter] = useState('ALL');
+    const [editSubjectFilter, setEditSubjectFilter] = useState('ALL');
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -146,6 +152,8 @@ export default function TeacherLoginAndDashboard() {
     ];
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+    const filterDays = ["ALL", ...days];
+
     const timeSlots = [];
     let ts = 8 * 60; 
     while (ts < 18 * 60) {
@@ -689,7 +697,7 @@ export default function TeacherLoginAndDashboard() {
         await fetchProfileAndSchedule(profile.name);
     };
 
-    // Notice Board & Conducted Lecture Math
+    // --- Notice Board Math ---
     const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
     const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
     const currentSecs = currentTime.getSeconds();
@@ -715,28 +723,52 @@ export default function TeacherLoginAndDashboard() {
     const nextNotice = () => setNoticeIndex((prev) => (prev + 1) % todayEvents.length);
     const prevNotice = () => setNoticeIndex((prev) => (prev - 1 + todayEvents.length) % todayEvents.length);
 
-    // Calculate Week's Progress
-    const getWeekProgress = () => {
+    // --- Monthly Progress Math ---
+    const getMonthlyProgress = () => {
         const today = new Date();
-        const startOfWeek = new Date(today);
-        startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
-        startOfWeek.setHours(0,0,0,0);
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
         
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23,59,59,999);
+        const startDate = new Date(currentYear, currentMonth, 1);
+        const endDate = new Date(currentYear, currentMonth + 1, 0);
 
-        const scheduledThisWeek = baseSchedule.length; 
-        const conductedThisWeek = allSessionsData.filter(s => {
+        let scheduledThisMonth = 0;
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+            const classesOnDay = baseSchedule.filter(c => c.day === dayName).length;
+            scheduledThisMonth += classesOnDay;
+        }
+
+        const conductedThisMonth = allSessionsData.filter(s => {
             const sd = new Date(s.session_date);
-            return sd >= startOfWeek && sd <= endOfWeek;
+            return sd.getMonth() === currentMonth && sd.getFullYear() === currentYear;
         }).length;
 
-        const pct = scheduledThisWeek === 0 ? 0 : Math.min(100, Math.round((conductedThisWeek / scheduledThisWeek) * 100));
-        return { conductedThisWeek, scheduledThisWeek, pct };
+        const pct = scheduledThisMonth === 0 ? 0 : Math.min(100, Math.round((conductedThisMonth / scheduledThisMonth) * 100));
+        return { conductedThisMonth, scheduledThisMonth, pct };
     };
 
-    const weekProgress = getWeekProgress();
+    const monthlyProgress = getMonthlyProgress();
+
+    // --- Overall Class Attendance ---
+    const getOverallAttPct = () => {
+        let overallPresent = 0;
+        let overallTotal = 0;
+        allSessionsData.forEach(session => {
+            session.records.forEach(rec => {
+                overallTotal++;
+                if (rec.status === 'Present' || rec.status === 'Leave') overallPresent++;
+            });
+        });
+        return overallTotal === 0 ? 0 : Math.round((overallPresent / overallTotal) * 100);
+    };
+    const overallAttPct = getOverallAttPct();
+
+    // --- Teacher Specific Dropdowns ---
+    const mySessions = useMemo(() => [...new Set(baseSchedule.map(c => c.session))].sort(), [baseSchedule]);
+    const mySections = useMemo(() => [...new Set(baseSchedule.map(c => c.section))].sort(), [baseSchedule]);
+    const mySectionSessions = useMemo(() => [...new Set(baseSchedule.map(c => JSON.stringify({session: c.session, section: c.section})))].map(str => JSON.parse(str)), [baseSchedule]);
+    const mySubjects = useMemo(() => [...new Set(baseSchedule.map(c => c.course))].sort(), [baseSchedule]);
 
 
     if (loading) {
@@ -832,6 +864,13 @@ export default function TeacherLoginAndDashboard() {
         .filter(cls => cls.day === selectedDay)
         .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
 
+    const filteredBaseSchedule = baseSchedule
+        .filter(cls => basePlanDayFilter === 'ALL' || cls.day === basePlanDayFilter)
+        .sort((a, b) => {
+            if (a.day !== b.day) return a.day.localeCompare(b.day);
+            return parseTime(a.start_time) - parseTime(b.start_time);
+        });
+
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
@@ -892,7 +931,7 @@ export default function TeacherLoginAndDashboard() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <button onClick={handleLogout} style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
+                    <button onClick={handleLogout} style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>Logout</button>
                 </div>
             </header>
 
@@ -927,7 +966,7 @@ export default function TeacherLoginAndDashboard() {
                 ))}
             </div>
 
-            <div style={{ padding: '10px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ padding: '12px 16px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
                 
                 {deferredPrompt && showInstallBanner && (
                     <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
@@ -953,26 +992,60 @@ export default function TeacherLoginAndDashboard() {
                 {/* ================= HOME TAB ================= */}
                 {currentTab === 'home' && (
                     <div className="expand-anim">
-                        <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '15px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
+                        <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '16px', padding: '20px', color: '#fff', marginBottom: '16px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
                             <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 Welcome, {profile?.name}
                             </h2>
                             <div style={{ fontSize: '0.8rem', opacity: 0.9, marginBottom: '15px' }}>Manage your daily lectures and student attendance.</div>
                             
-                            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.1)', padding: '15px', borderRadius: '10px', gap: '15px' }}>
-                                <CircularProgress percentage={weekProgress.pct} subtitle="THIS WEEK'S LECTURES CONDUCTED" />
-                                <div style={{flex: 1}}>
-                                    <div style={{fontSize: '0.8rem', color: '#ddd', marginBottom: '4px'}}>Lectures This Week</div>
-                                    <div style={{fontSize: '1.2rem', fontWeight: 'bold'}}>{weekProgress.conductedThisWeek} / {weekProgress.scheduledThisWeek}</div>
+                            <div style={{ padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '6px', fontWeight: 'bold', color: '#fff' }}>
+                                    <span>Monthly Lectures Conducted</span>
+                                    <span>{monthlyProgress.conductedThisMonth} / {monthlyProgress.scheduledThisMonth} ({monthlyProgress.pct}%)</span>
+                                </div>
+                                <div style={{ height: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${monthlyProgress.pct}%`, height: '100%', background: '#F2A900', transition: 'width 0.5s ease' }}></div>
+                                </div>
+                                <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 'bold', color: '#ddd' }}>
+                                    {SVGS.attendance} Overall Student Attendance: {overallAttPct}%
                                 </div>
                             </div>
                         </div>
 
+                        {pendingAttendances.length > 0 && (
+                            <div className="expand-anim" style={{ marginBottom: '16px' }}>
+                                <h3 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#dc3545', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '900', textTransform: 'uppercase' }}>
+                                    {SVGS.alertCircle} Action Required: Pending Approvals
+                                </h3>
+                                {pendingAttendances.map(session => (
+                                    <div key={`hm-pend-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '10px', borderLeft: '5px solid #f59e0b', border: '1px solid #fde68a' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#000' }}>{session.course}</div>
+                                                <div style={{ color: '#666', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>{SVGS.users} {getSemesterFromSession(session.session)} - Sec {session.section}</div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.8rem' }}>{session.session_date}</div>
+                                                <div style={{ color: '#059669', fontSize: '0.75rem', fontWeight: 'bold', marginTop: '4px', background: '#dcfce7', padding: '2px 8px', borderRadius: '12px', display: 'inline-block' }}>{session.presentCount} / {session.totalCount} Present</div>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                            <button onClick={() => handleApproveAttendance(session.id)} style={btnStyle('#28a745', SVGS.tickCircle)}>Approve</button>
+                                            <button onClick={() => {
+                                                const formattedLecture = { ...session.baseLecture, attendanceSession: session };
+                                                setActiveAttendanceLecture(formattedLecture);
+                                            }} style={btnStyle('#007bff', SVGS.edit)}>Edit</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
-                            <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                            <div style={{ background: '#f8f9fa', padding: '12px 16px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                                 {SVGS.bell} Notice Board (Today's Schedule)
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px' }}>
                                 {todayEvents.length > 0 && (
                                     <button onClick={prevNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.leftArrow}</button>
                                 )}
@@ -980,7 +1053,7 @@ export default function TeacherLoginAndDashboard() {
                                 <div style={{ flex: 1, textAlign: 'center', margin: '0 10px' }}>
                                     {todayEvents.length === 0 ? (
                                         <div>
-                                            <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                            <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                                                 {SVGS.tickCircle} No Classes Scheduled Today
                                             </h3>
                                         </div>
@@ -1004,16 +1077,16 @@ export default function TeacherLoginAndDashboard() {
 
                                         return (
                                             <div className="expand-anim" key={`lec-${noticeIndex}`}>
-                                                <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#007bff', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                                     {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Lecture Concluded' : `${noticeState} Lecture`}
                                                 </div>
-                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{targetEvent.title}</h3>
-                                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                <h3 style={{ margin: '0 0 6px 0', color: '#002147', fontSize: '1.05rem', fontWeight: '900' }}>{targetEvent.title}</h3>
+                                                <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                                                     {SVGS.location} Room {targetEvent.room} | Sec {targetEvent.section}
                                                 </div>
                                                 {noticeState !== 'Finished' && (
-                                                    <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
-                                                        {formatCountdown(remainingSecs)} <span style={{fontSize: '0.7rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                    <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '6px 16px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
+                                                        {formatCountdown(remainingSecs)} <span style={{fontSize: '0.7rem', opacity: 0.8, marginLeft: '4px'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -1033,7 +1106,7 @@ export default function TeacherLoginAndDashboard() {
                                 { id: 'attendance', label: 'Attendance', icon: SVGS.attendance, bg: '#dcfce7', col: '#15803d' },
                                 { id: 'permanent', label: 'Base Plan', icon: SVGS.building, bg: '#fef3c7', col: '#a16207' }
                             ].map(item => (
-                                <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: item.bg, color: item.col, padding: '15px 5px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'transform 0.2s' }}>
+                                <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: item.bg, color: item.col, padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s' }}>
                                     <div style={{ marginBottom: '8px', opacity: 0.9, display: 'flex', justifyContent: 'center' }}>{item.icon}</div>
                                     <div style={{ fontSize: '0.7rem', fontWeight: '900' }}>{item.label}</div>
                                 </div>
@@ -1053,30 +1126,30 @@ export default function TeacherLoginAndDashboard() {
                             ))}
                         </div>
 
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Classes for {selectedDay} (Temp Actions)</h3>
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Classes for {selectedDay} (Temp Actions)</h3>
                         {filteredWeeklySchedule.length === 0 ? <div style={emptyState}>No classes scheduled for {selectedDay}.</div> : (
                             filteredWeeklySchedule.map((cls) => (
-                                <div key={cls.id} style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : 'none', opacity: cls.isCancelled ? 0.6 : 1 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                                <div key={cls.id} style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '1px solid #eee', opacity: cls.isCancelled ? 0.6 : 1 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                                                {SVGS.users} Sec {cls.section} ({cls.session}) | {SVGS.location} Room {cls.room}
+                                            <div style={{ fontWeight: '900', fontSize: '1rem', color: cls.isCancelled ? '#dc3545' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
+                                            <div style={{ color: '#666', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                                                {SVGS.users} Sec {cls.section} ({getSemesterFromSession(cls.session)}) | {SVGS.location} Room {cls.room}
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.8rem' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.75rem' }}>{cls.day}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
-                                    {cls.isRescheduled && <div style={{ background: '#e7f1ff', color: '#004085', padding: '8px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold' }}>Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})</div>}
-                                    {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '8px', borderRadius: '5px', marginBottom: '10px', fontSize: '0.8rem', fontWeight: 'bold' }}>Confirmed to be Held on {cls.exceptionDetails?.exception_date}</div>}
+                                    {cls.isRescheduled && <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})</div>}
+                                    {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Confirmed to be Held on {cls.exceptionDetails?.exception_date}</div>}
                                     
-                                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                         {cls.isCancelled ? <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Undo Cancellation</button> : cls.isConfirmed ? <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={() => handleUndoException(cls.id, 'rescheduled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Undo Reschedule</button> : (
                                             <>
                                                 <button onClick={() => handleConfirmClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#28a745', SVGS.tickCircle)}>Will Held</button>
-                                                <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff', SVGS.clock)}>Modify</button>
+                                                <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff', SVGS.edit)}>Modify</button>
                                                 <button onClick={() => handleCancelClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#dc3545', SVGS.cross)}>Cancel</button>
                                             </>
                                         )}
@@ -1091,39 +1164,39 @@ export default function TeacherLoginAndDashboard() {
                 {currentTab === 'attendance' && (
                     <div className="expand-anim">
                         {/* Attendance Sub-navigation using wide Flexbox */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px', padding: '5px', background: '#e9ecef', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px', padding: '6px', background: '#e9ecef', borderRadius: '12px' }}>
                             <button onClick={() => setAttendanceView('approve')} style={subTabStyle(attendanceView === 'approve')}>
-                                <span style={{display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>
+                                <span style={{display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center'}}>
                                     {SVGS.tickCircle} Approvals
                                     {pendingAttendances.length > 0 && <span style={redBadgeStyle}>{pendingAttendances.length}</span>}
                                 </span>
                             </button>
                             <button onClick={() => setAttendanceView('mark')} style={subTabStyle(attendanceView === 'mark')}>
-                                <span style={{display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.edit} Mark/Edit</span>
+                                <span style={{display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center'}}>{SVGS.edit} Mark/Edit</span>
                             </button>
                             <button onClick={() => setAttendanceView('download')} style={subTabStyle(attendanceView === 'download')}>
-                                <span style={{display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.download} CSV</span>
+                                <span style={{display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center'}}>{SVGS.download} CSV</span>
                             </button>
                             <button onClick={() => setAttendanceView('stats')} style={subTabStyle(attendanceView === 'stats')}>
-                                <span style={{display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.stats} Stats</span>
+                                <span style={{display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center'}}>{SVGS.stats} Stats</span>
                             </button>
                         </div>
 
                         {/* SUB-VIEW 1: APPROVALS */}
                         {attendanceView === 'approve' && (
                             <div className="expand-anim">
-                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Pending Attendance submitted by CR</h3>
+                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Pending Attendance</h3>
                                 {pendingAttendances.length === 0 ? <div style={emptyState}>No pending attendance to approve.</div> : (
                                     pendingAttendances.map(session => (
-                                        <div key={`pend-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px', borderLeft: '5px solid #f59e0b' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                                        <div key={`pend-${session.id}`} style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', borderLeft: '5px solid #f59e0b', border: '1px solid #eee' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                                                 <div>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{session.course}</div>
-                                                    <div style={{ color: '#666', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.users} Section {session.section} ({session.session})</div>
+                                                    <div style={{ fontWeight: '900', fontSize: '1rem', color: '#000' }}>{session.course}</div>
+                                                    <div style={{ color: '#666', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>{SVGS.users} Section {session.section} ({getSemesterFromSession(session.session)})</div>
                                                 </div>
                                                 <div style={{ textAlign: 'right' }}>
-                                                    <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.85rem' }}>{session.session_date}</div>
-                                                    <div style={{ color: '#666', fontSize: '0.8rem' }}>{session.presentCount} / {session.totalCount} Present</div>
+                                                    <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.8rem' }}>{session.session_date}</div>
+                                                    <div style={{ color: '#059669', fontSize: '0.75rem', fontWeight: 'bold', marginTop: '4px', background: '#dcfce7', padding: '4px 10px', borderRadius: '12px', display: 'inline-block' }}>{session.presentCount} / {session.totalCount} Present</div>
                                                 </div>
                                             </div>
                                             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1142,8 +1215,8 @@ export default function TeacherLoginAndDashboard() {
                         {/* SUB-VIEW 2: MARK / EDIT ATTENDANCE */}
                         {attendanceView === 'mark' && (
                             <div className="expand-anim">
-                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Today's Lectures</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Today's Lectures</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                                     {attendanceStats.map(stat => {
                                         const todayClass = schedule.find(c => c.course === stat.subject && c.section === stat.section && c.session === stat.session && c.day === currentDayStr && !c.isCancelled);
                                         if (!todayClass) return null;
@@ -1154,22 +1227,22 @@ export default function TeacherLoginAndDashboard() {
                                         const todaySession = todayClass.attendanceSession;
 
                                         return (
-                                            <div key={`mark-today-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #28a745' }}>
-                                                <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h3>
-                                                <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>Sec: {stat.section} | {todayClass.start_time} - {todayClass.end_time}</p>
+                                            <div key={`mark-today-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', borderTop: '4px solid #28a745', border: '1px solid #eee' }}>
+                                                <h3 style={{ margin: '0 0 6px 0', color: '#002147', fontSize: '1.05rem', fontWeight: '900' }}>{stat.subject}</h3>
+                                                <p style={{ margin: '0 0 16px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Sec: {stat.section} | {todayClass.start_time} - {todayClass.end_time}</p>
                                                 
                                                 {isOngoing && !todaySession && (
-                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '10px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', animation: 'pulse 2s infinite' }}>
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', animation: 'pulse 2s infinite', fontSize: '0.8rem' }}>
                                                         {SVGS.edit} Mark Attendance (Ongoing)
                                                     </button>
                                                 )}
                                                 {(!isOngoing && !todaySession) && (
-                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '10px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.8rem' }}>
                                                         {SVGS.edit} Mark Attendance
                                                     </button>
                                                 )}
                                                 {todaySession && (
-                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '10px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                    <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.8rem' }}>
                                                         {SVGS.edit} Edit Today's Attendance
                                                     </button>
                                                 )}
@@ -1181,23 +1254,44 @@ export default function TeacherLoginAndDashboard() {
                                     )}
                                 </div>
 
-                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Edit Past Sessions (Anytime)</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                                    <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', margin: 0, fontWeight: '900' }}>Edit Past Sessions</h3>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
+                                        <select value={editSectionFilter} onChange={(e) => setEditSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                            <option value="ALL">All Sections</option>
+                                            {mySectionSessions.map(s => <option key={`${s.session}-${s.section}`} value={`${s.session}-${s.section}`}>{getSemesterFromSession(s.session)} - Sec {s.section}</option>)}
+                                        </select>
+                                        <select value={editSubjectFilter} onChange={(e) => setEditSubjectFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                            <option value="ALL">All Subjects</option>
+                                            {mySubjects.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
                                 {allSessionsData.length === 0 ? <div style={emptyState}>No past sessions recorded.</div> : (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '10px' }}>
-                                        {allSessionsData.sort((a,b) => new Date(b.session_date) - new Date(a.session_date)).map(session => (
-                                            <div key={`editpast-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #6c757d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: 'bold', color: '#000', fontSize: '0.9rem' }}>{session.course}</div>
-                                                    <div style={{ color: '#666', fontSize: '0.75rem' }}>Sec: {session.section} | Date: {session.session_date}</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px' }}>
+                                        {allSessionsData
+                                            .filter(session => (editSectionFilter === 'ALL' || `${session.session}-${session.section}` === editSectionFilter))
+                                            .filter(session => (editSubjectFilter === 'ALL' || session.course === editSubjectFilter))
+                                            .sort((a,b) => new Date(b.session_date) - new Date(a.session_date))
+                                            .map(session => (
+                                                <div key={`editpast-${session.id}`} style={{ background: 'white', padding: '16px', borderRadius: '12px', borderLeft: session.status === 'pending' ? '4px solid #f59e0b' : '4px solid #6c757d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 'bold', color: '#000', fontSize: '0.85rem' }}>{session.course}</div>
+                                                        <div style={{ color: '#666', fontSize: '0.7rem', marginTop: '4px' }}>{getSemesterFromSession(session.session)} - Sec {session.section} | Date: {session.session_date}</div>
+                                                        {session.status === 'pending' && <div style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 'bold', marginTop: '4px' }}>PENDING APPROVAL</div>}
+                                                    </div>
+                                                    <button onClick={() => {
+                                                        const formattedLecture = { ...session.baseLecture, attendanceSession: session };
+                                                        setActiveAttendanceLecture(formattedLecture);
+                                                    }} style={{ padding: '8px 16px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s ease' }}>
+                                                        {SVGS.edit} {session.status === 'pending' ? 'Review' : 'Edit'}
+                                                    </button>
                                                 </div>
-                                                <button onClick={() => {
-                                                    const formattedLecture = { ...session.baseLecture, attendanceSession: session };
-                                                    setActiveAttendanceLecture(formattedLecture);
-                                                }} style={{ padding: '8px 12px', background: '#002147', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    {SVGS.edit} Edit
-                                                </button>
-                                            </div>
-                                        ))}
+                                            ))}
+                                            {allSessionsData.filter(session => (editSectionFilter === 'ALL' || `${session.session}-${session.section}` === editSectionFilter)).filter(session => (editSubjectFilter === 'ALL' || session.course === editSubjectFilter)).length === 0 && (
+                                                <div style={emptyState}>No matching records found.</div>
+                                            )}
                                     </div>
                                 )}
                             </div>
@@ -1205,15 +1299,15 @@ export default function TeacherLoginAndDashboard() {
 
                         {/* SUB-VIEW 3: DOWNLOAD CSV */}
                         {attendanceView === 'download' && (
-                            <div className="expand-anim" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '15px' }}>
+                            <div className="expand-anim" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
                                 {attendanceStats.map(stat => (
-                                    <div key={`dl-${stat.subject}-${stat.section}-${stat.session}`} style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderTop: '4px solid #17a2b8' }}>
-                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h3>
-                                        <p style={{ margin: '0 0 5px 0', fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>Session: {stat.session}</p>
-                                        <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>Section: {stat.section}</p>
-                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
-                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '10px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                                            {SVGS.download} Download .CSV Report
+                                    <div key={`dl-${stat.subject}-${stat.section}-${stat.session}`} style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', borderTop: '4px solid #17a2b8', border: '1px solid #eee' }}>
+                                        <h3 style={{ margin: '0 0 6px 0', color: '#002147', fontSize: '1.05rem', fontWeight: '900' }}>{stat.subject}</h3>
+                                        <p style={{ margin: '0 0 6px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Session: {getSemesterFromSession(stat.session)} ({stat.session})</p>
+                                        <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Section: {stat.section}</p>
+                                        <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong style={{ color: '#000' }}>{stat.totalConducted}</strong></p>
+                                        <button onClick={() => downloadCSV(stat)} style={{ width: '100%', padding: '12px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                                            {SVGS.download} Download .CSV
                                         </button>
                                     </div>
                                 ))}
@@ -1222,42 +1316,42 @@ export default function TeacherLoginAndDashboard() {
 
                         {/* SUB-VIEW 4: STATISTICS */}
                         {attendanceView === 'stats' && (
-                            <div className="expand-anim" style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Attendance Overview</h3>
+                            <div className="expand-anim" style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem', fontWeight: '900' }}>Attendance Overview</h3>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
-                                        <select value={attendanceSessionFilter} onChange={(e) => setAttendanceSessionFilter(e.target.value)} style={{ padding: '6px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                        <select value={attendanceSessionFilter} onChange={(e) => setAttendanceSessionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
                                             <option value="ALL">All Sessions</option>
-                                            {availableSessions.map(s => <option key={s} value={s}>{s}</option>)}
+                                            {mySessions.map(s => <option key={s} value={s}>{getSemesterFromSession(s)} ({s})</option>)}
                                         </select>
-                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '6px', borderRadius: '5px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
                                             <option value="ALL">All Sections</option>
-                                            {availableSections.map(s => <option key={s} value={s}>Section {s}</option>)}
+                                            {mySections.map(s => <option key={s} value={s}>Section {s}</option>)}
                                         </select>
                                     </div>
                                 </div>
                                 
                                 <div style={{ overflowX: 'auto' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
                                         <thead>
                                             <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                                <th style={{ padding: '10px' }}>Registration No.</th>
-                                                <th style={{ padding: '10px' }}>Name</th>
-                                                <th style={{ padding: '10px' }}>Session</th>
-                                                <th style={{ padding: '10px' }}>Section</th>
-                                                <th style={{ padding: '10px', textAlign: 'right' }}>Overall Att %</th>
+                                                <th style={{ padding: '12px' }}>Registration No.</th>
+                                                <th style={{ padding: '12px' }}>Name</th>
+                                                <th style={{ padding: '12px' }}>Session</th>
+                                                <th style={{ padding: '12px' }}>Section</th>
+                                                <th style={{ padding: '12px', textAlign: 'right' }}>Overall Att %</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {roster.filter(s => (attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter) && (attendanceSessionFilter === 'ALL' || s.session === attendanceSessionFilter)).map(student => {
                                                 const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter, attendanceSessionFilter);
                                                 return (
-                                                    <tr key={student.registration_number} style={{ borderBottom: '1px solid #eee' }}>
-                                                        <td style={{ padding: '10px', fontWeight: 'bold' }}>{student.registration_number}</td>
-                                                        <td style={{ padding: '10px' }}>{student.student_name}</td>
-                                                        <td style={{ padding: '10px' }}>{student.session}</td>
-                                                        <td style={{ padding: '10px' }}>{student.section}</td>
-                                                        <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold', color: pct > 75 ? '#28a745' : '#dc3545' }}>
+                                                    <tr key={student.registration_number} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                                        <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{student.registration_number}</td>
+                                                        <td style={{ padding: '12px', color: '#333' }}>{student.student_name}</td>
+                                                        <td style={{ padding: '12px', color: '#666' }}>{getSemesterFromSession(student.session)}</td>
+                                                        <td style={{ padding: '12px', color: '#666' }}>{student.section}</td>
+                                                        <td style={{ padding: '12px', textAlign: 'right', fontWeight: '900', color: pct > 75 ? '#28a745' : '#dc3545' }}>
                                                             {pct}%
                                                         </td>
                                                     </tr>
@@ -1274,20 +1368,28 @@ export default function TeacherLoginAndDashboard() {
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
                 {currentTab === 'permanent' && (
                     <div className="expand-anim">
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '15px' }}>Your Base Schedule</h3>
-                        {baseSchedule.length === 0 ? <div style={emptyState}>No base schedule found.</div> : (
-                            baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                                <div key={`base-${cls.id}`} style={{ background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', marginBottom: '15px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={dayFilter}>
+                            {filterDays.map(day => (
+                                <button key={`base-day-${day}`} onClick={() => setBasePlanDayFilter(day)} style={{...dayBtnStyle(basePlanDayFilter === day), background: basePlanDayFilter === day ? '#002147' : '#f8f9fa'}}>
+                                    {day}
+                                </button>
+                            ))}
+                        </div>
+
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Your Base Schedule</h3>
+                        {filteredBaseSchedule.length === 0 ? <div style={emptyState}>No base schedule found.</div> : (
+                            filteredBaseSchedule.map((cls) => (
+                                <div key={`base-${cls.id}`} style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', border: '1px solid #eee' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#000' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-                                                {SVGS.users} Sec {cls.section} ({cls.session}) | {SVGS.location} Room {cls.room}
+                                            <div style={{ fontWeight: '900', fontSize: '1rem', color: '#000' }}>{cls.course}</div>
+                                            <div style={{ color: '#666', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                                                {SVGS.users} Sec {cls.section} ({getSemesterFromSession(cls.session)}) | {SVGS.location} Room {cls.room}
                                             </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.85rem' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.75rem' }}>{cls.day}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1297,7 +1399,7 @@ export default function TeacherLoginAndDashboard() {
                                 </div>
                             ))
                         )}
-                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '12px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <button onClick={() => openBaseModal()} style={{ width: '100%', padding: '16px', background: '#002147', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '0.9rem', cursor: 'pointer', marginTop: '10px', marginBottom: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
                             {SVGS.plus} Add New Lecture
                         </button>
                     </div>
@@ -1326,17 +1428,17 @@ export default function TeacherLoginAndDashboard() {
             {isEditModalOpen && (
                 <div style={modalOverlayStyle}>
                     <div style={modalContentStyle}>
-                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.clock} Modify Lecture</h3>
-                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '1.1rem', marginBottom: '20px' }}>{SVGS.clock} Modify Lecture</h3>
+                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                                 <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                                 <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
                             <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
                                 {availableRooms.length > 0 ? availableRooms.map(r => <option key={r} value={r}>{r}</option>) : <option value={newRoom}>{newRoom}</option>}
                             </select>
-                            <div style={{ display: 'flex', gap: '10px' }}>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
                                 <button type="button" onClick={() => setIsEditModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
                                 <button type="submit" style={saveBtnStyle}>Save</button>
                             </div>
@@ -1349,18 +1451,18 @@ export default function TeacherLoginAndDashboard() {
             {isBaseModalOpen && (
                 <div style={modalOverlayStyle}>
                     <div style={{...modalContentStyle, maxHeight: '90vh', overflowY: 'auto'}}>
-                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.building} {baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
-                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '1.1rem', marginBottom: '20px' }}>{SVGS.building} {baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
+                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {isManualSession ? <input type="text" placeholder="Session (e.g. Spring 2026)..." required value={baseForm.session} onChange={(e) => setBaseForm({...baseForm, session: e.target.value})} style={inputStyle} /> : <select required value={baseForm.session} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSession(true); setBaseForm({...baseForm, session: ''}); } else setBaseForm({...baseForm, session: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Session --</option>{availableSessions.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualSection ? <input type="text" placeholder="Section (e.g. 1E)..." required value={baseForm.section} onChange={(e) => setBaseForm({...baseForm, section: e.target.value})} style={inputStyle} /> : <select required value={baseForm.section} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSection(true); setBaseForm({...baseForm, section: ''}); } else setBaseForm({...baseForm, section: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Section --</option>{availableSections.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={inputStyle} /> : <select required value={baseForm.course} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } else setBaseForm({...baseForm, course: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Subject --</option>{availableCourses.map(c => <option key={c} value={c}>{c}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             {isManualRoom ? <input type="text" placeholder="Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } else setBaseForm({...baseForm, room: e.target.value}); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
                             <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                                 <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                                 <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...inputStyle, flex: 1}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
                                 <button type="button" onClick={() => setIsBaseModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
                                 <button type="submit" style={saveBtnStyle}>Save</button>
                             </div>
@@ -1374,29 +1476,29 @@ export default function TeacherLoginAndDashboard() {
 
 // STYLES
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
-const welcomeCard = { background: '#fff', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '380px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const welcomeCard = { background: '#fff', padding: '25px', borderRadius: '16px', width: '90%', maxWidth: '380px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
 const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
 const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '45px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '6px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '6px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
-const subTabStyle = (active) => ({ flex: 1, minWidth: '80px', padding: '10px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' });
-const dayFilter = { display: 'flex', gap: '4px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '35px', padding: '6px', borderRadius: '6px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.65rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
-const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: bg, color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' });
-const inputStyle = { width: '100%', padding: '12px', border: '1px solid #dee2e6', borderRadius: '8px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box' };
-const whiteCard = { background: '#fff', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
-const emptyState = { textAlign: 'center', padding: '20px 10px', color: '#999', fontSize: '0.8rem', background: '#fff', borderRadius: '10px' };
-const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
-const notifBannerStyle = { background: '#002147', color: '#fff', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
-const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
-const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '5px' };
-const newsRedDot = { position: 'absolute', top: '4px', right: '4px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
-const footerStyle = { textAlign: 'center', padding: '12px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
-const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '15px', boxSizing: 'border-box' };
-const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '10px', width: '100%', maxWidth: '400px' };
-const cancelBtnStyle = { flex: 1, padding: '12px', background: '#eee', color: '#333', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' };
-const saveBtnStyle = { flex: 1, padding: '12px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabStyle = (active) => ({ flex: 1, minWidth: '90px', padding: '10px 14px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' });
+const dayFilter = { display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '6px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px 6px', borderRadius: '10px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.7rem', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.04)', transition: 'all 0.3s ease' });
+const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.2s ease' });
+const inputStyle = { width: '100%', padding: '12px 14px', border: '1px solid #dee2e6', borderRadius: '10px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box', background: '#f8f9fa', transition: 'border 0.3s ease' };
+const whiteCard = { background: '#fff', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', transition: 'all 0.3s ease', border: '1px solid #eee' };
+const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.8rem', background: '#fff', borderRadius: '12px', border: '1px dashed #ddd' };
+const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
+const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '6px', fontWeight: 'bold' };
+const newsRedDot = { position: 'absolute', top: '6px', right: '6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
+const footerStyle = { textAlign: 'center', padding: '16px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,21,47,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
+const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' };
+const cancelBtnStyle = { flex: 1, padding: '14px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s ease' };
+const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', transition: 'background 0.2s ease' };
 
 // Sidebar Styles
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
-const sidebarMenu = { width: '230px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 15px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
+const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '14px 18px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #f8f9fa', transition: 'all 0.3s ease' });
