@@ -114,6 +114,39 @@ const convertTo12Hour = (timeStr) => {
     return `${h}:${m === 0 ? '00' : m < 10 ? '0' + m : m} ${suffix}`;
 };
 
+const parseCSVText = (csvText = '') => {
+    return csvText
+        .split(/\r?\n/)
+        .filter(line => line.trim())
+        .map(line => {
+            const cols = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"' && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else if (ch === '"') {
+                    inQuotes = !inQuotes;
+                } else if (ch === ',' && !inQuotes) {
+                    cols.push(current.trim());
+                    current = '';
+                } else {
+                    current += ch;
+                }
+            }
+            cols.push(current.trim());
+            return cols;
+        });
+};
+
+const normalizeDay = (value = '') => {
+    const day = value.trim().toUpperCase();
+    const map = { MONDAY: 'MON', TUESDAY: 'TUE', WEDNESDAY: 'WED', THURSDAY: 'THU', FRIDAY: 'FRI', SATURDAY: 'SAT', SUNDAY: 'SUN' };
+    return map[day] || day.slice(0, 3);
+};
+
 // ==========================================
 // 3. MAIN DASHBOARD COMPONENT
 // ==========================================
@@ -136,6 +169,7 @@ export default function AdminDashboard() {
     const [loadingData, setLoadingData] = useState(false);
     const [actionProcessing, setActionProcessing] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [isMobileView, setIsMobileView] = useState(false);
 
     // Database Payload States
     const [crProfiles, setCrProfiles] = useState([]);
@@ -155,6 +189,8 @@ export default function AdminDashboard() {
     const [filterSec, setFilterSec] = useState('');
     const [filterDay, setFilterDay] = useState('ALL');
     const [analyticsView, setAnalyticsView] = useState('attendance'); 
+    const [auditSession, setAuditSession] = useState('');
+    const [auditSection, setAuditSection] = useState('');
 
     // Feature Form States
     const [leaveTeacher, setLeaveTeacher] = useState('');
@@ -177,11 +213,18 @@ export default function AdminDashboard() {
 
     const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
     const [attendanceEditData, setAttendanceEditData] = useState({ session: null, recordsMap: {}, studentsList: [] });
+    const [uploadStatus, setUploadStatus] = useState({ type: '', text: '' });
+    const [scheduleUploadMode, setScheduleUploadMode] = useState('append');
+    const [pointsUploadMode, setPointsUploadMode] = useState('append');
 
     // File Upload Refs
     const fileInputRef = useRef(null);
     const scheduleFileInputRef = useRef(null);
+    const scheduleReplaceFileInputRef = useRef(null);
     const pointsFileInputRef = useRef(null);
+    const pointsReplaceFileInputRef = useRef(null);
+    const crCsvFileInputRef = useRef(null);
+    const teacherCsvFileInputRef = useRef(null);
 
     // Dynamic Constants
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -202,6 +245,13 @@ export default function AdminDashboard() {
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        const updateView = () => setIsMobileView(window.innerWidth < 1024);
+        updateView();
+        window.addEventListener('resize', updateView);
+        return () => window.removeEventListener('resize', updateView);
     }, []);
 
     // Session Verification
@@ -408,6 +458,7 @@ export default function AdminDashboard() {
         setActionProcessing(true);
         await supabase.from(table).update({ is_approved: true }).eq('id', id);
         await fetchDeepDatabase();
+        setUploadStatus({ type: 'success', text: 'Contact approved and synced with Supabase.' });
         setActionProcessing(false);
     };
 
@@ -416,7 +467,58 @@ export default function AdminDashboard() {
         setActionProcessing(true);
         await supabase.from(table).delete().eq('id', id);
         await fetchDeepDatabase();
+        setUploadStatus({ type: 'success', text: 'Contact deleted from Supabase.' });
         setActionProcessing(false);
+    };
+
+    const openEditUserModal = (profile, type) => {
+        if (type === 'cr') {
+            setUserEditForm({
+                id: profile.id,
+                type: 'cr',
+                first_name: profile.first_name || '',
+                last_name: profile.last_name || '',
+                name: '',
+                department: profile.department || '',
+                session: profile.session || '',
+                section: profile.section || '',
+                phone: profile.phone || '',
+                email: profile.email || '',
+                cnic: ''
+            });
+        } else {
+            setUserEditForm({
+                id: profile.id,
+                type: 'teacher',
+                first_name: '',
+                last_name: '',
+                name: profile.name || '',
+                department: '',
+                session: '',
+                section: '',
+                phone: profile.phone || '',
+                email: profile.email || '',
+                cnic: profile.cnic || ''
+            });
+        }
+        setIsUserEditModalOpen(true);
+    };
+
+    const openCreateUserModal = (type) => {
+        setUserEditForm({
+            id: null,
+            type,
+            first_name: '',
+            last_name: '',
+            name: '',
+            department: '',
+            session: '',
+            section: '',
+            phone: '',
+            email: '',
+            cnic: ''
+        });
+        setIsUserEditModalOpen(true);
     };
 
     const handleSaveUserEdit = async (e) => {
@@ -426,11 +528,60 @@ export default function AdminDashboard() {
         let payload = userEditForm.type === 'cr' 
             ? { first_name: userEditForm.first_name, last_name: userEditForm.last_name, department: userEditForm.department, session: userEditForm.session, section: userEditForm.section, phone: userEditForm.phone, is_approved: true }
             : { name: userEditForm.name, phone: userEditForm.phone, cnic: userEditForm.cnic, email: userEditForm.email, is_approved: true };
-
-        await supabase.from(table).update(payload).eq('id', userEditForm.id);
+        if (userEditForm.id) await supabase.from(table).update(payload).eq('id', userEditForm.id);
+        else await supabase.from(table).insert([payload]);
         setIsUserEditModalOpen(false);
         await fetchDeepDatabase();
+        setUploadStatus({ type: 'success', text: `${userEditForm.type === 'cr' ? 'CR' : 'Teacher'} contact ${userEditForm.id ? 'updated' : 'added'} and saved to Supabase.` });
         setActionProcessing(false);
+    };
+
+    const handleBulkUserCSV = async (e, type) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            setActionProcessing(true);
+            try {
+                const rows = parseCSVText(event.target.result);
+                if (rows.length === 0) throw new Error('CSV is empty');
+                const header = rows[0].map(v => v.toLowerCase());
+                const hasHeader = header.some(h => h.includes('name') || h.includes('first') || h.includes('phone') || h.includes('section'));
+                const body = hasHeader ? rows.slice(1) : rows;
+                const payloads = body.map(row => {
+                    if (type === 'cr') {
+                        return {
+                            first_name: row[0]?.trim() || '',
+                            last_name: row[1]?.trim() || '',
+                            department: row[2]?.trim() || '',
+                            session: row[3]?.trim() || '',
+                            section: row[4]?.trim().toUpperCase() || '',
+                            phone: row[5]?.trim() || '',
+                            email: row[6]?.trim() || null,
+                            is_approved: true
+                        };
+                    }
+                    return {
+                        name: row[0]?.trim() || '',
+                        email: row[1]?.trim() || null,
+                        phone: row[2]?.trim() || '',
+                        cnic: row[3]?.trim() || '',
+                        is_approved: true
+                    };
+                }).filter(entry => type === 'cr' ? entry.first_name && entry.last_name : entry.name);
+
+                if (payloads.length === 0) throw new Error('No valid rows found');
+                const table = type === 'cr' ? 'cr_profiles' : 'teacher_profiles';
+                await supabase.from(table).insert(payloads);
+                await fetchDeepDatabase();
+                setUploadStatus({ type: 'success', text: `${payloads.length} ${type === 'cr' ? 'CR' : 'teacher'} contacts imported and saved to Supabase.` });
+            } catch (err) {
+                setUploadStatus({ type: 'error', text: `CSV upload failed: ${err.message || 'Invalid file format'}` });
+            }
+            setActionProcessing(false);
+            e.target.value = null;
+        };
+        reader.readAsText(file);
     };
 
     // --- Teacher Leave Engine (CRITICAL DOMAIN LOGIC) ---
@@ -519,15 +670,15 @@ export default function AdminDashboard() {
         setActionProcessing(false);
     };
 
-    const handleBulkScheduleCSV = async (e) => {
+    const handleBulkScheduleCSV = async (e, mode = 'append') => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = async (event) => {
             setActionProcessing(true);
             try {
-                const text = event.target.result;
-                const rows = text.split('\n').map(r => r.split(',').map(c => c?.trim()));
+                const rows = parseCSVText(event.target.result);
+                if (rows.length === 0) throw new Error('CSV is empty');
                 const payloads = [];
                 let sIdx = rows[0].join('').toLowerCase().includes('session') ? 1 : 0;
                 
@@ -536,17 +687,24 @@ export default function AdminDashboard() {
                     if (row.length >= 8 && row[0] && row[1] && row[2]) {
                         payloads.push({ 
                             session: row[0], section: row[1].toUpperCase(), course: row[2], 
-                            teacher: row[3], room: row[4], day: row[5].toUpperCase(), 
-                            start_time: row[6], end_time: row[7] 
+                            teacher: row[3], room: row[4], day: normalizeDay(row[5]), 
+                            start_time: convertTo12Hour(row[6]), end_time: convertTo12Hour(row[7]) 
                         });
                     }
                 }
                 if (payloads.length > 0) {
+                    if (mode === 'replace') {
+                        await supabase.from('base_schedule').delete().neq('id', 0);
+                    }
                     await supabase.from('base_schedule').insert(payloads);
-                    alert(`Imported ${payloads.length} matrices!`);
                     await fetchDeepDatabase();
-                } else alert("No valid matrix data found.");
-            } catch (err) { alert("Matrix Parse Failure."); }
+                    setUploadStatus({ type: 'success', text: `${payloads.length} base schedule rows ${mode === 'replace' ? 'replaced' : 'added'} and saved to Supabase.` });
+                } else {
+                    throw new Error('No valid matrix data found');
+                }
+            } catch (err) {
+                setUploadStatus({ type: 'error', text: `Base schedule CSV failed: ${err.message || 'Invalid file format'}` });
+            }
             setActionProcessing(false);
             e.target.value = null;
         };
@@ -660,7 +818,40 @@ export default function AdminDashboard() {
         setActionProcessing(true);
         await supabase.from('point_schedules').delete().eq('id', id);
         await fetchDeepDatabase();
+        setUploadStatus({ type: 'success', text: 'Point schedule entry deleted from Supabase.' });
         setActionProcessing(false);
+    };
+
+    const handlePointsCSVUpload = async (e, mode = 'append') => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            setActionProcessing(true);
+            try {
+                const rows = parseCSVText(event.target.result);
+                if (rows.length === 0) throw new Error('CSV is empty');
+                const startIndex = rows[0].join('').toLowerCase().includes('route') ? 1 : 0;
+                const payloads = rows.slice(startIndex).map(row => ({
+                    route: (row[0] || '').trim(),
+                    departure_time: (row[1] || '').trim(),
+                    is_saturday: ['true', '1', 'yes', 'y'].includes(((row[2] || '').trim().toLowerCase()))
+                })).filter(p => p.route && p.departure_time);
+
+                if (payloads.length === 0) throw new Error('No valid transport rows found');
+                if (mode === 'replace') {
+                    await supabase.from('point_schedules').delete().neq('id', 0);
+                }
+                await supabase.from('point_schedules').insert(payloads);
+                await fetchDeepDatabase();
+                setUploadStatus({ type: 'success', text: `${payloads.length} point schedule rows ${mode === 'replace' ? 'replaced' : 'added'} and saved to Supabase.` });
+            } catch (err) {
+                setUploadStatus({ type: 'error', text: `Point schedule CSV failed: ${err.message || 'Invalid file format'}` });
+            }
+            setActionProcessing(false);
+            e.target.value = null;
+        };
+        reader.readAsText(file);
     };
 
 
@@ -702,7 +893,7 @@ export default function AdminDashboard() {
         <div style={styles.appWrapper}>
             <Head><title>HOD Console | IUB Assistant</title></Head>
             <style>{`
-                body { margin: 0; padding: 0; background-color: #f0f2f5; font-family: 'Inter', 'Roboto', sans-serif; }
+                body { margin: 0; padding: 0; background-color: #f0f2f5; font-family: 'Roboto', 'Segoe UI', Tahoma, Arial, sans-serif; }
                 * { box-sizing: border-box; }
                 @keyframes slideFade { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
                 .expand-anim { animation: slideFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -713,14 +904,14 @@ export default function AdminDashboard() {
             {/* TOP NAVIGATION */}
             <header style={styles.topNav}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div style={{ cursor: 'pointer', color: '#F2A900', display: window.innerWidth < 1024 ? 'block' : 'none' }} onClick={() => setIsSidebarOpen(true)}>
+                    <div style={{ cursor: 'pointer', color: '#F2A900', display: isMobileView ? 'block' : 'none' }} onClick={() => setIsSidebarOpen(true)}>
                         {SVGS.hamburger}
                     </div>
                     <div style={{ fontWeight: 900, color: '#F2A900', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px', letterSpacing: '1px' }}>
                         {SVGS.cap} IUB COMMAND CENTER
                     </div>
                 </div>
-                <div style={{ display: window.innerWidth < 1024 ? 'none' : 'flex', gap: '5px' }}>
+                <div style={{ display: isMobileView ? 'none' : 'flex', gap: '5px' }}>
                     {TABS.map(t => (
                         <button key={t.id} onClick={() => setActiveTab(t.id)} style={styles.navTab(activeTab === t.id)}>
                             {t.icon} {t.label}
@@ -755,6 +946,12 @@ export default function AdminDashboard() {
                     <div className="expand-anim" style={styles.sysAlertBanner}>
                         <div style={{...styles.loader, width: '16px', height: '16px', borderWidth: '2px'}}></div>
                         {actionProcessing ? 'EXECUTING DIRECTIVE...' : 'SYNCING CORE DATABASE...'}
+                    </div>
+                )}
+
+                {uploadStatus.text && (
+                    <div className="expand-anim" style={styles.statusBanner(uploadStatus.type)}>
+                        {uploadStatus.text}
                     </div>
                 )}
 
@@ -810,11 +1007,24 @@ export default function AdminDashboard() {
                 {/* ============================================================== */}
                 {/* TAB 2: DIRECTORY & APPROVALS */}
                 {/* ============================================================== */}
-                {activeTab === 'approvals' && (
+                {activeTab === 'users' && (
                     <div className="expand-anim" style={styles.whiteCard}>
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '15px' }}>
-                            <button onClick={() => setUserSubTab('crs')} style={styles.subTab(userSubTab === 'crs')}>Class Representatives {crProfiles.filter(c=>!c.is_approved).length > 0 && <span style={styles.badgeRed}>{crProfiles.filter(c=>!c.is_approved).length}</span>}</button>
-                            <button onClick={() => setUserSubTab('teachers')} style={styles.subTab(userSubTab === 'teachers')}>Faculty Directory {teachers.filter(t=>!t.is_approved).length > 0 && <span style={styles.badgeRed}>{teachers.filter(t=>!t.is_approved).length}</span>}</button>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '15px', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button onClick={() => setUserSubTab('crs')} style={styles.subTab(userSubTab === 'crs')}>Class Representatives {crProfiles.filter(c=>!c.is_approved).length > 0 && <span style={styles.badgeRed}>{crProfiles.filter(c=>!c.is_approved).length}</span>}</button>
+                                <button onClick={() => setUserSubTab('teachers')} style={styles.subTab(userSubTab === 'teachers')}>Faculty Directory {teachers.filter(t=>!t.is_approved).length > 0 && <span style={styles.badgeRed}>{teachers.filter(t=>!t.is_approved).length}</span>}</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <input type="file" accept=".csv" ref={crCsvFileInputRef} onChange={(e) => handleBulkUserCSV(e, 'cr')} style={{ display: 'none' }} />
+                                <input type="file" accept=".csv" ref={teacherCsvFileInputRef} onChange={(e) => handleBulkUserCSV(e, 'teacher')} style={{ display: 'none' }} />
+                                <button onClick={() => userSubTab === 'crs' ? crCsvFileInputRef.current?.click() : teacherCsvFileInputRef.current?.click()} style={{...styles.btnNeutralSm, background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd'}}>{SVGS.upload} Import CSV</button>
+                                <button onClick={() => openCreateUserModal(userSubTab === 'crs' ? 'cr' : 'teacher')} style={styles.btnPrimarySm}>{SVGS.plus} Add Contact</button>
+                            </div>
+                        </div>
+                        <div style={styles.csvHint}>
+                            {userSubTab === 'crs'
+                                ? 'CR CSV format: first_name,last_name,department,session,section,phone,email(optional).'
+                                : 'Teacher CSV format: name,email,phone,cnic.'}
                         </div>
 
                         <div className="hide-scroll" style={{ overflowX: 'auto' }}>
@@ -963,12 +1173,15 @@ export default function AdminDashboard() {
                                 </div>
                                 {scheduleSubTab === 'base' && (
                                     <div style={{ display: 'flex', gap: '10px' }}>
-                                        <input type="file" accept=".csv" ref={scheduleFileInputRef} onChange={handleBulkScheduleCSV} style={{ display: 'none' }} />
-                                        <button onClick={() => scheduleFileInputRef.current.click()} style={{...styles.btnNeutral, background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd'}}>{SVGS.upload} Bulk Matrix CSV</button>
+                                        <input type="file" accept=".csv" ref={scheduleFileInputRef} onChange={(e) => handleBulkScheduleCSV(e, scheduleUploadMode)} style={{ display: 'none' }} />
+                                        <input type="file" accept=".csv" ref={scheduleReplaceFileInputRef} onChange={(e) => handleBulkScheduleCSV(e, 'replace')} style={{ display: 'none' }} />
+                                        <button onClick={() => { setScheduleUploadMode('append'); scheduleFileInputRef.current?.click(); }} style={{...styles.btnNeutral, background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd'}}>{SVGS.upload} Add from CSV</button>
+                                        <button onClick={() => scheduleReplaceFileInputRef.current?.click()} style={{...styles.btnNeutral, background: '#fff7ed', color: '#c2410c', border: '1px solid #fdba74'}}>{SVGS.upload} Replace by CSV</button>
                                         <button onClick={() => { setBaseForm({ id: null, session: '', section: '', course: '', teacher: '', room: '', day: 'MON', start_time: '08:00 AM', end_time: '09:30 AM' }); setIsBaseModalOpen(true); }} style={styles.btnPrimarySm}>{SVGS.plus} Add Node</button>
                                     </div>
                                 )}
                             </div>
+                            {scheduleSubTab === 'base' && <div style={styles.csvHint}>Base schedule CSV format: session,section,course,teacher,room,day,start_time,end_time. Replace mode clears old base schedule then saves uploaded rows in Supabase.</div>}
 
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
                                 <div style={{flex: 1, minWidth: '150px'}}>
@@ -1199,11 +1412,14 @@ export default function AdminDashboard() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                                 <h3 style={{ margin: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px' }}>{SVGS.bus} Transport Route Engine</h3>
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input type="file" accept=".csv" ref={pointsFileInputRef} onChange={handlePointsCSVUpload} style={{ display: 'none' }} />
-                                    <button onClick={() => pointsFileInputRef.current.click()} style={{...styles.btnNeutral, background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0'}}>{SVGS.upload} Bulk CSV</button>
+                                    <input type="file" accept=".csv" ref={pointsFileInputRef} onChange={(e) => handlePointsCSVUpload(e, pointsUploadMode)} style={{ display: 'none' }} />
+                                    <input type="file" accept=".csv" ref={pointsReplaceFileInputRef} onChange={(e) => handlePointsCSVUpload(e, 'replace')} style={{ display: 'none' }} />
+                                    <button onClick={() => { setPointsUploadMode('append'); pointsFileInputRef.current?.click(); }} style={{...styles.btnNeutral, background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0'}}>{SVGS.upload} Add CSV</button>
+                                    <button onClick={() => pointsReplaceFileInputRef.current?.click()} style={{...styles.btnNeutral, background: '#fff7ed', color: '#c2410c', border: '1px solid #fdba74'}}>{SVGS.upload} Replace CSV</button>
                                     <button onClick={() => { setPointForm({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false }); setIsPointModalOpen(true); }} style={styles.btnPrimarySm}>{SVGS.plus} Add Vector</button>
                                 </div>
                             </div>
+                            <div style={styles.csvHint}>Point CSV format: route,departure_time,is_saturday. Use route values AC_to_BJC or BJC_to_AC; is_saturday accepts true/false.</div>
 
                             <div className="hide-scroll" style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
                                 <table style={styles.table}>
@@ -1281,7 +1497,7 @@ export default function AdminDashboard() {
             {isUserEditModalOpen && (
                 <div style={styles.modalBackdrop}>
                     <div className="expand-anim" style={styles.modalContent}>
-                        <h3 style={{...styles.cardHeader, fontSize: '1.1rem'}}>{SVGS.userTie} Profile Intervention</h3>
+                        <h3 style={{...styles.cardHeader, fontSize: '1.1rem'}}>{SVGS.userTie} {userEditForm.id ? 'Profile Intervention' : 'Add Contact'}</h3>
                         <form onSubmit={handleSaveUserEdit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {userEditForm.type === 'cr' ? (
                                 <>
@@ -1305,7 +1521,7 @@ export default function AdminDashboard() {
                             <div><label style={styles.label}>Telecom Number</label><input type="text" required value={userEditForm.phone} onChange={e=>setUserEditForm({...userEditForm, phone:e.target.value})} style={styles.inputBox} /></div>
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                                 <button type="button" onClick={()=>setIsUserEditModalOpen(false)} style={styles.btnNeutral}>Abort</button>
-                                <button type="submit" style={{...styles.btnSuccess, flex: 2}}>Commit & Approve</button>
+                                <button type="submit" style={{...styles.btnSuccess, flex: 2}}>{userEditForm.id ? 'Commit & Approve' : 'Add & Approve'}</button>
                             </div>
                         </form>
                     </div>
@@ -1422,7 +1638,7 @@ export default function AdminDashboard() {
 // 4. CSS-IN-JS STYLE DICTIONARY
 // ==========================================
 const styles = {
-    appWrapper: { display: 'flex', flexDirection: 'column', minHeight: '100vh' },
+    appWrapper: { display: 'flex', flexDirection: 'column', minHeight: '100vh', fontFamily: "'Roboto', 'Segoe UI', Tahoma, Arial, sans-serif" },
     centerScreen: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#002147' },
     loader: { border: '4px solid rgba(255, 255, 255, 0.1)', borderLeftColor: '#F2A900', borderRadius: '50%', animation: 'spin 1s linear infinite' },
     authBg: { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#002147', padding: '20px' },
@@ -1480,6 +1696,8 @@ const styles = {
     badgeRed: { position: 'absolute', top: '-5px', right: '-5px', background: '#dc3545', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.65rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(220,53,69,0.4)', minWidth: '18px', textAlign: 'center' },
     
     sysAlertBanner: { background: '#eff6ff', color: '#0369a1', padding: '15px', borderRadius: '10px', textAlign: 'center', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', border: '2px solid #bae6fd', fontSize: '0.9rem', letterSpacing: '1px' },
+    statusBanner: (type) => ({ background: type === 'error' ? '#fef2f2' : '#ecfdf3', color: type === 'error' ? '#b91c1c' : '#047857', border: `1px solid ${type === 'error' ? '#fecaca' : '#a7f3d0'}`, padding: '12px 14px', borderRadius: '10px', fontWeight: 700, marginBottom: '20px' }),
+    csvHint: { fontSize: '0.78rem', color: '#475569', marginBottom: '14px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '10px 12px' },
     
     modalBackdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,33,71,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px', boxSizing: 'border-box', backdropFilter: 'blur(5px)' },
     modalContent: { background: '#fff', padding: '30px', borderRadius: '20px', width: '100%', maxWidth: '450px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box' },
