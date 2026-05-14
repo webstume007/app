@@ -694,7 +694,7 @@ export default function AdminDashboard() {
                 }
                 if (payloads.length > 0) {
                     if (mode === 'replace') {
-                        await supabase.from('base_schedule').delete().neq('id', 0);
+                        await supabase.from('base_schedule').delete().not('id', 'is', null);
                     }
                     await supabase.from('base_schedule').insert(payloads);
                     await fetchDeepDatabase();
@@ -840,7 +840,7 @@ export default function AdminDashboard() {
 
                 if (payloads.length === 0) throw new Error('No valid transport rows found');
                 if (mode === 'replace') {
-                    await supabase.from('point_schedules').delete().neq('id', 0);
+                    await supabase.from('point_schedules').delete().not('id', 'is', null);
                 }
                 await supabase.from('point_schedules').insert(payloads);
                 await fetchDeepDatabase();
@@ -893,7 +893,7 @@ export default function AdminDashboard() {
         <div style={styles.appWrapper}>
             <Head><title>HOD Console | IUB Assistant</title></Head>
             <style>{`
-                body { margin: 0; padding: 0; background-color: #f0f2f5; font-family: 'Roboto', 'Segoe UI', Tahoma, Arial, sans-serif; }
+                body { margin: 0; padding: 0; background-color: #f0f2f5; font-family: 'Roboto', Arial, sans-serif; }
                 * { box-sizing: border-box; }
                 @keyframes slideFade { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
                 .expand-anim { animation: slideFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
@@ -1181,7 +1181,7 @@ export default function AdminDashboard() {
                                     </div>
                                 )}
                             </div>
-                            {scheduleSubTab === 'base' && <div style={styles.csvHint}>Base schedule CSV format: session,section,course,teacher,room,day,start_time,end_time. Replace mode clears old base schedule then saves uploaded rows in Supabase.</div>}
+                            {scheduleSubTab === 'base' && <div style={styles.csvHint}>Base schedule CSV format: session,section,course,teacher,room,day,start_time,end_time (time can be 24h like 14:00 or 12h like 02:00 PM). Replace mode clears old base schedule then saves uploaded rows in Supabase.</div>}
 
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
                                 <div style={{flex: 1, minWidth: '150px'}}>
@@ -1419,7 +1419,7 @@ export default function AdminDashboard() {
                                     <button onClick={() => { setPointForm({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false }); setIsPointModalOpen(true); }} style={styles.btnPrimarySm}>{SVGS.plus} Add Vector</button>
                                 </div>
                             </div>
-                            <div style={styles.csvHint}>Point CSV format: route,departure_time,is_saturday. Use route values AC_to_BJC or BJC_to_AC; is_saturday accepts true/false.</div>
+                            <div style={styles.csvHint}>Point CSV format: route,departure_time,is_saturday. Use route values AC_to_BJC or BJC_to_AC; is_saturday accepts true,false,1,yes,y (case-insensitive for true values).</div>
 
                             <div className="hide-scroll" style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
                                 <table style={styles.table}>
@@ -1638,7 +1638,7 @@ export default function AdminDashboard() {
 // 4. CSS-IN-JS STYLE DICTIONARY
 // ==========================================
 const styles = {
-    appWrapper: { display: 'flex', flexDirection: 'column', minHeight: '100vh', fontFamily: "'Roboto', 'Segoe UI', Tahoma, Arial, sans-serif" },
+    appWrapper: { display: 'flex', flexDirection: 'column', minHeight: '100vh' },
     centerScreen: { display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#002147' },
     loader: { border: '4px solid rgba(255, 255, 255, 0.1)', borderLeftColor: '#F2A900', borderRadius: '50%', animation: 'spin 1s linear infinite' },
     authBg: { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#002147', padding: '20px' },
