@@ -1459,7 +1459,7 @@ export default function Home() {
 
                                         {(() => {
                                             const { subjectStats, allValidSessions, mySubjects, myClasses } = getFilteredAttendance();
-                                            if (subjectStats.length === 0) return <div style={emptyState}>No attendance records found.</div>;
+                                            if (subjectStats.length === 0) return <div style={emptyState}>No attendance records found. Ask your CR to upload attendance sheets record to CR Portal.</div>;
 
                                             const nowMs = new Date().getTime();
                                             const last7DaysSessions = allValidSessions.filter(s => (nowMs - new Date(s.session_date).getTime()) <= 7 * 24 * 60 * 60 * 1000).sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
