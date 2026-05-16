@@ -201,8 +201,10 @@ export default function Home() {
     const [isOffline, setIsOffline] = useState(false);
     const [lastUpdated, setLastUpdated] = useState('--:--');
 
-    // Transport Tab State
-    const [isSatTransport, setIsSatTransport] = useState(false);
+    // Transport Tab State (Defaulting to correct day)
+    const [isSatTransport, setIsSatTransport] = useState(() => {
+        return new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() === 'SAT';
+    });
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const filterDays = ["ALL", ...days];
@@ -568,6 +570,19 @@ export default function Home() {
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    const getRemainingDepartureTime = (depTimeStr) => {
+        const [h, m] = depTimeStr.split(':').map(Number);
+        const depDate = new Date(currentTime);
+        depDate.setHours(h, m, 0, 0);
+        const diffSecs = Math.floor((depDate - currentTime) / 1000);
+        if (diffSecs < 0) return null;
+        const hrs = Math.floor(diffSecs / 3600);
+        const mins = Math.floor((diffSecs % 3600) / 60);
+        const secs = diffSecs % 60;
+        if (hrs > 0) return `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')} remaining in departure..`;
+        return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')} remaining in departure..`;
+    };
+
     const availableSessions = dropdownMeta.sessions.sort((a, b) => {
         const semA = parseInt(getSemesterFromSession(a)) || 99;
         const semB = parseInt(getSemesterFromSession(b)) || 99;
@@ -661,7 +676,7 @@ export default function Home() {
         const isGlobal = msg.includes('GLOBAL');
         const hasSection = msg.includes(userSection?.section);
         const hasSession = msg.includes(userSection?.session) || (sem && msg.includes(sem));
-        const isCRUpdate = (msg.includes('Confirmed:') || msg.includes('Cancelled:') || msg.includes('Rescheduled:')) && mySubjects.some(sub => msg.includes(sub));
+        const isCRUpdate = (msg.includes('Confirmed:') || msg.includes('Cancelled:') || msg.includes('Rescheduled:')) && mySubjects.some(sub => msg.includes(sub)) && hasSection && hasSession;
 
         return (isGlobal || (hasSection && hasSession) || isCRUpdate) && !readNotifIds.includes(n.id) && !isPassedLectureNotification(msg);
     });
@@ -699,21 +714,6 @@ export default function Home() {
         let p = String(phone).replace(/\D/g, '');
         if(p.startsWith('0')) p = '92' + p.substring(1);
         return `https://wa.me/${p}?text=${encodeURIComponent(defaultText)}`;
-    };
-
-    const getTimeRemainingStr = (ann) => {
-        if (!ann.deadline_date || !ann.deadline_time) return null;
-        const deadlineDate = new Date(ann.deadline_date);
-        const deadlineMins = parseTime(ann.deadline_time);
-        deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
-        
-        const diffMs = deadlineDate - currentTime;
-        if (diffMs <= 0) return null; 
-        
-        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
-        const mins = Math.floor((diffMs / 1000 / 60) % 60);
-        return `${days > 0 ? days + 'd ' : ''}${hours}h ${mins}m`;
     };
 
     const getFilteredClasses = (filterKey, filterValue, sourceData = rawData) => {
@@ -881,8 +881,15 @@ export default function Home() {
             );
         }
 
-        if (scheduleList.length === 0) return <div style={emptyState}>No classes scheduled.</div>;
-        const daysToRender = (selectedDay === 'ALL' || displayContext === 'all_rooms') ? days : [selectedDay];
+        if (scheduleList.length === 0) return (
+            <div style={emptyState}>
+                <div style={{marginBottom: '10px'}}>No classes scheduled.</div>
+                {(displayContext === 'class' && selectedDay === currentDayStr) && (
+                    <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
+                )}
+            </div>
+        );
+        const daysToRender = (displayContext === 'ongoing') ? [currentDayStr] : (selectedDay === 'ALL' || displayContext === 'all_rooms') ? days : [selectedDay];
 
         return daysToRender.map(day => {
             const dayClasses = scheduleList.filter(c => c.day === day).sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
@@ -897,7 +904,7 @@ export default function Home() {
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
 
-                        const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
+                        const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section && !completedAssignments.includes(a.id));
                         const isContactExpanded = expandedContactId === cls.id;
 
                         let teacherContactNumber = null;
@@ -943,7 +950,7 @@ export default function Home() {
                                                 <span style={{ fontWeight: '900', color: '#b27b00' }}>ASSIGNMENT</span>
                                                 <span style={{ color: '#ccc' }}>|</span>
                                                 <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#856404', fontWeight: 'bold' }}>
-                                                    {SVGS.clock} Due: {getTimeRemainingStr(activeSubjectAssignments[0]) || 'Soon'}
+                                                    {SVGS.clock} Due Soon
                                                 </span>
                                             </div>
                                             <div style={{ color: '#b27b00' }}>
@@ -1088,6 +1095,37 @@ export default function Home() {
         );
     }
 
+    // --- HOME PAGE POINTS COUNTDOWN BAR LOGIC ---
+    const todayPoints = pointsData.filter(p => p.is_saturday === (currentDayStr === 'SAT'));
+    let firstPointTime = 1440;
+    let lastPointTime = 0;
+    todayPoints.forEach(p => {
+        const t = parseDbTime(p.departure_time);
+        if (t < firstPointTime) firstPointTime = t;
+        if (t > lastPointTime) lastPointTime = t;
+    });
+    const showPointsBar = todayPoints.length > 0 && currentMins >= (firstPointTime - 120) && currentMins <= lastPointTime;
+
+    let nextUpTimeStr = '--:--';
+    let nextDownTimeStr = '--:--';
+    if (showPointsBar && currentTab === 'home') {
+        const nextUp = todayPoints.filter(p => p.route === 'AC_to_BJC' && parseDbTime(p.departure_time) >= currentMins).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time))[0];
+        const nextDown = todayPoints.filter(p => p.route === 'BJC_to_AC' && parseDbTime(p.departure_time) >= currentMins).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time))[0];
+        
+        if (nextUp) {
+            const [h,m] = nextUp.departure_time.split(':').map(Number);
+            const d = new Date(currentTime); d.setHours(h,m,0,0);
+            const s = Math.floor((d - currentTime)/1000);
+            nextUpTimeStr = s > 3600 ? `${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}` : `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+        }
+        if (nextDown) {
+            const [h,m] = nextDown.departure_time.split(':').map(Number);
+            const d = new Date(currentTime); d.setHours(h,m,0,0);
+            const s = Math.floor((d - currentTime)/1000);
+            nextDownTimeStr = s > 3600 ? `${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}` : `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+        }
+    }
+
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
@@ -1212,7 +1250,7 @@ export default function Home() {
                     <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
                         <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
                         {tab.label}
-                        {tab.id === 'announcements' && activeAssignments.length > 0 && <span style={newsRedDot}></span>}
+                        {tab.id === 'announcements' && activeAssignments.some(a => !completedAssignments.includes(a.id)) && <span style={newsRedDot}></span>}
                     </button>
                 ))}
             </div>
@@ -1330,18 +1368,33 @@ export default function Home() {
                                                         const tmrwDayStr = new Date(currentTime.getTime() + 86400000).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
                                                         const tmrwPoints = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === (tmrwDayStr === 'SAT')).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
                                                         const tmrwBestPoint = tmrwPoints.length > 0 ? convertTo12Hour(tmrwPoints[0].departure_time.slice(0,5)) : 'N/A';
+                                                        const hasTmrwLectures = allBaseSchedule.some(c => c.section === userSection?.section && c.session === userSection?.session && c.day === tmrwDayStr && !(getStatusStyles(c)?.label?.toLowerCase().includes('cancelled')));
 
-                                                        return eodToggle === 0 && activeAssignments.length > 0 ? (
-                                                            <div className="expand-anim">
-                                                                <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.1rem' }}>{activeAssignments.length} Assignments for Today</h3>
-                                                                <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
-                                                            </div>
-                                                        ) : (
-                                                            <div className="expand-anim">
-                                                                <h3 style={{ margin: '0 0 10px 0', color: '#007bff', fontSize: '1.1rem' }}>Tomorrow Morning Point</h3>
-                                                                <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#002147' }}>{SVGS.bus} {tmrwBestPoint}</div>
-                                                            </div>
-                                                        );
+                                                        if (!hasTmrwLectures) {
+                                                            return eodToggle === 0 && activeAssignments.length > 0 ? (
+                                                                <div className="expand-anim">
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.1rem' }}>{activeAssignments.length} Assignments for Today</h3>
+                                                                    <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="expand-anim">
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem' }}>No Classes Tomorrow</h3>
+                                                                    <div style={{ fontSize: '0.9rem', color: '#666' }}>Enjoy your day off!</div>
+                                                                </div>
+                                                            );
+                                                        } else {
+                                                            return eodToggle === 0 && activeAssignments.length > 0 ? (
+                                                                <div className="expand-anim">
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.1rem' }}>{activeAssignments.length} Assignments for Today</h3>
+                                                                    <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="expand-anim">
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#007bff', fontSize: '1.1rem' }}>Tomorrow Morning Point</h3>
+                                                                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#002147' }}>{SVGS.bus} {tmrwBestPoint}</div>
+                                                                </div>
+                                                            );
+                                                        }
                                                     }
                                                 }
 
@@ -1384,6 +1437,29 @@ export default function Home() {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Dynamic Points to Departure Bar */}
+                                {showPointsBar && (
+                                    <div className="expand-anim" style={{ background: '#fef9c3', padding: '12px', borderRadius: '15px', marginBottom: '15px', border: '1px solid #fde047', position: 'relative' }}>
+                                        <div style={{ position: 'absolute', top: '-10px', left: '15px', background: '#facc15', color: '#713f12', padding: '2px 10px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #eab308' }}>
+                                            Points to Departure
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                                            <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid #fde047' }}>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#854d0e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                    AC {SVGS.rightArrow} BJC
+                                                </div>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#713f12' }}>{nextUpTimeStr}</div>
+                                            </div>
+                                            <div style={{ flex: 1, textAlign: 'center' }}>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#854d0e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                    BJC {SVGS.rightArrow} AC
+                                                </div>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#713f12' }}>{nextDownTimeStr}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                                     {[
@@ -1712,6 +1788,7 @@ export default function Home() {
                                     getFilteredAnnouncements().map(ann => {
                                         const isExpanded = expandedAssignmentId === ann.id;
                                         const deadlineDate = ann.deadline_date ? new Date(ann.deadline_date) : null;
+                                        const isComplete = completedAssignments.includes(ann.id);
                                         
                                         let timeRemainingDisplay = null;
                                         let isExpired = false;
@@ -1731,13 +1808,33 @@ export default function Home() {
                                             }
                                         }
 
+                                        let statusText = timeRemainingDisplay;
+                                        let statusIcon = SVGS.clock;
+                                        let statusColor = '#856404';
+                                        let bgColor = '#fff9e6';
+                                        let borderColor = '#F2A900';
+
+                                        if (isComplete) {
+                                            statusText = "Completed";
+                                            statusIcon = SVGS.tickCircle;
+                                            statusColor = '#15803d';
+                                            bgColor = '#dcfce7';
+                                            borderColor = '#86efac';
+                                        } else if (isExpired) {
+                                            statusText = "Passed";
+                                            statusIcon = SVGS.alertCircle;
+                                            statusColor = '#991b1b';
+                                            bgColor = '#fef2f2';
+                                            borderColor = '#fecaca';
+                                        }
+
                                         return (
                                             <div 
                                                 key={ann.id} 
                                                 onClick={() => setExpandedAssignmentId(isExpanded ? null : ann.id)}
                                                 style={{ display: 'flex', background: 'white', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', marginBottom: '12px', border: '1px solid #eee', cursor: 'pointer', transition: 'all 0.3s ease' }}
                                             >
-                                                <div style={{ width: '5px', background: ann.type === 'assignment' ? '#F2A900' : '#3b82f6' }}></div>
+                                                <div style={{ width: '5px', background: ann.type === 'assignment' ? borderColor : '#3b82f6' }}></div>
                                                 
                                                 <div style={{ flex: 1, padding: '12px', position: 'relative' }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -1754,12 +1851,11 @@ export default function Home() {
                                                     <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#111827', fontWeight: '800', lineHeight: '1.3' }}>{ann.topics}</h4>
                                                     
                                                     {!isExpanded && ann.type === 'assignment' && deadlineDate && (
-                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isExpired ? '#fef2f2' : '#fff9e6', border: `1px solid ${isExpired ? '#fecaca' : '#F2A900'}`, borderRadius: '15px', padding: '2px 6px', fontSize: '0.6rem', marginTop: '4px' }}>
-                                                            <span style={{ fontWeight: '900', color: isExpired ? '#991b1b' : '#b27b00' }}>ASSIGNMENT</span>
-                                                            <span style={{ color: isExpired ? '#f87171' : '#fde68a' }}>|</span>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: isExpired ? '#991b1b' : '#856404', fontWeight: 'bold' }}>
-                                                                {isExpired ? SVGS.alertCircle : SVGS.clock} 
-                                                                {isExpired ? 'Passed' : timeRemainingDisplay}
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: bgColor, border: `1px solid ${borderColor}`, borderRadius: '15px', padding: '2px 6px', fontSize: '0.6rem', marginTop: '4px' }}>
+                                                            <span style={{ fontWeight: '900', color: isComplete ? '#15803d' : (isExpired ? '#991b1b' : '#b27b00') }}>ASSIGNMENT</span>
+                                                            <span style={{ color: isComplete ? '#86efac' : (isExpired ? '#f87171' : '#fde68a') }}>|</span>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: statusColor, fontWeight: 'bold' }}>
+                                                                {statusIcon} {statusText}
                                                             </span>
                                                         </div>
                                                     )}
@@ -1770,19 +1866,19 @@ export default function Home() {
                                                             
                                                             {ann.type === 'assignment' && deadlineDate && (
                                                                 <>
-                                                                    <div style={{ background: isExpired ? '#fef2f2' : '#f0f9ff', border: `1px solid ${isExpired ? '#fecaca' : '#bae6fd'}`, color: isExpired ? '#991b1b' : '#0369a1', fontSize: '0.7rem', padding: '8px 10px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                                                    <div style={{ background: bgColor, border: `1px solid ${borderColor}`, color: statusColor, fontSize: '0.7rem', padding: '8px 10px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                                                                         <div style={{ fontWeight: 'bold' }}>Due: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}</div>
                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
-                                                                            {isExpired ? SVGS.alertCircle : SVGS.clock}
-                                                                            {isExpired ? `Passed` : `Time Remaining: ${timeRemainingDisplay}`}
+                                                                            {statusIcon} 
+                                                                            {isComplete ? `Status: Completed` : (isExpired ? `Passed` : `Time Remaining: ${timeRemainingDisplay}`)}
                                                                         </div>
                                                                     </div>
                                                                     
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); toggleAssignmentComplete(ann.id); }}
-                                                                        style={{ display: 'flex', alignItems: 'center', gap: '4px', background: completedAssignments.includes(ann.id) ? '#dcfce7' : '#f8f9fa', border: `1px solid ${completedAssignments.includes(ann.id) ? '#86efac' : '#ddd'}`, padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', color: completedAssignments.includes(ann.id) ? '#15803d' : '#555', marginTop: '10px', transition: '0.3s' }}
+                                                                        style={{ display: 'flex', alignItems: 'center', gap: '4px', background: isComplete ? '#dcfce7' : '#f8f9fa', border: `1px solid ${isComplete ? '#86efac' : '#ddd'}`, padding: '6px 12px', borderRadius: '20px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', color: isComplete ? '#15803d' : '#555', marginTop: '10px', transition: '0.3s' }}
                                                                     >
-                                                                        {completedAssignments.includes(ann.id) ? <>{SVGS.tickCircle} Done</> : "Mark Completed"}
+                                                                        {isComplete ? <>{SVGS.tickCircle} Done</> : "Mark Completed"}
                                                                     </button>
                                                                 </>
                                                             )}
@@ -1817,11 +1913,17 @@ export default function Home() {
                                             {SVGS.bus} AC ➔ BJC
                                         </h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)).map((p, i) => (
-                                                <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                                    {convertTo12Hour(p.departure_time.slice(0,5))}
-                                                </div>
-                                            ))}
+                                            {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)).map((p, i) => {
+                                                const remainingStr = getRemainingDepartureTime(p.departure_time);
+                                                return (
+                                                    <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                        <div>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                        {remainingStr && (
+                                                            <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '4px', fontWeight: 'normal' }}>{remainingStr}</div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                             {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
                                         </div>
                                     </div>
@@ -1832,11 +1934,17 @@ export default function Home() {
                                             {SVGS.bus} BJC ➔ AC
                                         </h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)).map((p, i) => (
-                                                <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                                    {convertTo12Hour(p.departure_time.slice(0,5))}
-                                                </div>
-                                            ))}
+                                            {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)).map((p, i) => {
+                                                const remainingStr = getRemainingDepartureTime(p.departure_time);
+                                                return (
+                                                    <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                        <div>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                        {remainingStr && (
+                                                            <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '4px', fontWeight: 'normal' }}>{remainingStr}</div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                             {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
                                         </div>
                                     </div>
