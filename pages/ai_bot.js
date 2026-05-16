@@ -17,7 +17,7 @@ const IubAvatar = ({ size = 20 }) => (
 );
 
 export default function AIBot({ groqApiKey }) {
-    // State Framework (ALL original state preserved, added Session states)
+    // State Framework (ALL original state preserved)
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -26,7 +26,7 @@ export default function AIBot({ groqApiKey }) {
     const [appContextCache, setAppContextCache] = useState({ schedule: [], exceptions: [], transport: [] });
     const [userMeta, setUserMeta] = useState({ session: '', section: '', name: 'Student', semester: '', roll: '' });
     
-    // New States for Sidebar & Multiple Chats
+    // States for Sidebar & Multiple Chats
     const [sessions, setSessions] = useState([]);
     const [currentSessionId, setCurrentSessionId] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -58,7 +58,7 @@ export default function AIBot({ groqApiKey }) {
         return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     };
 
-    // --- Core Lifecycle Optimization (Unchanged Logic + Sidebar Init) ---
+    // --- Core Lifecycle Optimization (Unchanged Logic) ---
     useEffect(() => {
         const savedSelection = localStorage.getItem('iub_user_selection');
         const savedRoll = localStorage.getItem('iub_my_roll');
@@ -101,7 +101,7 @@ export default function AIBot({ groqApiKey }) {
             setMessages(JSON.parse(savedChat));
             setCurrentSessionId(loadedSessions.length > 0 ? loadedSessions[0].id : Date.now().toString());
         } else {
-            handleNewChat(); // Starts a fresh chat if nothing exists
+            handleNewChat();
         }
 
         if (session && section && section !== 'GUEST') {
@@ -124,9 +124,8 @@ export default function AIBot({ groqApiKey }) {
     useEffect(() => {
         if (userMeta.session || userMeta.section) {
             const legacyKey = `iub_chat_history_${userMeta.session}_${userMeta.section}`;
-            localStorage.setItem(legacyKey, JSON.stringify(messages)); // Preserved legacy logic
+            localStorage.setItem(legacyKey, JSON.stringify(messages));
             
-            // Auto-save to sidebar sessions array if conversation has started
             if (messages.length > 1) {
                 setSessions(prev => {
                     const existing = prev.find(s => s.id === currentSessionId);
@@ -287,6 +286,12 @@ CRITICAL RULES OF ENGAGEMENT:
         }
     };
 
+    const clearChatHistoryStateLog = () => {
+        if (window.confirm("Are you sure you want to clear this current chat?")) {
+            handleNewChat();
+        }
+    };
+
     // Identify if the chat only has the initial greeting
     const isNewChat = messages.length === 1 && messages[0].sender === 'bot';
 
@@ -315,6 +320,7 @@ CRITICAL RULES OF ENGAGEMENT:
     return (
         <div style={{ backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', height: '100%' }}>
             <div className="ai-chat-wrapper" style={botContainerWrapper}>
+                
                 {/* Minimal Header Ribbon Section */}
                 <div style={botHeaderRibbon}>
                     <div style={flexAlignRow}>
@@ -327,6 +333,9 @@ CRITICAL RULES OF ENGAGEMENT:
                         </div>
                     </div>
                     <div style={flexAlignRow}>
+                        <button onClick={clearChatHistoryStateLog} style={clearMemoryActionBtn} title="Clear Chat">
+                            {ICONS.trash}
+                        </button>
                         <button onClick={handleNewChat} style={clearMemoryActionBtn} title="New Chat">
                             {ICONS.newChat}
                         </button>
@@ -337,7 +346,7 @@ CRITICAL RULES OF ENGAGEMENT:
                 </div>
 
                 {/* Main Content Area (Sidebar + Chat) */}
-                <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
                     
                     {/* Interactive Chat Canvas */}
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -390,6 +399,7 @@ CRITICAL RULES OF ENGAGEMENT:
                                         style={inputEntryFieldStyle}
                                         disabled={isTyping}
                                     />
+                                    {/* Send button positioned perfectly inside text bar */}
                                     <button type="submit" style={actionDispatchSubmissionBtn(inputValue.trim())} disabled={!inputValue.trim()}>
                                         {ICONS.send}
                                     </button>
@@ -398,9 +408,9 @@ CRITICAL RULES OF ENGAGEMENT:
                         </form>
                     </div>
 
-                    {/* Sidebar Panel */}
+                    {/* Sidebar Panel overlay on Mobile, inline on Desktop */}
                     {isSidebarOpen && (
-                        <div className="sidebar-slide-in" style={sidebarStyle}>
+                        <div className="sidebar-container sidebar-slide-in">
                             <h3 style={sidebarTitle}>Previous Chats</h3>
                             {sessions.length === 0 ? (
                                 <p style={sidebarEmpty}>No previous chats yet.</p>
@@ -433,8 +443,8 @@ CRITICAL RULES OF ENGAGEMENT:
                     /* Animated Neon Gradient Border */
                     .animated-neon-border {
                         position: relative;
-                        padding: 2px;
-                        border-radius: 20px;
+                        padding: 1px;
+                        border-radius: 24px;
                         background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
                         background-size: 300% 100%;
                         animation: aiGlow 4s linear infinite;
@@ -447,12 +457,36 @@ CRITICAL RULES OF ENGAGEMENT:
                         100% { background-position: 0 0; }
                     }
 
+                    /* Sidebar Responsive Styling */
+                    .sidebar-container {
+                        width: 260px;
+                        background: #f8fafc;
+                        border-left: 1px solid #e2e8f0;
+                        padding: 16px;
+                        overflow-y: auto;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                    }
                     .sidebar-slide-in {
                         animation: slideLeft 0.2s ease-out forwards;
                     }
                     @keyframes slideLeft {
                         0% { opacity: 0; transform: translateX(20px); }
                         100% { opacity: 1; transform: translateX(0); }
+                    }
+                    
+                    /* Mobile Sidebar specifically taking 85% width */
+                    @media (max-width: 768px) {
+                        .sidebar-container {
+                            position: absolute;
+                            right: 0;
+                            top: 0;
+                            height: 100%;
+                            width: 85%;
+                            z-index: 50;
+                            box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+                        }
                     }
 
                     /* Markdown Overrides to Fix Empty Space & Margins */
@@ -487,7 +521,7 @@ CRITICAL RULES OF ENGAGEMENT:
 
 // --- Structural Theme Styling Specs ---
 const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', width: '100%', maxWidth: '1000px', margin: '0 auto', height: 'calc(100vh - 80px)', minHeight: '500px', boxShadow: '0 0 20px rgba(0,0,0,0.03)' };
-const botHeaderRibbon = { background: '#ffffff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f8fafc' };
+const botHeaderRibbon = { background: '#ffffff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f8fafc', zIndex: 10 };
 const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '8px' };
 const botAvatarBadge = { width: '28px', height: '28px', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', overflow: 'hidden' };
 const botTitleLabel = { color: '#0f172a', fontSize: '0.85rem', fontWeight: '600', letterSpacing: '-0.2px' };
@@ -511,17 +545,17 @@ const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width
 const userDialogueWrapperBubble = { maxWidth: '85%', background: '#f8fafc', color: '#0f172a', borderRadius: '12px', padding: '10px 12px', fontSize: '0.85rem', lineHeight: '1.5', border: '1px solid #f1f5f9' };
 const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', color: '#0f172a', borderRadius: '0', padding: '0' };
 
-const formInteractionPanelTray = { background: '#ffffff', padding: '10px 16px 16px', display: 'flex', justifyContent: 'center', position: 'sticky', bottom: 0 };
-const inputContainerBoxRel = { display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '18px', padding: '4px 6px 4px 14px' };
-const inputEntryFieldStyle = { flex: 1, padding: '8px 0', border: 'none', fontSize: '0.9rem', background: 'transparent', outline: 'none', color: '#0f172a' };
-const actionDispatchSubmissionBtn = (active) => ({ width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s', marginLeft: '6px' });
+const formInteractionPanelTray = { background: '#ffffff', padding: '10px 16px 16px', display: 'flex', justifyContent: 'center', position: 'sticky', bottom: 0, zIndex: 10 };
+const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '24px' };
+const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '24px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
+// Send button made Absolute to float perfectly inside the input field
+const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
 
 const contentBodyStyle = { fontSize: '0.9rem', lineHeight: '1.6', wordBreak: 'break-word' };
 const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '3px', padding: '4px 0' };
 const dotAnimationDelay = (delay) => ({ animationDelay: `${delay}s` });
 
 // Sidebar Styling
-const sidebarStyle = { width: '240px', background: '#f8fafc', borderLeft: '1px solid #e2e8f0', padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' };
 const sidebarTitle = { fontSize: '0.8rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '0' };
 const sidebarEmpty = { fontSize: '0.8rem', color: '#94a3b8' };
 const sidebarItem = (isActive) => ({ padding: '10px 12px', fontSize: '0.85rem', color: isActive ? '#0ea5e9' : '#334155', background: isActive ? '#e0f2fe' : 'transparent', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s', border: '1px solid', borderColor: isActive ? '#bae6fd' : 'transparent', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
