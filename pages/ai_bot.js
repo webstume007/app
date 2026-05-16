@@ -231,7 +231,7 @@ CRITICAL RULES OF ENGAGEMENT:
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: "llama-3.1-8b-instant", // Updated to Groq's active GPT OSS equivalent
+                    model: "openai/gpt-oss-20b", // STRICT FIX: Implemented Groq's GPT OSS Model
                     messages: targetPayloadMessages,
                     temperature: 0.3,
                     max_tokens: 1500
