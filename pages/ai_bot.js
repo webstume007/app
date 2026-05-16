@@ -4,13 +4,12 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 // --- Minimalist Modern SVGs for Chat UI Icons ---
-const BOT_SVGS = {
-    sparkle: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-    user: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>,
-    send: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
-    trash: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-    book: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>,
-    info: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+const ICONS = {
+    bot: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/><path d="M12 8v14"/><path d="M8 12h8"/></svg>,
+    user: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>, // Flat upward arrow like ChatGPT
+    attach: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
+    trash: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 };
 
 export default function AIBot({ groqApiKey }) {
@@ -32,12 +31,14 @@ export default function AIBot({ groqApiKey }) {
         const savedRoll = localStorage.getItem('iub_my_roll');
         let session = '';
         let section = 'GUEST';
+        let userName = 'Student';
 
         if (savedSelection) {
             const parsed = JSON.parse(savedSelection);
             session = parsed.session || parsed.semester || '';
             section = parsed.section || 'GUEST';
-            setUserMeta(prev => ({ ...prev, session, section }));
+            userName = parsed.name || 'Student'; // Extract name if available
+            setUserMeta(prev => ({ ...prev, session, section, name: userName }));
         }
 
         // 2. Hydrate offline cache contextual parameters
@@ -61,11 +62,12 @@ export default function AIBot({ groqApiKey }) {
         if (savedChat) {
             setMessages(JSON.parse(savedChat));
         } else {
+            // Updated minimal greeting using user's name
             setMessages([
                 {
                     id: 'welcome',
                     sender: 'bot',
-                    text: `Hello! I am your AI Assistant. I have indexed your class schedule, transport point logs, and syllabus matrices. Ask me anything about your course metrics, lecture notes, academic examples, or class cancel/confirm structural changes!`,
+                    text: `Hello ${userName}! How can I help you with your coursework or schedule today?`,
                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 }
             ]);
@@ -119,10 +121,10 @@ export default function AIBot({ groqApiKey }) {
             `- Route ${t.route}: Departs at ${t.departure_time} (${t.is_saturday ? 'Saturday Only Schedule' : 'Regular Mon-Fri Run'})`
         ).join("\n");
 
-        return `You are the highly advanced, official dynamic IUB AI Academic Assistant, deployed to guide university students directly regarding their current semester tracking. 
+        return `You are the highly advanced, official dynamic IUB Assistant AI, deployed to guide university students directly regarding their current semester tracking. 
 
 Here is the immutable operational framework and dataset you must abide by:
-1. USER METADATA CONTEXT: The active user is registered in Session: ${userMeta.session || 'N/A'} and Section: ${userMeta.section || 'GUEST'}.
+1. USER METADATA CONTEXT: The active user is registered in Session: ${userMeta.session || 'N/A'} and Section: ${userMeta.section || 'GUEST'}. User Name: ${userMeta.name}.
 2. OFFICIAL COURSE OUTLINES (SUPABASE SOURCE):
 ${outlineContext || "No custom course outline profiles mapped for this section configuration."}
 3. CURRENT ACTIVE SCHEDULE LOGS:
@@ -231,8 +233,6 @@ CRITICAL RULES OF ENGAGEMENT:
 
     // --- Sub-Component Parser Upgraded for Real Markdown ---
     const StructuralMessageBlock = ({ text }) => {
-        // We preserved your function entirely, but upgraded the return body
-        // to parse real Markdown (GPT standard output: ###, **, | tables |)
         return (
             <div className="modern-markdown-body" style={contentBodyStyle}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -247,23 +247,17 @@ CRITICAL RULES OF ENGAGEMENT:
             {/* Minimal Header Ribbon Section */}
             <div style={botHeaderRibbon}>
                 <div style={flexAlignRow}>
-                    <div style={botAvatarBadge}>{BOT_SVGS.sparkle}</div>
+                    <div style={botAvatarBadge}>{ICONS.bot}</div>
                     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={botTitleLabel}>AI Academic Tutor</div>
+                        <div style={botTitleLabel}>IUB Assistant AI</div>
                         <div style={botSubStatus}>
-                            {userMeta.session || 'Session'} • {userMeta.section || 'Section'} • Active
+                            {userMeta.session || 'Session'} • {userMeta.section || 'Section'}
                         </div>
                     </div>
                 </div>
                 <button onClick={clearChatHistoryStateLog} style={clearMemoryActionBtn} title="Purge local chat cache">
-                    {BOT_SVGS.trash} <span className="mobile-hide" style={{ marginLeft: '6px' }}>Clear</span>
+                    {ICONS.trash}
                 </button>
-            </div>
-
-            {/* Scope Constraint Alert Notice Badge */}
-            <div style={scopeAlertBadgeStrip}>
-                <span style={{ marginTop: '2px' }}>{BOT_SVGS.info}</span> 
-                <span>Engine Context: Active schedule, syllabus mapping, and transit routing nodes directly.</span>
             </div>
 
             {/* Interactive Dialogue Stream Box Canvas Container */}
@@ -274,13 +268,9 @@ CRITICAL RULES OF ENGAGEMENT:
                         return (
                             <div key={msg.id} style={isUserMessage ? dialogRowUserTrack : dialogRowBotTrack}>
                                 {!isUserMessage && (
-                                    <div style={botIconWrapper}>{BOT_SVGS.sparkle}</div>
+                                    <div style={botIconWrapper}>{ICONS.bot}</div>
                                 )}
                                 <div style={isUserMessage ? userDialogueWrapperBubble : botDialogueWrapperBubble}>
-                                    <div style={metaHeaderLabelTrack(isUserMessage)}>
-                                        <span style={{ fontWeight: 600 }}>{isUserMessage ? 'You' : 'Academic Core'}</span>
-                                        <span style={{ fontWeight: 400, opacity: 0.6 }}>{msg.timestamp}</span>
-                                    </div>
                                     <StructuralMessageBlock text={msg.text} />
                                 </div>
                             </div>
@@ -290,7 +280,7 @@ CRITICAL RULES OF ENGAGEMENT:
                     {/* Simulated Real-Time Dynamic Interface Typing Component */}
                     {isTyping && (
                         <div style={dialogRowBotTrack}>
-                            <div style={botIconWrapper}>{BOT_SVGS.sparkle}</div>
+                            <div style={botIconWrapper}>{ICONS.bot}</div>
                             <div style={botDialogueWrapperBubble}>
                                 <div style={typingLoaderWrap}>
                                     <div className="typing-dot" style={dotAnimationDelay(0)}></div>
@@ -300,23 +290,26 @@ CRITICAL RULES OF ENGAGEMENT:
                             </div>
                         </div>
                     )}
-                    <div ref={messagesEndRef} style={{ height: '10px' }} />
+                    <div ref={messagesEndRef} style={{ height: '4px' }} />
                 </div>
             </div>
 
-            {/* Application Form Interaction Entry Module */}
+            {/* Modern Minimal Pill Input Form */}
             <form onSubmit={handleSendMessage} style={formInteractionPanelTray}>
                 <div style={inputContainerBoxRel}>
+                    <button type="button" style={attachBtnStyle} title="Attach file (UI Mock)">
+                        {ICONS.attach}
+                    </button>
                     <input 
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="Ask about lectures, syllabus, schedules..."
+                        placeholder="Message IUB Assistant AI..."
                         style={inputEntryFieldStyle}
                         disabled={isTyping}
                     />
                     <button type="submit" style={actionDispatchSubmissionBtn(inputValue.trim())} disabled={!inputValue.trim()}>
-                        {BOT_SVGS.send}
+                        {ICONS.send}
                     </button>
                 </div>
             </form>
@@ -324,58 +317,73 @@ CRITICAL RULES OF ENGAGEMENT:
             <style>{`
                 .ai-chat-wrapper {
                     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                    animation: slideUpFade 0.4s ease-out forwards;
                 }
-                .modern-markdown-body p { margin-bottom: 0.75rem; }
+                
+                @keyframes slideUpFade {
+                    0% { opacity: 0; transform: translateY(15px); }
+                    100% { opacity: 1; transform: translateY(0); }
+                }
+
+                .modern-markdown-body p { margin-bottom: 0.85rem; }
                 .modern-markdown-body p:last-child { margin-bottom: 0; }
                 .modern-markdown-body h1, .modern-markdown-body h2, .modern-markdown-body h3 { font-weight: 600; color: #111827; margin-top: 1.25rem; margin-bottom: 0.5rem; }
                 .modern-markdown-body h3 { font-size: 1.05rem; }
                 .modern-markdown-body ul, .modern-markdown-body ol { margin-bottom: 1rem; padding-left: 1.5rem; }
                 .modern-markdown-body li { margin-bottom: 0.25rem; }
                 .modern-markdown-body strong { font-weight: 600; color: #111827; }
-                .modern-markdown-body code { font-family: ui-monospace, monospace; background: rgba(0,0,0,0.05); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.85em; }
-                .modern-markdown-body pre code { display: block; padding: 1rem; overflow-x: auto; background: #1e293b; color: #f8fafc; border-radius: 8px; }
-                .modern-markdown-body table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
-                .modern-markdown-body th { background: #f8fafc; text-align: left; font-weight: 600; padding: 8px 12px; border-bottom: 2px solid #e2e8f0; }
-                .modern-markdown-body td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+                .modern-markdown-body code { font-family: ui-monospace, monospace; background: rgba(0,0,0,0.04); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.85em; color: #cf222e; }
+                .modern-markdown-body pre code { display: block; padding: 1rem; overflow-x: auto; background: #f6f8fa; color: #24292f; border-radius: 8px; border: 1px solid #d0d7de; font-size: 0.85rem; line-height: 1.45; }
+                
+                /* Beautiful Table Styling */
+                .modern-markdown-body table { display: block; max-width: 100%; overflow-x: auto; white-space: nowrap; border-collapse: collapse; margin: 1.25rem 0; font-size: 0.85rem; box-shadow: 0 0 0 1px #e2e8f0; border-radius: 8px; }
+                .modern-markdown-body th { background: #f8fafc; text-align: left; font-weight: 600; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: #334155; }
+                .modern-markdown-body td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #475569; }
+                .modern-markdown-body tr:last-child td { border-bottom: none; }
+                .modern-markdown-body tr:nth-child(even) { background-color: #fdfdfd; }
 
                 .typing-dot {
-                    width: 6px;
-                    height: 6px;
+                    width: 5px;
+                    height: 5px;
                     background-color: #94a3b8;
                     border-radius: 50%;
                     display: inline-block;
                     animation: bounceLoaderState 1.4s infinite ease-in-out both;
                 }
                 @keyframes bounceLoaderState {
-                    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-                    40% { opacity: 1; transform: scale(1.1); }
+                    0%, 80%, 100% { opacity: 0.4; transform: scale(0.8); }
+                    40% { opacity: 1; transform: scale(1.2); background-color: #10a37f; }
                 }
             `}</style>
         </div>
     );
 }
 
-// --- Structural Theme Styling Specs Matrices Match Setup Styles Config ---
-const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', height: 'calc(100vh - 160px)', minHeight: '500px', overflow: 'hidden', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)' };
-const botHeaderRibbon = { background: '#ffffff', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' };
-const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '12px' };
-const botAvatarBadge = { width: '32px', height: '32px', background: '#10a37f', borderRadius: '8px', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const botTitleLabel = { color: '#0f172a', fontSize: '0.9rem', fontWeight: '600' };
-const botSubStatus = { color: '#64748b', fontSize: '0.7rem', fontWeight: '500' };
-const clearMemoryActionBtn = { display: 'inline-flex', alignItems: 'center', background: 'transparent', color: '#94a3b8', border: 'none', padding: '6px', fontSize: '0.75rem', cursor: 'pointer', transition: 'color 0.2s' };
-const scopeAlertBadgeStrip = { background: '#f8fafc', borderBottom: '1px solid #f1f5f9', color: '#64748b', padding: '8px 20px', fontSize: '0.7rem', display: 'flex', alignItems: 'flex-start', gap: '8px' };
-const chatDialogueDisplayBox = { flex: 1, padding: '20px', overflowY: 'auto', background: '#ffffff' };
-const messagesConstraintBox = { maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' };
+// --- Structural Theme Styling Specs ---
+const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', height: 'calc(100vh - 120px)', minHeight: '500px', overflow: 'hidden', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' };
+const botHeaderRibbon = { background: '#ffffff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' };
+const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '10px' };
+const botAvatarBadge = { width: '30px', height: '30px', border: '1px solid #e2e8f0', borderRadius: '50%', color: '#10a37f', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff' };
+const botTitleLabel = { color: '#0f172a', fontSize: '0.85rem', fontWeight: '600' };
+const botSubStatus = { color: '#94a3b8', fontSize: '0.7rem', fontWeight: '400' };
+const clearMemoryActionBtn = { background: 'transparent', color: '#94a3b8', border: 'none', padding: '6px', cursor: 'pointer', transition: 'color 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+
+const chatDialogueDisplayBox = { flex: 1, padding: '24px 16px', overflowY: 'auto', background: '#ffffff' };
+const messagesConstraintBox = { width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' };
+
 const dialogRowUserTrack = { display: 'flex', justifyContent: 'flex-end', width: '100%' };
 const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%', gap: '12px' };
-const botIconWrapper = { width: '28px', height: '28px', background: '#10a37f', color: '#fff', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' };
-const userDialogueWrapperBubble = { maxWidth: '75%', background: '#f1f5f9', color: '#0f172a', borderRadius: '12px', padding: '12px 16px' };
-const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', color: '#334155', borderRadius: '0', padding: '0 0 12px 0' };
-const metaHeaderLabelTrack = (isUser) => ({ display: 'flex', gap: '8px', fontSize: '0.75rem', marginBottom: '4px', color: isUser ? '#64748b' : '#0f172a' });
-const formInteractionPanelTray = { background: '#ffffff', padding: '16px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center' };
-const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', maxWidth: '800px' };
-const inputEntryFieldStyle = { width: '100%', padding: '14px 48px 14px 16px', borderRadius: '24px', border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#ffffff', outline: 'none', transition: 'border-color 0.2s', color: '#0f172a', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' };
-const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '8px', width: '32px', height: '32px', background: active ? '#10a37f' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
+
+const botIconWrapper = { width: '28px', height: '28px', border: '1px solid #e2e8f0', color: '#10a37f', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' };
+const userDialogueWrapperBubble = { maxWidth: '80%', background: '#f4f4f5', color: '#0f172a', borderRadius: '16px', padding: '10px 16px', fontSize: '0.9rem', lineHeight: '1.5' };
+const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', color: '#0f172a', borderRadius: '0', padding: '2px 0 0 0' };
+
+const formInteractionPanelTray = { background: '#ffffff', padding: '12px 16px 20px', display: 'flex', justifyContent: 'center' };
+const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#f4f4f5', borderRadius: '24px', padding: '6px 8px' };
+const attachBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: '#71717a', padding: '8px', cursor: 'pointer', borderRadius: '50%' };
+const inputEntryFieldStyle = { flex: 1, padding: '10px 12px', border: 'none', fontSize: '0.9rem', background: 'transparent', outline: 'none', color: '#0f172a' };
+const actionDispatchSubmissionBtn = (active) => ({ width: '32px', height: '32px', background: active ? '#10a37f' : 'transparent', color: active ? '#ffffff' : '#a1a1aa', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s', marginLeft: '4px' });
+
 const contentBodyStyle = { fontSize: '0.9rem', lineHeight: '1.6', wordBreak: 'break-word' };
 const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 0' };
 const dotAnimationDelay = (delay) => ({ animationDelay: `${delay}s` });
