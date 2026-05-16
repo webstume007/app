@@ -33,7 +33,7 @@ export default function AIBot({ groqApiKey }) {
 
     const messagesEndRef = useRef(null);
 
-    // Dynamic Semester Calculator
+    // Dynamic Semester Calculator based on Session
     const calculateSemester = (sessionStr) => {
         if (!sessionStr) return 'Unknown Semester';
         const currentDate = new Date();
@@ -58,6 +58,7 @@ export default function AIBot({ groqApiKey }) {
         return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
     };
 
+    // --- Core Lifecycle Optimization ---
     useEffect(() => {
         const savedSelection = localStorage.getItem('iub_user_selection');
         const savedRoll = localStorage.getItem('iub_my_roll');
@@ -149,6 +150,7 @@ export default function AIBot({ groqApiKey }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    // --- Context Compilation Architecture ---
     const buildSystemContextInstruction = () => {
         const outlineContext = courseOutlines.map(o => 
             `Subject: ${o.subject}\nTeacher: ${o.teacher || 'N/A'}\nWeekly Outline Details: ${o.weekly_plan || 'N/A'}\nLearning Objectives: ${o.objectives || 'N/A'}`
@@ -186,6 +188,7 @@ CRITICAL RULES OF ENGAGEMENT:
 - Maintain a highly sophisticated, adaptive, supportive yet peer-like academic posture. Provide actionable answers concisely without fluff.`;
     };
 
+    // --- Message Processing Dispatch Engine ---
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!inputValue.trim()) return;
@@ -266,7 +269,7 @@ CRITICAL RULES OF ENGAGEMENT:
             {
                 id: `welcome-${Date.now()}`,
                 sender: 'bot',
-                text: `Hi, I am IUB AI Assistant. How can I help you regarding Schedule, Course Outlines, Points Timing, or Your Section's Teachers Info?`,
+                text: `Hi, I am IUB AI Assitant, How Can I help you in Schedule, Course Outline, Points Timing and Your Section's Teachers Info?`,
                 timestamp: getCurrentTime12Hour()
             }
         ]);
@@ -291,6 +294,7 @@ CRITICAL RULES OF ENGAGEMENT:
 
     const isNewChat = messages.length === 1 && messages[0].sender === 'bot';
 
+    // --- Sub-Component Parser ---
     const StructuralMessageBlock = ({ text }) => {
         return (
             <div className="modern-markdown-body" style={contentBodyStyle}>
@@ -313,7 +317,7 @@ CRITICAL RULES OF ENGAGEMENT:
     };
 
     return (
-        <div style={{ backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center', height: '100vh', width: '100%' }}>
+        <div className="page-wrapper-background">
             <div className="ai-chat-wrapper" style={botContainerWrapper}>
                 
                 {/* Minimal Header Ribbon Section */}
@@ -340,10 +344,10 @@ CRITICAL RULES OF ENGAGEMENT:
                     </div>
                 </div>
 
-                {/* Main Content Area (Sidebar placed FIRST for proper Left-Alignment) */}
+                {/* Main Content Area (Sidebar + Chat) */}
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
                     
-                    {/* Sidebar Panel - Renders on the Left */}
+                    {/* Sidebar Panel - Placed FIRST so it aligns LEFT on Desktop */}
                     {isSidebarOpen && (
                         <div className="sidebar-container sidebar-slide-in">
                             <h3 style={sidebarTitle}>Previous Chats</h3>
@@ -364,7 +368,7 @@ CRITICAL RULES OF ENGAGEMENT:
                     )}
 
                     {/* Interactive Chat Canvas */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: '#ffffff' }}>
                         <div style={chatDialogueDisplayBox}>
                             {isNewChat ? (
                                 <div style={heroEntranceCenter}>
@@ -404,7 +408,7 @@ CRITICAL RULES OF ENGAGEMENT:
 
                         {/* Ultra Minimal Neon-AI Input Form */}
                         <form onSubmit={handleSendMessage} style={formInteractionPanelTray}>
-                            <div className="animated-neon-border">
+                            <div className="animated-neon-border" style={{ width: '100%', maxWidth: '768px' }}>
                                 <div style={inputContainerBoxRel}>
                                     <input 
                                         type="text"
@@ -421,13 +425,35 @@ CRITICAL RULES OF ENGAGEMENT:
                             </div>
                         </form>
                     </div>
-
                 </div>
 
                 <style>{`
+                    .page-wrapper-background {
+                        background-color: #f1f5f9;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        padding: 0;
+                    }
+
+                    /* Refined Wrapper for better Desktop Appearance */
                     .ai-chat-wrapper {
                         font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
                         animation: slideUpFade 0.3s ease-out forwards;
+                    }
+
+                    @media (min-width: 1024px) {
+                        .page-wrapper-background {
+                            padding: 24px;
+                        }
+                        .ai-chat-wrapper {
+                            height: calc(100vh - 48px) !important;
+                            border-radius: 16px;
+                            border: 1px solid #e2e8f0;
+                            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+                            overflow: hidden;
+                        }
                     }
                     
                     @keyframes slideUpFade {
@@ -435,16 +461,14 @@ CRITICAL RULES OF ENGAGEMENT:
                         100% { opacity: 1; transform: translateY(0); }
                     }
 
-                    /* Animated Neon Gradient Border aligned to 800px max-width */
+                    /* Animated Neon Gradient Border */
                     .animated-neon-border {
                         position: relative;
-                        padding: 1px;
+                        padding: 1.5px;
                         border-radius: 24px;
                         background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
                         background-size: 300% 100%;
                         animation: aiGlow 4s linear infinite;
-                        width: 100%;
-                        max-width: 800px;
                         margin: 0 auto;
                     }
                     @keyframes aiGlow {
@@ -452,35 +476,37 @@ CRITICAL RULES OF ENGAGEMENT:
                         100% { background-position: 0 0; }
                     }
 
-                    /* Sidebar Responsive Styling */
+                    /* Sidebar Responsive Styling - Moved to left */
                     .sidebar-container {
                         width: 260px;
                         background: #f8fafc;
-                        border-right: 1px solid #e2e8f0; /* Changed to border-right for standard layout */
+                        border-right: 1px solid #e2e8f0;
                         padding: 16px;
                         overflow-y: auto;
                         display: flex;
                         flex-direction: column;
                         gap: 8px;
-                        flex-shrink: 0; /* Prevents sidebar from stretching weirdly */
+                        z-index: 20;
                     }
+                    
                     .sidebar-slide-in {
                         animation: slideRight 0.2s ease-out forwards;
                     }
+                    
                     @keyframes slideRight {
                         0% { opacity: 0; transform: translateX(-20px); }
                         100% { opacity: 1; transform: translateX(0); }
                     }
                     
-                    /* Mobile Sidebar specifically taking 85% width */
+                    /* Mobile Sidebar adjustments */
                     @media (max-width: 768px) {
                         .sidebar-container {
                             position: absolute;
                             left: 0;
                             top: 0;
                             height: 100%;
-                            width: 85%;
-                            z-index: 50;
+                            width: 80%;
+                            max-width: 300px;
                             box-shadow: 4px 0 20px rgba(0,0,0,0.1);
                         }
                     }
@@ -516,42 +542,42 @@ CRITICAL RULES OF ENGAGEMENT:
 }
 
 // --- Structural Theme Styling Specs ---
-// Updated to take full viewport height on desktop for a native-app feel
-const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', width: '100%', maxWidth: '1200px', margin: '0 auto', height: '100vh', boxShadow: '0 0 20px rgba(0,0,0,0.05)', boxSizing: 'border-box' };
-const botHeaderRibbon = { background: '#ffffff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f8fafc', zIndex: 10, boxSizing: 'border-box' };
-const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '8px' };
-const botAvatarBadge = { width: '28px', height: '28px', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', overflow: 'hidden' };
-const botTitleLabel = { color: '#0f172a', fontSize: '0.85rem', fontWeight: '600', letterSpacing: '-0.2px' };
-const botSubStatus = { color: '#94a3b8', fontSize: '0.65rem', fontWeight: '400' };
-const clearMemoryActionBtn = { background: 'transparent', color: '#64748b', border: 'none', padding: '6px', cursor: 'pointer', transition: 'color 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+// Outer container spans 100% up to 1400px (allowing the layout to be expansive but readable)
+const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', width: '100%', maxWidth: '1400px', margin: '0 auto', height: '100vh', boxSizing: 'border-box' };
+const botHeaderRibbon = { background: '#ffffff', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', zIndex: 10, boxSizing: 'border-box' };
+const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '12px' };
+const botAvatarBadge = { width: '32px', height: '32px', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', overflow: 'hidden' };
+const botTitleLabel = { color: '#0f172a', fontSize: '0.9rem', fontWeight: '600', letterSpacing: '-0.2px' };
+const botSubStatus = { color: '#64748b', fontSize: '0.7rem', fontWeight: '400' };
+const clearMemoryActionBtn = { background: 'transparent', color: '#64748b', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
-const chatDialogueDisplayBox = { flex: 1, padding: '20px 20px', overflowY: 'auto', background: '#ffffff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' };
+const chatDialogueDisplayBox = { flex: 1, padding: '24px', overflowY: 'auto', background: '#ffffff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' };
 
 // Center Entrance Styles
 const heroEntranceCenter = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: '10vh' };
-const heroLogoWrap = { width: '64px', height: '64px', borderRadius: '50%', background: '#ffffff', boxShadow: '0 4px 14px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' };
-const heroTitle = { fontSize: '1.25rem', fontWeight: '600', color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.4px' };
-const heroSubtitle = { fontSize: '0.85rem', color: '#64748b', textAlign: 'center', maxWidth: '300px', lineHeight: '1.5' };
+const heroLogoWrap = { width: '72px', height: '72px', borderRadius: '50%', background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' };
+const heroTitle = { fontSize: '1.5rem', fontWeight: '600', color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.4px' };
+const heroSubtitle = { fontSize: '0.9rem', color: '#64748b', textAlign: 'center', maxWidth: '400px', lineHeight: '1.5' };
 
-// Uniform Max-Width mapping between messages constraint box and input bar to prevent irregular stretching
-const messagesConstraintBox = { width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 };
+// The core column holding the messages. Max-width set to typical readable standard (768px).
+const messagesConstraintBox = { width: '100%', maxWidth: '768px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0 };
 
 const dialogRowUserTrack = { display: 'flex', justifyContent: 'flex-end', width: '100%' };
-const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%', gap: '10px', minWidth: 0 };
+const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%', gap: '12px', minWidth: 0 };
 
-const userDialogueWrapperBubble = { maxWidth: '85%', background: '#f8fafc', color: '#0f172a', borderRadius: '12px', padding: '10px 12px', fontSize: '0.85rem', lineHeight: '1.5', border: '1px solid #f1f5f9', boxSizing: 'border-box' };
-const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', minWidth: 0, color: '#0f172a', borderRadius: '0', padding: '0' };
+const userDialogueWrapperBubble = { maxWidth: '80%', background: '#f8fafc', color: '#0f172a', borderRadius: '16px', borderBottomRightRadius: '4px', padding: '12px 16px', fontSize: '0.9rem', lineHeight: '1.6', border: '1px solid #f1f5f9', boxSizing: 'border-box' };
+const botDialogueWrapperBubble = { maxWidth: '100%', minWidth: 0, color: '#0f172a', borderRadius: '0', padding: '0 0 0 4px' };
 
-const formInteractionPanelTray = { background: '#ffffff', padding: '10px 20px 16px', display: 'flex', justifyContent: 'center', position: 'sticky', bottom: 0, zIndex: 10, boxSizing: 'border-box' };
+const formInteractionPanelTray = { background: '#ffffff', padding: '16px 24px 24px', display: 'flex', justifyContent: 'center', position: 'sticky', bottom: 0, zIndex: 10, boxSizing: 'border-box', borderTop: '1px solid transparent' };
 const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '24px', boxSizing: 'border-box' };
-const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '24px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
-const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
+const inputEntryFieldStyle = { flex: 1, padding: '14px 48px 14px 20px', border: 'none', borderRadius: '24px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
+const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', width: '34px', height: '34px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
 
-const contentBodyStyle = { fontSize: '0.9rem', lineHeight: '1.6', wordBreak: 'break-word' };
-const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '3px', padding: '4px 0' };
+const contentBodyStyle = { fontSize: '0.95rem', lineHeight: '1.6', wordBreak: 'break-word' };
+const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 0' };
 const dotAnimationDelay = (delay) => ({ animationDelay: `${delay}s` });
 
-// Sidebar Styling Options Refactored 
-const sidebarTitle = { fontSize: '0.8rem', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', marginTop: '0' };
-const sidebarEmpty = { fontSize: '0.8rem', color: '#94a3b8' };
-const sidebarItem = (isActive) => ({ padding: '10px 12px', fontSize: '0.85rem', color: isActive ? '#0ea5e9' : '#334155', background: isActive ? '#e0f2fe' : 'transparent', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s', border: '1px solid', borderColor: isActive ? '#bae6fd' : 'transparent', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
+// Sidebar Styling Updates
+const sidebarTitle = { fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', marginTop: '4px', paddingLeft: '4px' };
+const sidebarEmpty = { fontSize: '0.85rem', color: '#94a3b8', paddingLeft: '4px' };
+const sidebarItem = (isActive) => ({ padding: '12px 14px', fontSize: '0.85rem', fontWeight: isActive ? '500' : '400', color: isActive ? '#0ea5e9' : '#334155', background: isActive ? '#f0f9ff' : 'transparent', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s ease', border: '1px solid', borderColor: isActive ? '#bae6fd' : 'transparent', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' });
