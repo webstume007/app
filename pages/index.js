@@ -1176,15 +1176,52 @@ export default function Home() {
             <style>{`
                 .desktop-nav { display: none; }
                 .mobile-nav { display: flex; }
+                
                 @media (min-width: 768px) {
                     .desktop-nav { display: flex; align-items: center; gap: 15px; }
                     .mobile-nav { display: none !important; }
                     .hamburger-btn { display: none !important; }
                     .desktop-hide { display: none !important; }
+                    .header-title-text { max-width: 300px !important; opacity: 1 !important; }
+                    .mobile-sub-bar { display: none !important; }
                 }
+                
                 @media (max-width: 767px) {
                     .mobile-hide { display: none !important; }
+                    
+                    /* Mobile Nav Animations */
+                    .main-header.mobile-collapsed .header-title-text {
+                        max-width: 0px !important;
+                        opacity: 0 !important;
+                        gap: 0 !important;
+                    }
+                    .header-title-text {
+                        max-width: 200px;
+                        opacity: 1;
+                    }
+                    .main-header.mobile-collapsed {
+                        padding: 8px 10px !important;
+                    }
+                    .mobile-sub-bar.mobile-collapsed {
+                        max-height: 0px !important;
+                        opacity: 0 !important;
+                        padding-top: 0 !important;
+                        padding-bottom: 0 !important;
+                        border-top: none !important;
+                    }
+                    .mobile-sub-bar {
+                        max-height: 50px;
+                        opacity: 1;
+                    }
+                    .mobile-nav.nav-shifted {
+                        top: 0px !important;
+                    }
+                    .mobile-nav {
+                        top: 45px;
+                        transition: top 0.4s ease;
+                    }
                 }
+                
                 .scroll-hide::-webkit-scrollbar { display: none; }
                 
                 @keyframes fadeInSlide {
@@ -1192,21 +1229,6 @@ export default function Home() {
                     to { opacity: 1; transform: translateY(0); }
                 }
                 .expand-anim { animation: fadeInSlide 0.3s ease forwards; }
-
-                .app-header-container {
-                    transition: max-height 0.4s ease, opacity 0.3s ease;
-                    overflow: hidden;
-                }
-                @media (max-width: 767px) {
-                    .app-header-container.collapsed {
-                        max-height: 0px !important;
-                        opacity: 0 !important;
-                    }
-                    .app-header-container.expanded {
-                        max-height: 150px;
-                        opacity: 1;
-                    }
-                }
 
                 ${currentTab === 'ai_bot' ? `
                     .ai-chat-wrapper {
@@ -1216,67 +1238,70 @@ export default function Home() {
                         box-shadow: none !important;
                         height: calc(100vh - 45px) !important;
                     }
+                    @media (min-width: 768px) {
+                        .ai-chat-wrapper {
+                            height: calc(100vh - 65px) !important;
+                        }
+                    }
                 ` : ''}
             `}</style>
 
-            <div className={`app-header-container ${isHome ? 'expanded' : 'collapsed'}`}>
-                <header style={{...headerStyle, padding: isHome ? '12px 10px' : '6px 10px'}}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', transition: 'all 0.4s ease', maxWidth: isHome ? '300px' : '0px', opacity: isHome ? 1 : 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                        <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
-                                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                            </svg>
-                        </div>
-                        <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span> 
-                            IUB ASSISTANT
-                        </div>
+            <header className={`main-header ${!isHome ? 'mobile-collapsed' : ''}`} style={headerStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
+                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                        </svg>
                     </div>
-
-                    <div className="desktop-nav">
-                        {availableTabs.map(tab => (
-                            <div 
-                                key={tab.id} 
-                                onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
-                                style={{
-                                    cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
-                                    background: currentTab === tab.id ? '#F2A900' : 'transparent',
-                                    color: currentTab === tab.id ? '#002147' : '#fff',
-                                    transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
-                                }}
-                            >
-                                {tab.icon} {tab.label}
-                            </div>
-                        ))}
+                    <div className="header-title-text" style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.4s ease', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span> 
+                        IUB ASSISTANT
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="mobile-hide">
-                            <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
-                            </span>
-                            <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {SVGS.clock} Update: {lastUpdated}
-                            </span>
-                        </div>
-
-                        {!isGuestUser && (
-                            <div style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowAlerts(!showAlerts)}>
-                                {SVGS.bell}
-                                {relevantNotifs.length > 0 && <span style={redDot}></span>}
-                            </div>
-                        )}
-                    </div>
-                </header>
-
-                <div className="desktop-hide" style={{ background: '#002147', padding: isHome ? '6px 12px' : '0 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: isHome ? '1px solid rgba(255,255,255,0.1)' : 'none', maxHeight: isHome ? '50px' : '0px', opacity: isHome ? 1 : 0, overflow: 'hidden', transition: 'all 0.4s ease' }}>
-                    <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
-                    </span>
-                    <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {SVGS.clock} Update: {lastUpdated}
-                    </span>
                 </div>
+
+                <div className="desktop-nav">
+                    {availableTabs.map(tab => (
+                        <div 
+                            key={tab.id} 
+                            onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
+                            style={{
+                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
+                                background: currentTab === tab.id ? '#F2A900' : 'transparent',
+                                color: currentTab === tab.id ? '#002147' : '#fff',
+                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
+                            }}
+                        >
+                            {tab.icon} {tab.label}
+                        </div>
+                    ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="mobile-hide">
+                        <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+                        </span>
+                        <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {SVGS.clock} Update: {lastUpdated}
+                        </span>
+                    </div>
+
+                    {!isGuestUser && (
+                        <div style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowAlerts(!showAlerts)}>
+                            {SVGS.bell}
+                            {relevantNotifs.length > 0 && <span style={redDot}></span>}
+                        </div>
+                    )}
+                </div>
+            </header>
+
+            <div className={`desktop-hide mobile-sub-bar ${!isHome ? 'mobile-collapsed' : ''}`} style={{ background: '#002147', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden', transition: 'all 0.4s ease' }}>
+                <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+                </span>
+                <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {SVGS.clock} Update: {lastUpdated}
+                </span>
             </div>
 
             {isSidebarOpen && (
@@ -1305,7 +1330,7 @@ export default function Home() {
                 </div>
             )}
 
-            <div className="mobile-nav" style={{ ...tabBar, top: isHome ? '45px' : '0', transition: 'top 0.4s ease' }}>
+            <div className={`mobile-nav ${!isHome ? 'nav-shifted' : ''}`} style={tabBar}>
                 {availableTabs.filter(tab => isGuestUser ? true : (tab.id !== 'room' && tab.id !== 'teacher' && tab.id !== 'transport' && tab.id !== 'attendance')).map(tab => (
                     <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
                         <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
@@ -1315,7 +1340,7 @@ export default function Home() {
                 ))}
             </div>
 
-            <div style={{ 
+            <div className="main-content-area" style={{ 
                 padding: currentTab === 'ai_bot' ? '0' : '10px 12px', 
                 maxWidth: currentTab === 'ai_bot' ? '100%' : '600px', 
                 margin: '0 auto', 
@@ -1934,7 +1959,7 @@ export default function Home() {
                                                         </div>
                                                     </div>
 
-                                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: '#111827', fontWeight: '800', lineHeight: '1.3' }}>{ann.topics}</h4>
+                                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#111827', fontWeight: '800', lineHeight: '1.3' }}>{ann.topics}</h4>
                                                     
                                                     {!isExpanded && ann.type === 'assignment' && deadlineDate && (
                                                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: bgColor, border: `1px solid ${borderColor}`, borderRadius: '15px', padding: '2px 6px', fontSize: '0.6rem', marginTop: '4px' }}>
@@ -1984,18 +2009,18 @@ export default function Home() {
                         {currentTab === 'transport' && (
                             <div className="expand-anim" style={whiteCard}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                    <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>University Transport Timings</h4>
+                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#002147' }}>University Transport Timings</h4>
                                 </div>
                                 
                                 <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', background: '#f8f9fa', padding: '5px', borderRadius: '10px' }}>
-                                    <button onClick={() => setIsSatTransport(false)} style={{ flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: !isSatTransport ? '#002147' : '#fff', color: !isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Mon - Fri</button>
-                                    <button onClick={() => setIsSatTransport(true)} style={{ flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: isSatTransport ? '#002147' : '#fff', color: isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Saturday</button>
+                                    <button onClick={() => setIsSatTransport(false)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: !isSatTransport ? '#002147' : '#fff', color: !isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Mon - Fri</button>
+                                    <button onClick={() => setIsSatTransport(true)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: isSatTransport ? '#002147' : '#fff', color: isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Saturday</button>
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                                     {/* AC to BJC */}
-                                    <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
-                                        <h5 style={{ margin: '0 0 10px 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #eee' }}>
+                                        <h5 style={{ margin: '0 0 10px 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                             {SVGS.bus} AC ➔ BJC
                                         </h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2008,10 +2033,10 @@ export default function Home() {
                                                     const isNext = i === nextIndex;
                                                     
                                                     return (
-                                                        <div key={i} style={{ background: '#fff', borderRadius: '6px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
-                                                            <div style={{ padding: '8px 4px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                        <div key={i} style={{ background: '#fff', borderRadius: '8px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
+                                                            <div style={{ padding: '10px 5px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
                                                             {isNext && remainingStr && (
-                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                                     {SVGS.clock} {remainingStr}
                                                                 </div>
                                                             )}
@@ -2024,8 +2049,8 @@ export default function Home() {
                                     </div>
                                     
                                     {/* BJC to AC */}
-                                    <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
-                                        <h5 style={{ margin: '0 0 10px 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '5px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #eee' }}>
+                                        <h5 style={{ margin: '0 0 10px 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '5px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                             {SVGS.bus} BJC ➔ AC
                                         </h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2038,10 +2063,10 @@ export default function Home() {
                                                     const isNext = i === nextIndex;
                                                     
                                                     return (
-                                                        <div key={i} style={{ background: '#fff', borderRadius: '6px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
-                                                            <div style={{ padding: '8px 4px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                        <div key={i} style={{ background: '#fff', borderRadius: '8px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
+                                                            <div style={{ padding: '10px 5px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
                                                             {isNext && remainingStr && (
-                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                                     {SVGS.clock} {remainingStr}
                                                                 </div>
                                                             )}
@@ -2109,8 +2134,6 @@ const footerStyle = { textAlign: 'center', background: '#fff', color: '#666', fo
 const notifBannerStyle = { background: '#002147', color: '#fff', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.7rem' };
 const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '4px 8px', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', display: 'flex', alignItems: 'center', fontSize: '0.65rem', fontWeight: 'bold', justifyContent: 'flex-start' };
-
-// Sidebar Styles
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
 const sidebarMenu = { width: '230px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 15px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 15px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
