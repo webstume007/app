@@ -133,7 +133,7 @@ export default function Home() {
     const availableTabs = isGuestUser ? allTabs.filter(t => ['room', 'teacher', 'transport'].includes(t.id)) : allTabs;
 
     const [dropdownMeta, setDropdownMeta] = useState({ sessions: [], rooms: [], baseMeta: [] });
-    const [allBaseSchedule, setAllBaseSchedule] = useState([]); // Master fetch fixing the 1000 row issue completely
+    const [allBaseSchedule, setAllBaseSchedule] = useState([]); 
     const [rawData, setRawData] = useState([]);
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
@@ -166,7 +166,7 @@ export default function Home() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     
     const [roomSubTab, setRoomSubTab] = useState('schedule'); 
-    const [roomViewType, setRoomViewType] = useState('All Rooms'); // All Rooms | Specified
+    const [roomViewType, setRoomViewType] = useState('All Rooms'); 
     const [roomTimeFilter, setRoomTimeFilter] = useState('');
 
     const [selectedDay, setSelectedDay] = useState(() => {
@@ -205,7 +205,6 @@ export default function Home() {
     const [isOffline, setIsOffline] = useState(false);
     const [lastUpdated, setLastUpdated] = useState('--:--');
 
-    // Transport Tab State (Defaulting to correct day)
     const [isSatTransport, setIsSatTransport] = useState(() => {
         return new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() === 'SAT';
     });
@@ -223,7 +222,6 @@ export default function Home() {
         ts += 30;
     }
 
-    // Offline & App Install Listeners
     useEffect(() => {
         setIsOffline(!navigator.onLine);
         const handleOnline = () => setIsOffline(false);
@@ -241,7 +239,6 @@ export default function Home() {
         };
     }, []);
 
-    // Dedicated Native App Install Listener
     useEffect(() => {
         const handler = (e) => {
             e.preventDefault();
@@ -259,7 +256,6 @@ export default function Home() {
         return () => clearInterval(t);
     }, []);
 
-    // Minute-by-Minute Live Sync
     useEffect(() => {
         const interval = setInterval(() => {
             fetchLiveSchedule();
@@ -267,7 +263,6 @@ export default function Home() {
         return () => clearInterval(interval);
     }, []);
 
-    // Fetch setup students dynamically when session & section selected in Welcome screen
     useEffect(() => {
         if (isFirstVisit && setupSession && setupSection) {
             const fetchSetup = async () => {
@@ -285,7 +280,6 @@ export default function Home() {
     }, []);
 
     useEffect(() => {
-        // Hydrate from LocalStorage
         const savedOffline = localStorage.getItem('iub_offline_data');
         if (savedOffline) {
             try {
@@ -325,7 +319,6 @@ export default function Home() {
         fetchLiveSchedule();
     }, []);
 
-    // Ticking Clock for Home Noticeboard Countdown & Assignments
     useEffect(() => {
         const timer = setInterval(() => {
             const now = new Date();
@@ -349,7 +342,7 @@ export default function Home() {
                     }
                 }
             });
-        }, 1000); // 1-second tick for live countdowns
+        }, 1000);
         return () => clearInterval(timer);
     }, [announcements]);
 
@@ -375,7 +368,7 @@ export default function Home() {
                         }
                     }
                     setShowAlerts(true);
-                    fetchLiveSchedule(); // Silent background refresh
+                    fetchLiveSchedule(); 
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'class_announcements' }, (payload) => {
@@ -385,11 +378,11 @@ export default function Home() {
                         new Notification("New Class Update", { body: `${pnew.subject}: ${pnew.topics}`, icon: "/icon.png" });
                     }
                     setShowAlerts(true);
-                    fetchLiveSchedule(); // Silent background refresh
+                    fetchLiveSchedule(); 
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
-                fetchLiveSchedule(); // Silent background refresh
+                fetchLiveSchedule(); 
             })
             .subscribe();
 
@@ -402,7 +395,6 @@ export default function Home() {
         }
     }, []);
 
-    // --- Safe Pagination Engine for >1000 Rows ---
     const fetchAllRows = async (table, select = '*') => {
         let all = []; let from = 0; const step = 1000;
         while(true) {
@@ -425,7 +417,6 @@ export default function Home() {
         }
         const savedRoll = localStorage.getItem('iub_my_roll');
 
-        // Master Fetch: Fetches ALL schedule rows seamlessly resolving 1000 Row limit constraints
         const { data: allBaseData } = await fetchAllRows('base_schedule');
         const { data: allExcData } = await fetchAllRows('schedule_exceptions');
         
@@ -475,7 +466,6 @@ export default function Home() {
         setStudentsData(studentsRes.data || []);
         setAnnouncements(annRes.data || []);
         
-        // Cache data for offline viewing
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         setLastUpdated(nowTime);
         localStorage.setItem('iub_offline_data', JSON.stringify({
@@ -744,10 +734,8 @@ export default function Home() {
     
     const ongoingAllLectures = allBaseSchedule.filter(c => c.day === currentDayStr && parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
 
-    // Dynamic Construction of Notice Board Carousel Logic (Events + Strict Filters)
     const todayEvents = useMemo(() => {
         const events = [];
-        // Extract rawData here to bypass the UI `selectedDay` filter allowing Notice Board to truly run on today's Live Clock.
         const dynamicMyClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         const myTodayClasses = dynamicMyClasses.filter(c => {
             if (c.day !== currentDayStr) return false;
@@ -777,7 +765,6 @@ export default function Home() {
         return events;
     }, [allBaseSchedule, currentDayStr, exceptions, pointsData, userSection]);
     
-    // Auto-align Notice Index
     useEffect(() => {
         if (todayEvents.length > 0 && currentTab === 'home') {
             const currentTotalSecs = new Date().getHours() * 3600 + new Date().getMinutes() * 60 + new Date().getSeconds();
@@ -785,15 +772,14 @@ export default function Home() {
                 if (e.type === 'lecture') return (e.endMins * 60) > currentTotalSecs;
                 return (e.timeMins * 60) > currentTotalSecs;
             });
-            if (activeIdx === -1) activeIdx = todayEvents.length - 1; // All finished, show last
+            if (activeIdx === -1) activeIdx = todayEvents.length - 1;
             setNoticeIndex(activeIdx);
         }
-    }, [todayEvents.length, currentTab]); // Run on load/tab switch
+    }, [todayEvents.length, currentTab]); 
 
     const nextNotice = () => setNoticeIndex((prev) => (prev + 1) % todayEvents.length);
     const prevNotice = () => setNoticeIndex((prev) => (prev - 1 + todayEvents.length) % todayEvents.length);
 
-    // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
         const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         const allMySubjects = [...new Set(myClasses.map(c => c.course))];
@@ -1142,7 +1128,6 @@ export default function Home() {
         );
     }
 
-    // --- HOME PAGE POINTS COUNTDOWN BAR LOGIC ---
     const todayPoints = pointsData.filter(p => p.is_saturday === (currentDayStr === 'SAT'));
     let firstPointTime = 1440;
     let lastPointTime = 0;
@@ -1173,6 +1158,8 @@ export default function Home() {
         }
     }
 
+    const isHome = currentTab === 'home';
+
     return (
         <div style={{ backgroundColor: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <Head>
@@ -1184,7 +1171,6 @@ export default function Home() {
                 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
                 <link rel="shortcut icon" href="/favicon.ico" />
                 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-                <link rel="manifest" href="/site.webmanifest" />
             </Head>
 
             <style>{`
@@ -1206,64 +1192,91 @@ export default function Home() {
                     to { opacity: 1; transform: translateY(0); }
                 }
                 .expand-anim { animation: fadeInSlide 0.3s ease forwards; }
+
+                .app-header-container {
+                    transition: max-height 0.4s ease, opacity 0.3s ease;
+                    overflow: hidden;
+                }
+                @media (max-width: 767px) {
+                    .app-header-container.collapsed {
+                        max-height: 0px !important;
+                        opacity: 0 !important;
+                    }
+                    .app-header-container.expanded {
+                        max-height: 150px;
+                        opacity: 1;
+                    }
+                }
+
+                ${currentTab === 'ai_bot' ? `
+                    .ai-chat-wrapper {
+                        max-width: 100% !important;
+                        border-radius: 0 !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        height: calc(100vh - 45px) !important;
+                    }
+                ` : ''}
             `}</style>
 
-            <header style={headerStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
-                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                        </svg>
-                    </div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span> 
-                        IUB ASSISTANT
-                    </div>
-                </div>
-
-                <div className="desktop-nav">
-                    {availableTabs.map(tab => (
-                        <div 
-                            key={tab.id} 
-                            onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
-                            style={{
-                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
-                                background: currentTab === tab.id ? '#F2A900' : 'transparent',
-                                color: currentTab === tab.id ? '#002147' : '#fff',
-                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
-                            }}
-                        >
-                            {tab.icon} {tab.label}
+            <div className={`app-header-container ${isHome ? 'expanded' : 'collapsed'}`}>
+                <header style={{...headerStyle, padding: isHome ? '12px 10px' : '6px 10px'}}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', transition: 'all 0.4s ease', maxWidth: isHome ? '300px' : '0px', opacity: isHome ? 1 : 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
+                                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                            </svg>
                         </div>
-                    ))}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="mobile-hide">
-                        <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
-                        </span>
-                        <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {SVGS.clock} Update: {lastUpdated}
-                        </span>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span> 
+                            IUB ASSISTANT
+                        </div>
                     </div>
 
-                    {!isGuestUser && (
-                        <div style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowAlerts(!showAlerts)}>
-                            {SVGS.bell}
-                            {relevantNotifs.length > 0 && <span style={redDot}></span>}
-                        </div>
-                    )}
-                </div>
-            </header>
+                    <div className="desktop-nav">
+                        {availableTabs.map(tab => (
+                            <div 
+                                key={tab.id} 
+                                onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
+                                style={{
+                                    cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
+                                    background: currentTab === tab.id ? '#F2A900' : 'transparent',
+                                    color: currentTab === tab.id ? '#002147' : '#fff',
+                                    transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
+                                }}
+                            >
+                                {tab.icon} {tab.label}
+                            </div>
+                        ))}
+                    </div>
 
-            <div className="desktop-hide" style={{ background: '#002147', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
-                </span>
-                <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {SVGS.clock} Update: {lastUpdated}
-                </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="mobile-hide">
+                            <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+                            </span>
+                            <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {SVGS.clock} Update: {lastUpdated}
+                            </span>
+                        </div>
+
+                        {!isGuestUser && (
+                            <div style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center' }} onClick={() => setShowAlerts(!showAlerts)}>
+                                {SVGS.bell}
+                                {relevantNotifs.length > 0 && <span style={redDot}></span>}
+                            </div>
+                        )}
+                    </div>
+                </header>
+
+                <div className="desktop-hide" style={{ background: '#002147', padding: isHome ? '6px 12px' : '0 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: isHome ? '1px solid rgba(255,255,255,0.1)' : 'none', maxHeight: isHome ? '50px' : '0px', opacity: isHome ? 1 : 0, overflow: 'hidden', transition: 'all 0.4s ease' }}>
+                    <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+                    </span>
+                    <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {SVGS.clock} Update: {lastUpdated}
+                    </span>
+                </div>
             </div>
 
             {isSidebarOpen && (
@@ -1292,7 +1305,7 @@ export default function Home() {
                 </div>
             )}
 
-            <div className="mobile-nav" style={tabBar}>
+            <div className="mobile-nav" style={{ ...tabBar, top: isHome ? '45px' : '0', transition: 'top 0.4s ease' }}>
                 {availableTabs.filter(tab => isGuestUser ? true : (tab.id !== 'room' && tab.id !== 'teacher' && tab.id !== 'transport' && tab.id !== 'attendance')).map(tab => (
                     <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
                         <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
@@ -1302,7 +1315,17 @@ export default function Home() {
                 ))}
             </div>
 
-            <div style={{ padding: '10px 12px', maxWidth: '600px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ 
+                padding: currentTab === 'ai_bot' ? '0' : '10px 12px', 
+                maxWidth: currentTab === 'ai_bot' ? '100%' : '600px', 
+                margin: '0 auto', 
+                flex: 1, 
+                width: '100%', 
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                transition: 'all 0.3s ease'
+            }}>
 
                 {/* Forced Install App Banner */}
                 {showInstallBanner && (
@@ -1310,7 +1333,7 @@ export default function Home() {
                         <div style={{ flex: 1, paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{ opacity: 0.9 }}>{SVGS.mobile}</div>
                             <div>
-                                <b style={{ display: 'block', marginBottom: '2px', fontSize: '0.8rem' }}>Install App</b>
+                                <b style={{ display: 'block', marginBottom: '2px', fontSize: '0.75rem' }}>Install App</b>
                                 <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add IUB Assistant to your home screen.</span>
                             </div>
                         </div>
@@ -1331,7 +1354,7 @@ export default function Home() {
                 {showAlerts ? (
                     <div className="expand-anim" style={whiteCard}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#002147' }}>Alerts & Notifications</h4>
+                            <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>Alerts & Notifications</h4>
                             <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
                         </div>
                         {relevantNotifs.length === 0 ? (
@@ -1339,7 +1362,7 @@ export default function Home() {
                         ) : (
                             relevantNotifs.map((n, i) => (
                                 <div key={i} style={notifCard}>
-                                    <p style={{ margin: '0 0 4px 0', fontSize: '0.8rem' }}>{n.message}</p>
+                                    <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem' }}>{n.message}</p>
                                     <span style={{ fontSize: '0.65rem', color: '#999' }}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                 </div>
                             ))
@@ -1377,7 +1400,7 @@ export default function Home() {
                                         <div style={{ flex: 1, textAlign: 'center', margin: '0 10px' }}>
                                             {todayEvents.length === 0 ? (
                                                 <div>
-                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.05rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                                                         {SVGS.sparkle} Today is Off
                                                     </h3>
                                                     <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
@@ -1421,25 +1444,25 @@ export default function Home() {
                                                         if (!hasTmrwLectures) {
                                                             return eodToggle === 0 && activeAssignments.length > 0 ? (
                                                                 <div className="expand-anim">
-                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.1rem' }}>{activeAssignments.length} Assignments for Today</h3>
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.05rem' }}>{activeAssignments.length} Assignments for Today</h3>
                                                                     <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
                                                                 </div>
                                                             ) : (
                                                                 <div className="expand-anim">
-                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.1rem' }}>No Classes Tomorrow</h3>
-                                                                    <div style={{ fontSize: '0.9rem', color: '#666' }}>Enjoy your day off!</div>
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.05rem' }}>No Classes Tomorrow</h3>
+                                                                    <div style={{ fontSize: '0.85rem', color: '#666' }}>Enjoy your day off!</div>
                                                                 </div>
                                                             );
                                                         } else {
                                                             return eodToggle === 0 && activeAssignments.length > 0 ? (
                                                                 <div className="expand-anim">
-                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.1rem' }}>{activeAssignments.length} Assignments for Today</h3>
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.05rem' }}>{activeAssignments.length} Assignments for Today</h3>
                                                                     <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
                                                                 </div>
                                                             ) : (
                                                                 <div className="expand-anim">
-                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#007bff', fontSize: '1.1rem' }}>Tomorrow Morning Point</h3>
-                                                                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#002147' }}>{SVGS.bus} {tmrwBestPoint}</div>
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#007bff', fontSize: '1.05rem' }}>Tomorrow Morning Point</h3>
+                                                                    <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#002147' }}>{SVGS.bus} {tmrwBestPoint}</div>
                                                                 </div>
                                                             );
                                                         }
@@ -1448,31 +1471,31 @@ export default function Home() {
 
                                                 return targetEvent.type === 'lecture' ? (
                                                     <div className="expand-anim" key={`lec-${noticeIndex}`}>
-                                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#007bff', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                                             {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Lecture Concluded' : `${noticeState} Lecture`}
                                                         </div>
-                                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{targetEvent.title}</h3>
-                                                        <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
+                                                        <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                                             {SVGS.location} Room {targetEvent.room}
                                                         </div>
                                                         {noticeState !== 'Finished' && (
-                                                            <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
-                                                                {formatCountdown(remainingSecs)} <span style={{fontSize: '0.7rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                            <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
+                                                                {formatCountdown(remainingSecs)} <span style={{fontSize: '0.65rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                 ) : (
                                                     <div className="expand-anim" key={`pt-${noticeIndex}`}>
-                                                        <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: noticeState === 'Departs In' ? '#007bff' : '#666', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: noticeState === 'Departs In' ? '#007bff' : '#666', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                                             {noticeState === 'Departed' ? 'Bus Departed' : 'Upcoming Bus'}
                                                         </div>
-                                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{targetEvent.title}</h3>
-                                                        <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
+                                                        <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                                             {SVGS.clock} Departure at {targetEvent.time}
                                                         </div>
                                                         {noticeState !== 'Departed' && (
-                                                            <div style={{ background: '#e7f1ff', border: `1px solid #b8daff`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: '#004085', fontWeight: '900', fontSize: '1.2rem' }}>
-                                                                {formatCountdown(remainingSecs)} <span style={{fontSize: '0.7rem'}}>Departs In</span>
+                                                            <div style={{ background: '#e7f1ff', border: `1px solid #b8daff`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
+                                                                {formatCountdown(remainingSecs)} <span style={{fontSize: '0.65rem'}}>Departs In</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1493,8 +1516,8 @@ export default function Home() {
                                         { id: 'announcements', label: 'Updates', icon: SVGS.updates, bg: '#fef3c7', col: '#a16207' }
                                     ].map(item => (
                                         <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: item.bg, color: item.col, padding: '15px 5px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'transform 0.2s' }}>
-                                            <div style={{ marginBottom: '8px', opacity: 0.9, transform: 'scale(1.3)' }}>{item.icon}</div>
-                                            <div style={{ fontSize: '0.7rem', fontWeight: '900' }}>{item.label}</div>
+                                            <div style={{ marginBottom: '8px', opacity: 0.9, transform: 'scale(1.2)' }}>{item.icon}</div>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: '900' }}>{item.label}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -1506,7 +1529,7 @@ export default function Home() {
                                         { id: 'transport', label: 'Transport', icon: SVGS.bus }
                                     ].map(item => (
                                         <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: '#fff', color: '#555', padding: '10px 5px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', border: '1px solid #e9ecef', transition: 'background 0.2s' }}>
-                                            <div style={{ marginBottom: '5px', opacity: 0.7 }}>{item.icon}</div>
+                                            <div style={{ marginBottom: '5px', opacity: 0.7, display: 'flex', justifyContent: 'center' }}>{item.icon}</div>
                                             <div style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{item.label}</div>
                                         </div>
                                     ))}
@@ -1516,7 +1539,7 @@ export default function Home() {
                                 {showPointsBar && (
                                     <div className="expand-anim" style={{ background: 'linear-gradient(to right, #fffbea, #fef9c3)', padding: '10px 15px', borderRadius: '12px', marginTop: '15px', border: '1px solid #fde047', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#856404', fontWeight: '900', marginBottom: '8px', fontSize: '0.8rem', textTransform: 'uppercase' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#856404', fontWeight: '900', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase' }}>
                                                 {SVGS.bus} Next Departures
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', width: '100%' }}>
@@ -1524,14 +1547,14 @@ export default function Home() {
                                                     <div style={{ fontSize: '0.65rem', fontWeight: '900', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', letterSpacing: '0.5px' }}>
                                                         AC {SVGS.rightArrow} BJC
                                                     </div>
-                                                    <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#856404', marginTop: '2px' }}>{nextUpTimeStr}</div>
+                                                    <div style={{ fontSize: '1.05rem', fontWeight: '900', color: '#856404', marginTop: '2px' }}>{nextUpTimeStr}</div>
                                                 </div>
                                                 <div style={{ borderLeft: '2px dashed #fde047', height: '25px', opacity: 0.5 }}></div>
                                                 <div style={{ textAlign: 'center' }}>
                                                     <div style={{ fontSize: '0.65rem', fontWeight: '900', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', letterSpacing: '0.5px' }}>
                                                         BJC {SVGS.rightArrow} AC
                                                     </div>
-                                                    <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#856404', marginTop: '2px' }}>{nextDownTimeStr}</div>
+                                                    <div style={{ fontSize: '1.05rem', fontWeight: '900', color: '#856404', marginTop: '2px' }}>{nextDownTimeStr}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1570,7 +1593,7 @@ export default function Home() {
                         {/* ======================= ATTENDANCE TAB ======================= */}
                         {currentTab === 'attendance' && !isGuestUser && (
                             <div className="expand-anim" style={whiteCard}>
-                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '12px', borderBottom: '1px solid #eee', paddingBottom: '8px', fontSize: '0.95rem'}}>Student Attendance</h4>
+                                <h4 style={{marginTop: 0, color: '#002147', marginBottom: '12px', borderBottom: '1px solid #eee', paddingBottom: '8px', fontSize: '0.85rem'}}>Student Attendance</h4>
                                 
                                 {!myRollNumber ? (
                                     <>
@@ -1592,7 +1615,7 @@ export default function Home() {
                                     <>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                                             <div>
-                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.95rem' }}>{myRollNumber}</div>
+                                                <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.9rem' }}>{myRollNumber}</div>
                                                 <div style={{ fontSize: '0.7rem', color: '#666' }}>{studentsData.find(s=>s.registration_number === myRollNumber)?.student_name}</div>
                                             </div>
                                         </div>
@@ -1619,7 +1642,7 @@ export default function Home() {
                                                     </div>
 
                                                     <div style={{ marginBottom: '25px' }}>
-                                                        <h3 style={{ fontSize: '0.85rem', color: '#002147', borderBottom: '2px solid #F2A900', paddingBottom: '4px', marginBottom: '12px' }}>Last Week Attendance</h3>
+                                                        <h3 style={{ fontSize: '0.8rem', color: '#002147', borderBottom: '2px solid #F2A900', paddingBottom: '4px', marginBottom: '12px' }}>Last Week Attendance</h3>
                                                         <div style={{ overflowX: 'auto' }}>
                                                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
                                                                 <tbody>
@@ -1653,7 +1676,7 @@ export default function Home() {
                                                     </div>
 
                                                     <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #e9ecef' }}>
-                                                        <h3 style={{ fontSize: '0.85rem', color: '#002147', marginBottom: '8px' }}>Check Subject History</h3>
+                                                        <h3 style={{ fontSize: '0.8rem', color: '#002147', marginBottom: '8px' }}>Check Subject History</h3>
                                                         <select value={selectedAttSubject} onChange={e => setSelectedAttSubject(e.target.value)} style={selectStyle}>
                                                             <option value="">-- Select Subject --</option>
                                                             {mySubjects.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1911,7 +1934,7 @@ export default function Home() {
                                                         </div>
                                                     </div>
 
-                                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '0.9rem', color: '#111827', fontWeight: '800', lineHeight: '1.3' }}>{ann.topics}</h4>
+                                                    <h4 style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: '#111827', fontWeight: '800', lineHeight: '1.3' }}>{ann.topics}</h4>
                                                     
                                                     {!isExpanded && ann.type === 'assignment' && deadlineDate && (
                                                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: bgColor, border: `1px solid ${borderColor}`, borderRadius: '15px', padding: '2px 6px', fontSize: '0.6rem', marginTop: '4px' }}>
@@ -1961,18 +1984,18 @@ export default function Home() {
                         {currentTab === 'transport' && (
                             <div className="expand-anim" style={whiteCard}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                    <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#002147' }}>University Transport Timings</h4>
+                                    <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>University Transport Timings</h4>
                                 </div>
                                 
                                 <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', background: '#f8f9fa', padding: '5px', borderRadius: '10px' }}>
-                                    <button onClick={() => setIsSatTransport(false)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: !isSatTransport ? '#002147' : '#fff', color: !isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Mon - Fri</button>
-                                    <button onClick={() => setIsSatTransport(true)} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: isSatTransport ? '#002147' : '#fff', color: isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Saturday</button>
+                                    <button onClick={() => setIsSatTransport(false)} style={{ flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: !isSatTransport ? '#002147' : '#fff', color: !isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Mon - Fri</button>
+                                    <button onClick={() => setIsSatTransport(true)} style={{ flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: isSatTransport ? '#002147' : '#fff', color: isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Saturday</button>
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                                     {/* AC to BJC */}
-                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #eee' }}>
-                                        <h5 style={{ margin: '0 0 10px 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
+                                        <h5 style={{ margin: '0 0 10px 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                             {SVGS.bus} AC ➔ BJC
                                         </h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1985,10 +2008,10 @@ export default function Home() {
                                                     const isNext = i === nextIndex;
                                                     
                                                     return (
-                                                        <div key={i} style={{ background: '#fff', borderRadius: '8px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
-                                                            <div style={{ padding: '10px 5px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                        <div key={i} style={{ background: '#fff', borderRadius: '6px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
+                                                            <div style={{ padding: '8px 4px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
                                                             {isNext && remainingStr && (
-                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                                     {SVGS.clock} {remainingStr}
                                                                 </div>
                                                             )}
@@ -2001,8 +2024,8 @@ export default function Home() {
                                     </div>
                                     
                                     {/* BJC to AC */}
-                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '10px', border: '1px solid #eee' }}>
-                                        <h5 style={{ margin: '0 0 10px 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '5px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
+                                        <h5 style={{ margin: '0 0 10px 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '5px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                             {SVGS.bus} BJC ➔ AC
                                         </h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2015,10 +2038,10 @@ export default function Home() {
                                                     const isNext = i === nextIndex;
                                                     
                                                     return (
-                                                        <div key={i} style={{ background: '#fff', borderRadius: '8px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
-                                                            <div style={{ padding: '10px 5px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                        <div key={i} style={{ background: '#fff', borderRadius: '6px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
+                                                            <div style={{ padding: '8px 4px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
                                                             {isNext && remainingStr && (
-                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                                                     {SVGS.clock} {remainingStr}
                                                                 </div>
                                                             )}
@@ -2043,7 +2066,14 @@ export default function Home() {
                 )}
             </div>
 
-            <footer style={footerStyle}>
+            <footer style={{
+                ...footerStyle,
+                maxHeight: currentTab === 'ai_bot' ? '0' : '50px',
+                opacity: currentTab === 'ai_bot' ? '0' : '1',
+                padding: currentTab === 'ai_bot' ? '0' : '10px',
+                borderTop: currentTab === 'ai_bot' ? 'none' : '1px solid #dee2e6',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}>
                 Made with ❤️ by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin | Muntaha | Waleeja | Nazakat — BSAI 3RD 3M</a> 
             </footer>
         </div>
@@ -2052,33 +2082,35 @@ export default function Home() {
 
 // STYLES
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
-const welcomeCard = { background: '#fff', padding: '20px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const welcomeCard = { background: '#fff', padding: '15px', borderRadius: '12px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
 const bigBtn = { width: '100%', padding: '10px', background: '#F2A900', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#002147', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const headerStyle = { background: '#002147', color: '#F2A900', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap', transition: 'all 0.4s ease' };
 const changeBtn = { background: 'transparent', color: '#fff', border: '1px solid #fff', borderRadius: '4px', padding: '4px 6px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' };
 const redDot = { position: 'absolute', top: '0', right: '0', width: '6px', height: '6px', background: 'red', borderRadius: '50%', border: '1px solid #002147' };
 const newsRedDot = { position: 'absolute', top: '4px', right: '4px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
-const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '45px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '6px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '6px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '55px', padding: '4px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '6px', fontSize: '0.55rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
 const subTabBtn = (active) => ({ flex: 1, padding: '6px', border: 'none', background: active ? '#F2A900' : '#e9ecef', color: active ? '#002147' : '#555', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease' });
 const dayFilter = { display: 'flex', gap: '4px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '35px', padding: '6px', borderRadius: '6px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.65rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
-const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '5px 10px', borderRadius: '6px', fontWeight: 900, marginBottom: '8px', textTransform: 'uppercase', fontSize: '0.75rem' };
-const selectStyle = { width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.8rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
-const searchInput = { width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.8rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '35px', padding: '4px', borderRadius: '6px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.65rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
+const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '4px 10px', borderRadius: '6px', fontWeight: 900, marginBottom: '8px', textTransform: 'uppercase', fontSize: '0.7rem' };
+const selectStyle = { width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.75rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
+const searchInput = { width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.75rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
 const cardBase = { padding: '10px', borderRadius: '8px', transition: 'all 0.3s ease' };
 const notifCard = { background: '#fff', padding: '8px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #dc3545', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' };
-const whiteCard = { background: '#fff', padding: '12px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '12px', borderTop: '4px solid #F2A900', transition: 'all 0.3s ease' };
-const searchBtn = { width: '100%', padding: '10px', background: '#002147', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', boxSizing: 'border-box', transition: 'all 0.3s ease', fontSize: '0.8rem' };
+const whiteCard = { background: '#fff', padding: '10px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '10px', borderTop: '3px solid #F2A900', transition: 'all 0.3s ease' };
+const searchBtn = { width: '100%', padding: '10px', background: '#002147', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', boxSizing: 'border-box', transition: 'all 0.3s ease', fontSize: '0.75rem' };
 const markReadBtn = { background: '#e9ecef', border: 'none', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
-const freeRoomItem = { padding: '8px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.75rem', background: '#f0fff4', borderRadius: '4px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' };
-const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: '#25D366', color: '#fff', padding: '6px 10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
+const freeRoomItem = { padding: '8px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.7rem', background: '#f0fff4', borderRadius: '4px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' };
+const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: '#25D366', color: '#fff', padding: '6px 10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.7rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
 const emptyState = { textAlign: 'center', padding: '20px 10px', color: '#999', fontSize: '0.8rem' };
 const centerStyle = { textAlign: 'center', marginTop: '40px', fontFamily: 'sans-serif', fontSize: '0.85rem' };
-const footerStyle = { textAlign: 'center', padding: '10px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.6rem', marginTop: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const footerStyle = { textAlign: 'center', background: '#fff', color: '#666', fontSize: '0.6rem', marginTop: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 const notifBannerStyle = { background: '#002147', color: '#fff', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.7rem' };
 const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '4px 8px', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', display: 'flex', alignItems: 'center', fontSize: '0.65rem', fontWeight: 'bold', justifyContent: 'flex-start' };
+
+// Sidebar Styles
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
 const sidebarMenu = { width: '230px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 15px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 15px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
