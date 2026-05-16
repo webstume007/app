@@ -48,13 +48,14 @@ const SVGS = {
     cap: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
     location: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
     live: <svg width="10" height="10" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>,
-    tickCircle: <svg width="14" height="14" fill="none" stroke="#28a745" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+    tickCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
     note: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
     users: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
     leftArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>,
     rightArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
     sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
-    mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+    mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>,
+    verified: <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2A900"><path d="M22.5 12.5c0 1.5-.7 2.8-1.8 3.5.2 1.3-.2 2.6-1.2 3.6-1 1-2.3 1.4-3.6 1.2-1.1 1.1-2.4 1.8-3.9 1.8s-2.8-.7-3.9-1.8c-1.3.2-2.6-.2-3.6-1.2-1-1-1.4-2.3-1.2-3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.2C9.2 3.7 10.5 3 12 3s2.8.7 3.9 1.8c1.3-.2 2.6.2 3.6 1.2 1 1 1.4 2.3 1.2 3.6 1.1.7 1.8 2 1.8 3.5zM10.5 16.5l6.5-6.5-1.5-1.5-5 5-2.5-2.5-1.5 1.5 4 4z"/></svg>
 };
 
 // --- Custom Realtime Dropdown Search Component ---
@@ -881,19 +882,26 @@ export default function Home() {
             );
         }
 
-        if (scheduleList.length === 0) return (
-            <div style={emptyState}>
-                <div style={{marginBottom: '10px'}}>No classes scheduled.</div>
-                {(displayContext === 'class' && selectedDay === currentDayStr) && (
-                    <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
-                )}
-            </div>
-        );
         const daysToRender = (displayContext === 'ongoing') ? [currentDayStr] : (selectedDay === 'ALL' || displayContext === 'all_rooms') ? days : [selectedDay];
 
         return daysToRender.map(day => {
             const dayClasses = scheduleList.filter(c => c.day === day).sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
-            if (dayClasses.length === 0) return null;
+            if (dayClasses.length === 0) {
+                if (displayContext === 'ongoing') return <div key={day} style={emptyState}>No lectures are currently ongoing.</div>;
+                return (
+                    <div key={day} style={{ marginBottom: '20px' }}>
+                        <div style={dayHeaderStrip}>{day}</div>
+                        <div style={{ ...whiteCard, textAlign: 'center', padding: '20px 10px' }}>
+                            <div style={{ marginBottom: '10px', color: '#999', fontSize: '0.85rem', fontWeight: 'bold' }}>No lectures scheduled.</div>
+                            {(displayContext === 'class') && (
+                                <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '25px', background: '#F2A900', color: '#002147' }}>
+                                    {SVGS.note} See Assignments
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
 
             return (
                 <div key={day} style={{ marginBottom: '20px' }}>
@@ -904,7 +912,17 @@ export default function Home() {
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
 
-                        const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section && !completedAssignments.includes(a.id));
+                        const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
+                        const allAssignmentsComplete = activeSubjectAssignments.length > 0 && activeSubjectAssignments.every(a => completedAssignments.includes(a.id));
+                        
+                        let assignmentBannerBg = allAssignmentsComplete ? '#dcfce7' : '#fff9e6';
+                        let assignmentBannerBorder = allAssignmentsComplete ? '#86efac' : '#fde68a';
+                        let assignmentBannerLeftBorder = allAssignmentsComplete ? '#28a745' : '#F2A900';
+                        let assignmentTextColor = allAssignmentsComplete ? '#15803d' : '#b27b00';
+                        let assignmentIconColor = allAssignmentsComplete ? '#15803d' : '#856404';
+                        
+                        let dueText = allAssignmentsComplete ? 'Done' : (activeSubjectAssignments.length > 0 ? `Due ${convertTo12Hour(activeSubjectAssignments[0].deadline_time)}` : '');
+
                         const isContactExpanded = expandedContactId === cls.id;
 
                         let teacherContactNumber = null;
@@ -943,17 +961,17 @@ export default function Home() {
                                 {activeSubjectAssignments.length > 0 && (
                                     <div 
                                         onClick={(e) => { e.stopPropagation(); setExpandedAssignmentId(expandedAssignmentId === cls.id ? null : cls.id); }}
-                                        style={{ background: '#fff9e6', borderTop: '1px solid #fde68a', borderLeft: '5px solid #F2A900', padding: '8px 12px', cursor: 'pointer' }}
+                                        style={{ background: assignmentBannerBg, borderTop: `1px solid ${assignmentBannerBorder}`, borderLeft: `5px solid ${assignmentBannerLeftBorder}`, padding: '8px 12px', cursor: 'pointer' }}
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #F2A900', borderRadius: '20px', padding: '2px 8px', fontSize: '0.6rem' }}>
-                                                <span style={{ fontWeight: '900', color: '#b27b00' }}>ASSIGNMENT</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: `1px solid ${assignmentBannerLeftBorder}`, borderRadius: '20px', padding: '2px 8px', fontSize: '0.6rem' }}>
+                                                <span style={{ fontWeight: '900', color: assignmentTextColor }}>ASSIGNMENT</span>
                                                 <span style={{ color: '#ccc' }}>|</span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#856404', fontWeight: 'bold' }}>
-                                                    {SVGS.clock} Due Soon
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: assignmentIconColor, fontWeight: 'bold' }}>
+                                                    {allAssignmentsComplete ? SVGS.tickCircle : SVGS.clock} {dueText}
                                                 </span>
                                             </div>
-                                            <div style={{ color: '#b27b00' }}>
+                                            <div style={{ color: assignmentTextColor }}>
                                                 {expandedAssignmentId === cls.id ? SVGS.chevronUp : SVGS.chevronDown}
                                             </div>
                                         </div>
@@ -961,14 +979,14 @@ export default function Home() {
                                 )}
 
                                 {expandedAssignmentId === cls.id && activeSubjectAssignments.length > 0 && (
-                                    <div className="expand-anim" style={{ background: '#fff9e6', borderLeft: '5px solid #F2A900', padding: '0 12px 10px 12px' }}>
+                                    <div className="expand-anim" style={{ background: assignmentBannerBg, borderLeft: `5px solid ${assignmentBannerLeftBorder}`, padding: '0 12px 10px 12px' }}>
                                         {activeSubjectAssignments.map(ann => {
                                             const isComplete = completedAssignments.includes(ann.id);
                                             return (
-                                                <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: '1px dashed #fde68a' }}>
+                                                <div key={ann.id} style={{ marginBottom: '8px', paddingTop: '8px', borderTop: `1px dashed ${assignmentBannerBorder}` }}>
                                                     <div style={{ fontWeight: 'bold', color: '#002147', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.note} {ann.topics}</div>
                                                     <div style={{ color: '#444', fontSize: '0.75rem', marginTop: '4px', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</div>
-                                                    <div style={{ fontSize: '0.65rem', color: '#b27b00', marginTop: '6px', fontWeight: 'bold' }}>
+                                                    <div style={{ fontSize: '0.65rem', color: assignmentTextColor, marginTop: '6px', fontWeight: 'bold' }}>
                                                         Deadline: {new Date(ann.deadline_date).toLocaleDateString()} at {convertTo12Hour(ann.deadline_time)}
                                                     </div>
                                                     <button
@@ -1306,6 +1324,7 @@ export default function Home() {
                                 <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '15px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
                                     <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         Welcome, {isGuestUser ? 'Guest' : studentsData.find(s => s.registration_number === myRollNumber)?.student_name?.split(' ')[0] || 'Student'}
+                                        {!isGuestUser && <span style={{display: 'flex', alignItems: 'center'}}>{SVGS.verified}</span>}
                                     </h2>
                                     {!isGuestUser && myRollNumber && (
                                         <>
@@ -1438,29 +1457,6 @@ export default function Home() {
                                     </div>
                                 </div>
 
-                                {/* Dynamic Points to Departure Bar */}
-                                {showPointsBar && (
-                                    <div className="expand-anim" style={{ background: '#fef9c3', padding: '12px', borderRadius: '15px', marginBottom: '15px', border: '1px solid #fde047', position: 'relative' }}>
-                                        <div style={{ position: 'absolute', top: '-10px', left: '15px', background: '#facc15', color: '#713f12', padding: '2px 10px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #eab308' }}>
-                                            Points to Departure
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
-                                            <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid #fde047' }}>
-                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#854d0e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                    AC {SVGS.rightArrow} BJC
-                                                </div>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#713f12' }}>{nextUpTimeStr}</div>
-                                            </div>
-                                            <div style={{ flex: 1, textAlign: 'center' }}>
-                                                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#854d0e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                    BJC {SVGS.rightArrow} AC
-                                                </div>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#713f12' }}>{nextDownTimeStr}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                                     {[
                                         { id: 'class', label: 'Schedule', icon: SVGS.calendar, bg: '#e0f2fe', col: '#0369a1' },
@@ -1486,6 +1482,32 @@ export default function Home() {
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* Dynamic Points to Departure Bar */}
+                                {showPointsBar && (
+                                    <div className="expand-anim" style={{ background: '#fffbea', padding: '15px', borderRadius: '15px', marginTop: '15px', border: '1px solid #F2A900', position: 'relative' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#856404', fontWeight: '900', marginBottom: '10px', fontSize: '0.9rem' }}>
+                                                {SVGS.bus} Points to Departure
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                <div style={{ flex: 1, textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        AC {SVGS.rightArrow} BJC
+                                                    </div>
+                                                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#856404', marginTop: '4px' }}>{nextUpTimeStr}</div>
+                                                </div>
+                                                <div style={{ borderLeft: '2px dotted #F2A900', height: '30px', margin: '0 10px' }}></div>
+                                                <div style={{ flex: 1, textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        BJC {SVGS.rightArrow} AC
+                                                    </div>
+                                                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#856404', marginTop: '4px' }}>{nextDownTimeStr}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -1913,17 +1935,26 @@ export default function Home() {
                                             {SVGS.bus} AC ➔ BJC
                                         </h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)).map((p, i) => {
-                                                const remainingStr = getRemainingDepartureTime(p.departure_time);
-                                                return (
-                                                    <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                                        <div>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
-                                                        {remainingStr && (
-                                                            <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '4px', fontWeight: 'normal' }}>{remainingStr}</div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                            {(() => {
+                                                const sortedPoints = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
+                                                const nextIndex = (isSatTransport === (currentDayStr === 'SAT')) ? sortedPoints.findIndex(p => parseDbTime(p.departure_time) >= currentMins) : -1;
+
+                                                return sortedPoints.map((p, i) => {
+                                                    const remainingStr = getRemainingDepartureTime(p.departure_time);
+                                                    const isNext = i === nextIndex;
+                                                    
+                                                    return (
+                                                        <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                            <div>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                            {isNext && remainingStr && (
+                                                                <div className="expand-anim" style={{ background: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', marginTop: '4px', display: 'inline-block', border: '1px solid #fde047' }}>
+                                                                    {remainingStr}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
                                             {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
                                         </div>
                                     </div>
@@ -1934,17 +1965,26 @@ export default function Home() {
                                             {SVGS.bus} BJC ➔ AC
                                         </h5>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)).map((p, i) => {
-                                                const remainingStr = getRemainingDepartureTime(p.departure_time);
-                                                return (
-                                                    <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                                        <div>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
-                                                        {remainingStr && (
-                                                            <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '4px', fontWeight: 'normal' }}>{remainingStr}</div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
+                                            {(() => {
+                                                const sortedPoints = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
+                                                const nextIndex = (isSatTransport === (currentDayStr === 'SAT')) ? sortedPoints.findIndex(p => parseDbTime(p.departure_time) >= currentMins) : -1;
+
+                                                return sortedPoints.map((p, i) => {
+                                                    const remainingStr = getRemainingDepartureTime(p.departure_time);
+                                                    const isNext = i === nextIndex;
+                                                    
+                                                    return (
+                                                        <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                                            <div>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                            {isNext && remainingStr && (
+                                                                <div className="expand-anim" style={{ background: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', marginTop: '4px', display: 'inline-block', border: '1px solid #fde047' }}>
+                                                                    {remainingStr}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
                                             {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
                                         </div>
                                     </div>
