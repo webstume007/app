@@ -23,7 +23,7 @@ export default function AIBot({ groqApiKey }) {
     const [selectedSubject, setSelectedSubject] = useState('General');
     const [courseOutlines, setCourseOutlines] = useState([]);
     const [appContextCache, setAppContextCache] = useState({ schedule: [], exceptions: [], transport: [] });
-    const [userMeta, setUserMeta] = useState({ session: '', section: '', name: 'Student', semester: '' });
+    const [userMeta, setUserMeta] = useState({ session: '', section: '', name: 'Student', semester: '', roll: '' });
 
     const messagesEndRef = useRef(null);
 
@@ -57,6 +57,7 @@ export default function AIBot({ groqApiKey }) {
         let session = '';
         let section = 'GUEST';
         let userName = 'Student';
+        let rollNumber = savedRoll || 'Not Provided';
 
         if (savedSelection) {
             const parsed = JSON.parse(savedSelection);
@@ -64,7 +65,7 @@ export default function AIBot({ groqApiKey }) {
             section = parsed.section || 'GUEST';
             userName = parsed.name || 'Student';
             const calculatedSem = calculateSemester(session);
-            setUserMeta(prev => ({ ...prev, session, section, name: userName, semester: calculatedSem }));
+            setUserMeta(prev => ({ ...prev, session, section, name: userName, semester: calculatedSem, roll: rollNumber }));
         }
 
         // 2. Hydrate offline cache contextual parameters
@@ -129,7 +130,7 @@ export default function AIBot({ groqApiKey }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // --- Context Compilation Architecture (Unchanged Logic, added Semester logic) ---
+    // --- Context Compilation Architecture (Unchanged Logic, added Semester/Roll logic) ---
     const buildSystemContextInstruction = () => {
         const outlineContext = courseOutlines.map(o => 
             `Subject: ${o.subject}\nTeacher: ${o.teacher || 'N/A'}\nWeekly Outline Details: ${o.weekly_plan || 'N/A'}\nLearning Objectives: ${o.objectives || 'N/A'}`
@@ -150,7 +151,7 @@ export default function AIBot({ groqApiKey }) {
         return `You are the highly advanced, official dynamic IUB Assistant AI, deployed to guide university students directly regarding their current semester tracking. 
 
 Here is the immutable operational framework and dataset you must abide by:
-1. USER METADATA CONTEXT: The active user is registered in Session: ${userMeta.session || 'N/A'} which makes it their ${userMeta.semester}. Their Section is: ${userMeta.section || 'GUEST'}. User Name: ${userMeta.name}. You must structure your conversations acknowledging their current ${userMeta.semester} and section.
+1. USER METADATA CONTEXT: The active user is registered in Session: ${userMeta.session || 'N/A'} which makes it their ${userMeta.semester}. Their Section is: ${userMeta.section || 'GUEST'}. User Name: ${userMeta.name}. Roll Number: ${userMeta.roll}. You must structure your conversations acknowledging their specific identity, current ${userMeta.semester}, and section.
 2. OFFICIAL COURSE OUTLINES (SUPABASE SOURCE):
 ${outlineContext || "No custom course outline profiles mapped for this section configuration."}
 3. CURRENT ACTIVE SCHEDULE LOGS:
@@ -261,7 +262,17 @@ CRITICAL RULES OF ENGAGEMENT:
     const StructuralMessageBlock = ({ text }) => {
         return (
             <div className="modern-markdown-body" style={contentBodyStyle}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                        // This strictly isolates table scrolling so the page doesn't snap!
+                        table: ({node, ...props}) => (
+                            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', marginBottom: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                <table {...props} style={{ width: '100%', minWidth: '400px', margin: 0, border: 'none' }} />
+                            </div>
+                        )
+                    }}
+                >
                     {text}
                 </ReactMarkdown>
             </div>
@@ -320,14 +331,14 @@ CRITICAL RULES OF ENGAGEMENT:
                 </div>
             </div>
 
-            {/* Ultra Minimal Pill Input Form */}
+            {/* Ultra Minimal Neon-AI Pill Input Form */}
             <form onSubmit={handleSendMessage} style={formInteractionPanelTray}>
                 <div style={inputContainerBoxRel}>
                     <input 
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="Message AI..."
+                        placeholder="Ask IUB Assistant..."
                         style={inputEntryFieldStyle}
                         disabled={isTyping}
                     />
@@ -360,15 +371,8 @@ CRITICAL RULES OF ENGAGEMENT:
                 
                 /* Fully Mobile Responsive Table Styling */
                 .modern-markdown-body table { 
-                    display: block; 
-                    max-width: 100%; 
-                    overflow-x: auto; 
-                    white-space: nowrap; 
                     border-collapse: collapse; 
-                    margin: 1rem 0; 
                     font-size: 0.85rem; 
-                    box-shadow: 0 0 0 1px #e2e8f0; 
-                    border-radius: 8px; 
                 }
                 .modern-markdown-body th { 
                     background: #f8fafc; 
@@ -398,7 +402,7 @@ CRITICAL RULES OF ENGAGEMENT:
                 }
                 @keyframes bounceLoaderState {
                     0%, 80%, 100% { opacity: 0.4; transform: scale(0.8); }
-                    40% { opacity: 1; transform: scale(1.2); background-color: #10a37f; }
+                    40% { opacity: 1; transform: scale(1.2); background-color: #0ea5e9; }
                 }
             `}</style>
         </div>
@@ -406,7 +410,8 @@ CRITICAL RULES OF ENGAGEMENT:
 }
 
 // --- Structural Theme Styling Specs ---
-const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', height: 'calc(100vh - 120px)', minHeight: '500px', overflow: 'hidden', boxShadow: '0 8px 30px -4px rgba(0,0,0,0.08)' };
+// Removed border and borderRadius to allow edge-to-edge flush on mobile displays
+const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', height: '100%', minHeight: '500px', overflow: 'hidden' };
 const botHeaderRibbon = { background: '#ffffff', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' };
 const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '10px' };
 const botAvatarBadge = { width: '30px', height: '30px', border: '1px solid #e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', overflow: 'hidden' };
@@ -415,19 +420,21 @@ const botSubStatus = { color: '#94a3b8', fontSize: '0.7rem', fontWeight: '400' }
 const clearMemoryActionBtn = { background: 'transparent', color: '#94a3b8', border: 'none', padding: '6px', cursor: 'pointer', transition: 'color 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
 const chatDialogueDisplayBox = { flex: 1, padding: '24px 16px', overflowY: 'auto', background: '#ffffff' };
-const messagesConstraintBox = { width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' };
+// Removed maxWidth 800px so it spans full width
+const messagesConstraintBox = { width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' };
 
 const dialogRowUserTrack = { display: 'flex', justifyContent: 'flex-end', width: '100%' };
 const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%', gap: '10px' };
 
 const botIconWrapper = { width: '26px', height: '26px', border: '1px solid #e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px', background: '#ffffff', overflow: 'hidden' };
-const userDialogueWrapperBubble = { maxWidth: '80%', background: '#f4f4f5', color: '#0f172a', borderRadius: '16px', padding: '10px 16px', fontSize: '0.9rem', lineHeight: '1.5' };
+const userDialogueWrapperBubble = { maxWidth: '85%', background: '#f4f4f5', color: '#0f172a', borderRadius: '16px', padding: '10px 16px', fontSize: '0.9rem', lineHeight: '1.5' };
 const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', color: '#0f172a', borderRadius: '0', padding: '0' };
 
 const formInteractionPanelTray = { background: '#ffffff', padding: '10px 16px 16px', display: 'flex', justifyContent: 'center' };
-const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', maxWidth: '800px', background: '#f4f4f5', borderRadius: '24px', padding: '6px 6px 6px 14px' };
+// AI Neon Glow implemented here via boxShadow and borders
+const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '24px', padding: '6px 6px 6px 16px', border: '1px solid rgba(125, 211, 252, 0.4)', boxShadow: '0 0 15px rgba(56, 189, 248, 0.15), 0 0 5px rgba(255, 255, 255, 0.8)' };
 const inputEntryFieldStyle = { flex: 1, padding: '8px 0', border: 'none', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
-const actionDispatchSubmissionBtn = (active) => ({ width: '34px', height: '34px', background: active ? '#000000' : 'transparent', color: active ? '#ffffff' : '#a1a1aa', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s', marginLeft: '6px' });
+const actionDispatchSubmissionBtn = (active) => ({ width: '34px', height: '34px', background: active ? '#0ea5e9' : 'transparent', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s', marginLeft: '6px' });
 
 const contentBodyStyle = { fontSize: '0.95rem', lineHeight: '1.6', wordBreak: 'break-word' };
 const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 0' };
