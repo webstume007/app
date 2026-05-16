@@ -231,7 +231,7 @@ CRITICAL RULES OF ENGAGEMENT:
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: "llama3-8b-8192", // DEFAULT GROQ MODEL SETTING
+                    model: "llama3-8b-8192",
                     messages: targetPayloadMessages,
                     temperature: 0.3,
                     max_tokens: 1500
@@ -239,7 +239,10 @@ CRITICAL RULES OF ENGAGEMENT:
             });
 
             const responseData = await response.json();
-            const aiGeneratedText = responseData?.choices?.[0]?.message?.content || "I encountered an optimization block processing this prompt request pipeline. Please re-verify data endpoints transmission constraints.";
+            
+            // STRICT FIX: Surfacing the actual Groq API Error Message (e.g., "Invalid API Key") if choices fail to map
+            const apiErrorCapture = responseData?.error?.message ? `Groq API Error: ${responseData.error.message}` : null;
+            const aiGeneratedText = responseData?.choices?.[0]?.message?.content || apiErrorCapture || "I encountered an optimization block processing this prompt request pipeline. Please re-verify data endpoints transmission constraints.";
 
             const newBotMessage = {
                 id: `msg-${Date.now()}-bot`,
