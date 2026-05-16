@@ -544,8 +544,6 @@ const messagesConstraintBox = { width: '100%', maxWidth: '800px', margin: '0 aut
 const dialogRowUserTrack = { display: 'flex', justifyContent: 'flex-end', width: '100%' };
 const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%', gap: '10px', minWidth: 0 };
 
-const botIconWrapper = { width: '24px', height: '24px', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px', background: '#ffffff', overflow: 'hidden' };
-
 // Re-styled slightly rounded bubbles without extra spacing
 const userDialogueWrapperBubble = { maxWidth: '85%', background: '#f8fafc', color: '#0f172a', borderRadius: '12px', padding: '10px 12px', fontSize: '0.85rem', lineHeight: '1.5', border: '1px solid #f1f5f9', boxSizing: 'border-box' };
 // CRITICAL FIX: minWidth: 0 stops the bubble container from stretching
