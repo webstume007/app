@@ -269,12 +269,12 @@ CRITICAL RULES OF ENGAGEMENT:
             {
                 id: `welcome-${Date.now()}`,
                 sender: 'bot',
-                text: `Hi, I am IUB AI Assistant, How Can I help you with Schedule, Course Outline, Points Timing and any other info regarding your Study?`,
+                text: `Hi, I am IUB AI Assitant, How Can I help you in Schedule, Course Outline, Points Timing and Your Section's Teachers Info?`,
                 timestamp: getCurrentTime12Hour()
             }
         ]);
         setCurrentSessionId(Date.now().toString());
-        if (window.innerWidth < 768) setIsSidebarOpen(false); // Auto-close on mobile
+        if (window.innerWidth < 768) setIsSidebarOpen(false);
     };
 
     const loadSession = (id) => {
@@ -292,7 +292,6 @@ CRITICAL RULES OF ENGAGEMENT:
         }
     };
 
-    // Identify if the chat only has the initial greeting
     const isNewChat = messages.length === 1 && messages[0].sender === 'bot';
 
     // --- Sub-Component Parser Upgraded for Real Markdown & Safe Tables ---
@@ -302,9 +301,10 @@ CRITICAL RULES OF ENGAGEMENT:
                 <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
+                        // CRITICAL FIX: maxWidth: '100%' and display: 'block' strictly isolates the table
                         table: ({node, ...props}) => (
-                            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', margin: '0.75rem 0', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
-                                <table {...props} style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'collapse', margin: 0, fontSize: '0.8rem' }} />
+                            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%', margin: '0.75rem 0', borderRadius: '6px', border: '1px solid #f1f5f9', display: 'block' }}>
+                                <table {...props} style={{ width: '100%', minWidth: 'max-content', borderCollapse: 'collapse', margin: 0, fontSize: '0.8rem' }} />
                             </div>
                         ),
                         th: ({node, ...props}) => <th {...props} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: '600', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#334155', whiteSpace: 'nowrap' }} />,
@@ -349,7 +349,7 @@ CRITICAL RULES OF ENGAGEMENT:
                 <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
                     
                     {/* Interactive Chat Canvas */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                         <div style={chatDialogueDisplayBox}>
                             {isNewChat ? (
                                 <div style={heroEntranceCenter}>
@@ -363,6 +363,9 @@ CRITICAL RULES OF ENGAGEMENT:
                                         const isUserMessage = msg.sender === 'user';
                                         return (
                                             <div key={msg.id} style={isUserMessage ? dialogRowUserTrack : dialogRowBotTrack}>
+                                                {!isUserMessage && (
+                                                    <div style={botIconWrapper}><IubAvatar size={16} /></div>
+                                                )}
                                                 <div style={isUserMessage ? userDialogueWrapperBubble : botDialogueWrapperBubble}>
                                                     <StructuralMessageBlock text={msg.text} />
                                                 </div>
@@ -373,6 +376,7 @@ CRITICAL RULES OF ENGAGEMENT:
                                     {/* Simulated Real-Time Dynamic Interface Typing Component */}
                                     {isTyping && (
                                         <div style={dialogRowBotTrack}>
+                                            <div style={botIconWrapper}><IubAvatar size={16} /></div>
                                             <div style={botDialogueWrapperBubble}>
                                                 <div style={typingLoaderWrap}>
                                                     <div className="typing-dot" style={dotAnimationDelay(0)}></div>
@@ -520,15 +524,17 @@ CRITICAL RULES OF ENGAGEMENT:
 }
 
 // --- Structural Theme Styling Specs ---
-const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', width: '100%', maxWidth: '1000px', margin: '0 auto', height: 'calc(100vh - 80px)', minHeight: '500px', boxShadow: '0 0 20px rgba(0,0,0,0.03)' };
-const botHeaderRibbon = { background: '#ffffff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f8fafc', zIndex: 10 };
+// Outer container is styled with boxSizing to fix padding/stretching.
+const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', width: '100%', maxWidth: '1000px', margin: '0 auto', height: 'calc(100vh - 80px)', minHeight: '500px', boxShadow: '0 0 20px rgba(0,0,0,0.03)', boxSizing: 'border-box' };
+const botHeaderRibbon = { background: '#ffffff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f8fafc', zIndex: 10, boxSizing: 'border-box' };
 const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '8px' };
 const botAvatarBadge = { width: '28px', height: '28px', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', overflow: 'hidden' };
 const botTitleLabel = { color: '#0f172a', fontSize: '0.85rem', fontWeight: '600', letterSpacing: '-0.2px' };
 const botSubStatus = { color: '#94a3b8', fontSize: '0.65rem', fontWeight: '400' };
 const clearMemoryActionBtn = { background: 'transparent', color: '#64748b', border: 'none', padding: '6px', cursor: 'pointer', transition: 'color 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
-const chatDialogueDisplayBox = { flex: 1, padding: '20px 16px', overflowY: 'auto', background: '#ffffff', display: 'flex', flexDirection: 'column' };
+// Increased horizontal padding (20px left/right) for breathable spacing from screen edges
+const chatDialogueDisplayBox = { flex: 1, padding: '20px 20px', overflowY: 'auto', background: '#ffffff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' };
 
 // Center Entrance Styles (Grok/ChatGPT vibe)
 const heroEntranceCenter = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: '10vh' };
@@ -536,17 +542,21 @@ const heroLogoWrap = { width: '64px', height: '64px', borderRadius: '50%', backg
 const heroTitle = { fontSize: '1.25rem', fontWeight: '600', color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.4px' };
 const heroSubtitle = { fontSize: '0.85rem', color: '#64748b', textAlign: 'center', maxWidth: '300px', lineHeight: '1.5' };
 
-const messagesConstraintBox = { width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' };
+// CRITICAL FIX: minWidth: 0 prevents flexbox children from stretching the layout
+const messagesConstraintBox = { width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 };
 
 const dialogRowUserTrack = { display: 'flex', justifyContent: 'flex-end', width: '100%' };
-const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%' };
+const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%', gap: '10px', minWidth: 0 };
+
+const botIconWrapper = { width: '24px', height: '24px', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px', background: '#ffffff', overflow: 'hidden' };
 
 // Re-styled slightly rounded bubbles without extra spacing
-const userDialogueWrapperBubble = { maxWidth: '85%', background: '#f8fafc', color: '#0f172a', borderRadius: '12px', padding: '10px 12px', fontSize: '0.85rem', lineHeight: '1.5', border: '1px solid #f1f5f9' };
-const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', color: '#0f172a', borderRadius: '0', padding: '0' };
+const userDialogueWrapperBubble = { maxWidth: '85%', background: '#f8fafc', color: '#0f172a', borderRadius: '12px', padding: '10px 12px', fontSize: '0.85rem', lineHeight: '1.5', border: '1px solid #f1f5f9', boxSizing: 'border-box' };
+// CRITICAL FIX: minWidth: 0 stops the bubble container from stretching
+const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', minWidth: 0, color: '#0f172a', borderRadius: '0', padding: '0' };
 
-const formInteractionPanelTray = { background: '#ffffff', padding: '10px 16px 16px', display: 'flex', justifyContent: 'center', position: 'sticky', bottom: 0, zIndex: 10 };
-const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '24px' };
+const formInteractionPanelTray = { background: '#ffffff', padding: '10px 20px 16px', display: 'flex', justifyContent: 'center', position: 'sticky', bottom: 0, zIndex: 10, boxSizing: 'border-box' };
+const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '24px', boxSizing: 'border-box' };
 const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '24px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
 // Send button made Absolute to float perfectly inside the input field
 const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
