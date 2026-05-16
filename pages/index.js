@@ -580,8 +580,8 @@ export default function Home() {
         const hrs = Math.floor(diffSecs / 3600);
         const mins = Math.floor((diffSecs % 3600) / 60);
         const secs = diffSecs % 60;
-        if (hrs > 0) return `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')} remaining in departure..`;
-        return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')} remaining in departure..`;
+        if (hrs > 0) return `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')} Remaining`;
+        return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')} Remaining`;
     };
 
     const availableSessions = dropdownMeta.sessions.sort((a, b) => {
@@ -670,6 +670,10 @@ export default function Home() {
         const myClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         return [...new Set(myClasses.map(c => c.course))];
     }, [allBaseSchedule, userSection]);
+
+    const activeSchedDays = useMemo(() => {
+        return [...new Set(rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session).map(c => c.day))];
+    }, [rawData, userSection]);
 
     const relevantNotifs = notifications.filter(n => {
         const msg = n.message || "";
@@ -884,23 +888,10 @@ export default function Home() {
 
         const daysToRender = (displayContext === 'ongoing') ? [currentDayStr] : (selectedDay === 'ALL' || displayContext === 'all_rooms') ? days : [selectedDay];
 
-        return daysToRender.map(day => {
+        const renderedDays = daysToRender.map(day => {
             const dayClasses = scheduleList.filter(c => c.day === day).sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
             if (dayClasses.length === 0) {
-                if (displayContext === 'ongoing') return <div key={day} style={emptyState}>No lectures are currently ongoing.</div>;
-                return (
-                    <div key={day} style={{ marginBottom: '20px' }}>
-                        <div style={dayHeaderStrip}>{day}</div>
-                        <div style={{ ...whiteCard, textAlign: 'center', padding: '20px 10px' }}>
-                            <div style={{ marginBottom: '10px', color: '#999', fontSize: '0.85rem', fontWeight: 'bold' }}>No lectures scheduled.</div>
-                            {(displayContext === 'class') && (
-                                <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '25px', background: '#F2A900', color: '#002147' }}>
-                                    {SVGS.note} See Assignments
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                );
+                return null;
             }
 
             return (
@@ -921,7 +912,26 @@ export default function Home() {
                         let assignmentTextColor = allAssignmentsComplete ? '#15803d' : '#b27b00';
                         let assignmentIconColor = allAssignmentsComplete ? '#15803d' : '#856404';
                         
-                        let dueText = allAssignmentsComplete ? 'Done' : (activeSubjectAssignments.length > 0 ? `Due ${convertTo12Hour(activeSubjectAssignments[0].deadline_time)}` : '');
+                        let dueText = 'Done';
+                        if (!allAssignmentsComplete && activeSubjectAssignments.length > 0) {
+                            const ann = activeSubjectAssignments[0];
+                            const deadlineDate = new Date(ann.deadline_date);
+                            const dm = parseTime(ann.deadline_time);
+                            deadlineDate.setHours(Math.floor(dm / 60), dm % 60, 0, 0);
+                            const diffMs = deadlineDate - currentTime;
+                            if (diffMs > 0) {
+                                const d = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                                const h = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+                                const m = Math.floor((diffMs / 1000 / 60) % 60);
+                                if (d > 0) {
+                                    dueText = `Due ${d}d ${h}h`;
+                                } else {
+                                    dueText = `Due ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                                }
+                            } else {
+                                dueText = 'Passed';
+                            }
+                        }
 
                         const isContactExpanded = expandedContactId === cls.id;
 
@@ -1039,7 +1049,23 @@ export default function Home() {
                     })}
                 </div>
             );
-        });
+        }).filter(Boolean);
+
+        if (renderedDays.length === 0) {
+            if (displayContext === 'ongoing') return <div style={emptyState}>No lectures are currently ongoing.</div>;
+            return (
+                <div style={{ ...whiteCard, textAlign: 'center', padding: '20px 10px' }}>
+                    <div style={{ marginBottom: '10px', color: '#999', fontSize: '0.85rem', fontWeight: 'bold' }}>No lectures scheduled.</div>
+                    {(displayContext === 'class') && (
+                        <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '25px', background: '#F2A900', color: '#002147' }}>
+                            {SVGS.note} See Assignments
+                        </button>
+                    )}
+                </div>
+            );
+        }
+
+        return renderedDays;
     };
 
     const handleInstallClick = async () => {
@@ -1134,13 +1160,13 @@ export default function Home() {
             const [h,m] = nextUp.departure_time.split(':').map(Number);
             const d = new Date(currentTime); d.setHours(h,m,0,0);
             const s = Math.floor((d - currentTime)/1000);
-            nextUpTimeStr = s > 3600 ? `${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}` : `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+            nextUpTimeStr = s > 0 ? `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}` : '00:00';
         }
         if (nextDown) {
             const [h,m] = nextDown.departure_time.split(':').map(Number);
             const d = new Date(currentTime); d.setHours(h,m,0,0);
             const s = Math.floor((d - currentTime)/1000);
-            nextDownTimeStr = s > 3600 ? `${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}` : `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+            nextDownTimeStr = s > 0 ? `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}` : '00:00';
         }
     }
 
@@ -1485,24 +1511,24 @@ export default function Home() {
 
                                 {/* Dynamic Points to Departure Bar */}
                                 {showPointsBar && (
-                                    <div className="expand-anim" style={{ background: '#fffbea', padding: '15px', borderRadius: '15px', marginTop: '15px', border: '1px solid #F2A900', position: 'relative' }}>
+                                    <div className="expand-anim" style={{ background: 'linear-gradient(to right, #fffbea, #fef9c3)', padding: '10px 15px', borderRadius: '12px', marginTop: '15px', border: '1px solid #fde047', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#856404', fontWeight: '900', marginBottom: '10px', fontSize: '0.9rem' }}>
-                                                {SVGS.bus} Points to Departure
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#856404', fontWeight: '900', marginBottom: '8px', fontSize: '0.8rem', textTransform: 'uppercase' }}>
+                                                {SVGS.bus} Next Departures
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                                                <div style={{ flex: 1, textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', width: '100%' }}>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '0.65rem', fontWeight: '900', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', letterSpacing: '0.5px' }}>
                                                         AC {SVGS.rightArrow} BJC
                                                     </div>
-                                                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#856404', marginTop: '4px' }}>{nextUpTimeStr}</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#856404', marginTop: '2px' }}>{nextUpTimeStr}</div>
                                                 </div>
-                                                <div style={{ borderLeft: '2px dotted #F2A900', height: '30px', margin: '0 10px' }}></div>
-                                                <div style={{ flex: 1, textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                <div style={{ borderLeft: '2px dashed #fde047', height: '25px', opacity: 0.5 }}></div>
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <div style={{ fontSize: '0.65rem', fontWeight: '900', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', letterSpacing: '0.5px' }}>
                                                         BJC {SVGS.rightArrow} AC
                                                     </div>
-                                                    <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#856404', marginTop: '4px' }}>{nextDownTimeStr}</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: '900', color: '#856404', marginTop: '2px' }}>{nextDownTimeStr}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1515,9 +1541,22 @@ export default function Home() {
                         {currentTab === 'class' && !isGuestUser && (
                             <>
                                 <div style={dayFilter}>
-                                    {filterDays.map(day => (
-                                        <button key={day} onClick={() => setSelectedDay(day)} style={dayBtnStyle(selectedDay === day)}>{day}</button>
-                                    ))}
+                                    {filterDays.map(day => {
+                                        const isActive = activeSchedDays.includes(day);
+                                        const isSelected = selectedDay === day;
+                                        let bg = '#f1f5f9';
+                                        let col = '#94a3b8';
+                                        if (isSelected) {
+                                            bg = '#002147';
+                                            col = '#F2A900';
+                                        } else if (day === 'ALL' || isActive) {
+                                            bg = '#dcfce7';
+                                            col = '#15803d';
+                                        }
+                                        return (
+                                            <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(isSelected), background: bg, color: col}}>{day}</button>
+                                        );
+                                    })}
                                 </div>
                                 <div className="expand-anim">
                                     {renderClassCards(mySchedule, 'class')}
@@ -1727,7 +1766,6 @@ export default function Home() {
                                             {SVGS.live} Live Ongoing Lectures (Refresh to see)
                                         </div>
                                         {renderClassCards(ongoingAllLectures, 'ongoing')}
-                                        {ongoingAllLectures.length === 0 && <div style={whiteCard}><div style={emptyState}>No lectures are currently ongoing.</div></div>}
                                     </div>
                                 )}
                             </div>
@@ -1944,11 +1982,11 @@ export default function Home() {
                                                     const isNext = i === nextIndex;
                                                     
                                                     return (
-                                                        <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                                            <div>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                        <div key={i} style={{ background: '#fff', borderRadius: '8px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
+                                                            <div style={{ padding: '10px 5px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
                                                             {isNext && remainingStr && (
-                                                                <div className="expand-anim" style={{ background: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', marginTop: '4px', display: 'inline-block', border: '1px solid #fde047' }}>
-                                                                    {remainingStr}
+                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                    {SVGS.clock} {remainingStr}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1974,11 +2012,11 @@ export default function Home() {
                                                     const isNext = i === nextIndex;
                                                     
                                                     return (
-                                                        <div key={i} style={{ background: '#fff', padding: '8px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                                            <div>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                        <div key={i} style={{ background: '#fff', borderRadius: '8px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.85rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
+                                                            <div style={{ padding: '10px 5px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
                                                             {isNext && remainingStr && (
-                                                                <div className="expand-anim" style={{ background: '#fef9c3', color: '#854d0e', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', marginTop: '4px', display: 'inline-block', border: '1px solid #fde047' }}>
-                                                                    {remainingStr}
+                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                    {SVGS.clock} {remainingStr}
                                                                 </div>
                                                             )}
                                                         </div>
