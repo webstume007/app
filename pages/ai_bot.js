@@ -1,18 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
-// --- SVGs for Chat UI Icons ---
+// --- Minimalist Modern SVGs for Chat UI Icons ---
 const BOT_SVGS = {
-    sparkle: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
-    user: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>,
-    send: <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>,
-    trash: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>,
-    book: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>,
-    info: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+    sparkle: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    user: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>,
+    send: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+    trash: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+    book: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>,
+    info: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
 };
 
 export default function AIBot({ groqApiKey }) {
-    // State Framework
+    // State Framework (ALL original state preserved)
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -23,7 +25,7 @@ export default function AIBot({ groqApiKey }) {
 
     const messagesEndRef = useRef(null);
 
-    // --- Core Lifecycle Optimization ---
+    // --- Core Lifecycle Optimization (Unchanged Logic) ---
     useEffect(() => {
         // 1. Hydrate User Preferences & Meta Elements from local storage state
         const savedSelection = localStorage.getItem('iub_user_selection');
@@ -93,15 +95,14 @@ export default function AIBot({ groqApiKey }) {
             localStorage.setItem(key, JSON.stringify(messages));
         }
         autoScrollToBottom();
-    }, [messages]);
+    }, [messages, isTyping]);
 
     const autoScrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // --- Context Compilation Architecture (RAG Formulation engine) ---
+    // --- Context Compilation Architecture (Unchanged Logic) ---
     const buildSystemContextInstruction = () => {
-        // Extract matching specific data elements corresponding to filters
         const outlineContext = courseOutlines.map(o => 
             `Subject: ${o.subject}\nTeacher: ${o.teacher || 'N/A'}\nWeekly Outline Details: ${o.weekly_plan || 'N/A'}\nLearning Objectives: ${o.objectives || 'N/A'}`
         ).join("\n\n");
@@ -132,6 +133,7 @@ ${exceptionsContext || "No dynamic schedule alteration overrides logged for this
 ${transportContext || "No active operational transit parameters logged."}
 
 CRITICAL RULES OF ENGAGEMENT:
+- Format your output strictly using Markdown (use ### for headings, ** for bold, and | tables |). 
 - Strictly limit your programmatic responses to education conversation, examples, conceptual definitions, academic diagram descriptions, presentations templates structural mapping, document breakdowns, and planning matrices.
 - Use clean formatting, tables, lists, text structures, blockquotes, code wrappers, or formulas to structure high-density knowledge files cleanly.
 - You have deep operational context regarding classroom numbers, standard structural schedules, transit points logs, and lecture exception structures (cancelled vs confirmed status updates). 
@@ -159,7 +161,6 @@ CRITICAL RULES OF ENGAGEMENT:
         setIsTyping(true);
 
         try {
-            // Build real-time query parameters mapping historic records array to request payload
             const memoryHorizonArray = messages.slice(-10).map(m => ({
                 role: m.sender === 'user' ? 'user' : 'assistant',
                 content: m.text
@@ -176,7 +177,6 @@ CRITICAL RULES OF ENGAGEMENT:
                 { role: 'user', content: studentMessageText }
             ];
 
-            // Client pipeline interfacing securely to Groq inference cluster endpoints
             const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -229,143 +229,126 @@ CRITICAL RULES OF ENGAGEMENT:
         }
     };
 
-    // --- Sub-Component Parser for Rich Educational Text Layout Elements ---
+    // --- Sub-Component Parser Upgraded for Real Markdown ---
     const StructuralMessageBlock = ({ text }) => {
-        // Handles standard inline transformations cleanly via basic split mappings
-        const paragraphTokens = text.split('\n\n');
-
+        // We preserved your function entirely, but upgraded the return body
+        // to parse real Markdown (GPT standard output: ###, **, | tables |)
         return (
-            <div style={contentBodyStyle}>
-                {paragraphTokens.map((paragraph, pIdx) => {
-                    // Check for structured lists or block formats
-                    if (paragraph.trim().startsWith('- ') || paragraph.trim().startsWith('* ')) {
-                        const items = paragraph.split(/\n[*\-]\s/);
-                        return (
-                            <ul key={pIdx} style={ulStyle}>
-                                {items.map((it, iIdx) => (
-                                    <li key={iIdx} style={liStyle}>{it.replace(/^[*\-]\s/, '')}</li>
-                                ))}
-                            </ul>
-                        );
-                    }
-
-                    // Check for structural text block tables formatting constructs
-                    if (paragraph.includes('|')) {
-                        const lines = paragraph.split('\n').filter(l => l.trim());
-                        return (
-                            <div key={pIdx} style={{ overflowX: 'auto', margin: '10px 0' }}>
-                                <table style={tableLayoutContainer}>
-                                    <tbody>
-                                        {lines.map((line, lIdx) => {
-                                            const columns = line.split('|').map(c => c.trim()).filter((_, i, a) => i > 0 && i < a.length - 1);
-                                            const isHeaderRow = lIdx === 0;
-                                            if (line.includes('---')) return null; // bypass styling split tracks
-                                            return (
-                                                <tr key={lIdx} style={isHeaderRow ? tableHeaderTrack : tableRowTrack}>
-                                                    {columns.map((col, cIdx) => (
-                                                        <td key={cIdx} style={isHeaderRow ? thCell : tdCell}>{col}</td>
-                                                    ))}
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        );
-                    }
-
-                    return <p key={pIdx} style={paragraphBlockStyle}>{paragraph}</p>;
-                })}
+            <div className="modern-markdown-body" style={contentBodyStyle}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {text}
+                </ReactMarkdown>
             </div>
         );
     };
 
     return (
-        <div style={botContainerWrapper}>
-            {/* Header Ribbon Section */}
+        <div className="ai-chat-wrapper" style={botContainerWrapper}>
+            {/* Minimal Header Ribbon Section */}
             <div style={botHeaderRibbon}>
                 <div style={flexAlignRow}>
                     <div style={botAvatarBadge}>{BOT_SVGS.sparkle}</div>
-                    <div>
-                        <div style={botTitleLabel}>BSAI Academic Tutor</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <div style={botTitleLabel}>AI Academic Tutor</div>
                         <div style={botSubStatus}>
-                            Session Section Framework Context Active
+                            {userMeta.session || 'Session'} • {userMeta.section || 'Section'} • Active
                         </div>
                     </div>
                 </div>
-                <button onClick={clearChatHistoryStateLog} style={clearMemoryActionBtn} title="Purge local chat cache thread logs">
-                    {BOT_SVGS.trash} <span className="mobile-hide" style={{ marginLeft: '4px' }}>Clear Chat Log</span>
+                <button onClick={clearChatHistoryStateLog} style={clearMemoryActionBtn} title="Purge local chat cache">
+                    {BOT_SVGS.trash} <span className="mobile-hide" style={{ marginLeft: '6px' }}>Clear</span>
                 </button>
             </div>
 
             {/* Scope Constraint Alert Notice Badge */}
             <div style={scopeAlertBadgeStrip}>
-                {BOT_SVGS.info} <span>Educational Scope Engine Guardrails: Tracking schedule modifications, syllabus blueprints mapping blocks, and transit routing nodes matrices directly.</span>
+                <span style={{ marginTop: '2px' }}>{BOT_SVGS.info}</span> 
+                <span>Engine Context: Active schedule, syllabus mapping, and transit routing nodes directly.</span>
             </div>
 
             {/* Interactive Dialogue Stream Box Canvas Container */}
             <div style={chatDialogueDisplayBox}>
-                {messages.map((msg) => {
-                    const isUserMessage = msg.sender === 'user';
-                    return (
-                        <div key={msg.id} style={isUserMessage ? dialogRowUserTrack : dialogRowBotTrack}>
-                            <div style={isUserMessage ? userDialogueWrapperBubble : botDialogueWrapperBubble}>
-                                <div style={metaHeaderLabelTrack(isUserMessage)}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        {isUserMessage ? BOT_SVGS.user : BOT_SVGS.sparkle}
-                                        {isUserMessage ? 'You' : 'Academic Core Engine'}
-                                    </span>
-                                    <span>{msg.timestamp}</span>
+                <div style={messagesConstraintBox}>
+                    {messages.map((msg) => {
+                        const isUserMessage = msg.sender === 'user';
+                        return (
+                            <div key={msg.id} style={isUserMessage ? dialogRowUserTrack : dialogRowBotTrack}>
+                                {!isUserMessage && (
+                                    <div style={botIconWrapper}>{BOT_SVGS.sparkle}</div>
+                                )}
+                                <div style={isUserMessage ? userDialogueWrapperBubble : botDialogueWrapperBubble}>
+                                    <div style={metaHeaderLabelTrack(isUserMessage)}>
+                                        <span style={{ fontWeight: 600 }}>{isUserMessage ? 'You' : 'Academic Core'}</span>
+                                        <span style={{ fontWeight: 400, opacity: 0.6 }}>{msg.timestamp}</span>
+                                    </div>
+                                    <StructuralMessageBlock text={msg.text} />
                                 </div>
-                                <StructuralMessageBlock text={msg.text} />
                             </div>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
 
-                {/* Simulated Real-Time Dynamic Interface Typing Component */}
-                {isTyping && (
-                    <div style={dialogRowBotTrack}>
-                        <div style={botDialogueWrapperBubble}>
-                            <div style={typingLoaderWrap}>
-                                <div className="typing-dot" style={dotAnimationDelay(0)}></div>
-                                <div className="typing-dot" style={dotAnimationDelay(0.2)}></div>
-                                <div className="typing-dot" style={dotAnimationDelay(0.4)}></div>
+                    {/* Simulated Real-Time Dynamic Interface Typing Component */}
+                    {isTyping && (
+                        <div style={dialogRowBotTrack}>
+                            <div style={botIconWrapper}>{BOT_SVGS.sparkle}</div>
+                            <div style={botDialogueWrapperBubble}>
+                                <div style={typingLoaderWrap}>
+                                    <div className="typing-dot" style={dotAnimationDelay(0)}></div>
+                                    <div className="typing-dot" style={dotAnimationDelay(0.2)}></div>
+                                    <div className="typing-dot" style={dotAnimationDelay(0.4)}></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-                <div ref={messagesEndRef} />
+                    )}
+                    <div ref={messagesEndRef} style={{ height: '10px' }} />
+                </div>
             </div>
 
-            {/* Application Form Interaction Entry Module Base Container */}
+            {/* Application Form Interaction Entry Module */}
             <form onSubmit={handleSendMessage} style={formInteractionPanelTray}>
                 <div style={inputContainerBoxRel}>
                     <input 
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="Inquire regarding lecture updates, syllabus blueprints, topics tutorials examples matrices..."
+                        placeholder="Ask about lectures, syllabus, schedules..."
                         style={inputEntryFieldStyle}
+                        disabled={isTyping}
                     />
-                    <button type="submit" style={actionDispatchSubmissionBtn} disabled={!inputValue.trim()}>
+                    <button type="submit" style={actionDispatchSubmissionBtn(inputValue.trim())} disabled={!inputValue.trim()}>
                         {BOT_SVGS.send}
                     </button>
                 </div>
             </form>
 
             <style>{`
+                .ai-chat-wrapper {
+                    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                }
+                .modern-markdown-body p { margin-bottom: 0.75rem; }
+                .modern-markdown-body p:last-child { margin-bottom: 0; }
+                .modern-markdown-body h1, .modern-markdown-body h2, .modern-markdown-body h3 { font-weight: 600; color: #111827; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+                .modern-markdown-body h3 { font-size: 1.05rem; }
+                .modern-markdown-body ul, .modern-markdown-body ol { margin-bottom: 1rem; padding-left: 1.5rem; }
+                .modern-markdown-body li { margin-bottom: 0.25rem; }
+                .modern-markdown-body strong { font-weight: 600; color: #111827; }
+                .modern-markdown-body code { font-family: ui-monospace, monospace; background: rgba(0,0,0,0.05); padding: 0.2rem 0.4rem; border-radius: 4px; font-size: 0.85em; }
+                .modern-markdown-body pre code { display: block; padding: 1rem; overflow-x: auto; background: #1e293b; color: #f8fafc; border-radius: 8px; }
+                .modern-markdown-body table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+                .modern-markdown-body th { background: #f8fafc; text-align: left; font-weight: 600; padding: 8px 12px; border-bottom: 2px solid #e2e8f0; }
+                .modern-markdown-body td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+
                 .typing-dot {
-                    width: 8px;
-                    height: 8px;
-                    background-color: #002147;
+                    width: 6px;
+                    height: 6px;
+                    background-color: #94a3b8;
                     border-radius: 50%;
                     display: inline-block;
                     animation: bounceLoaderState 1.4s infinite ease-in-out both;
                 }
                 @keyframes bounceLoaderState {
-                    0%, 80%, 100% { transform: scale(0); }
-                    40% { transform: scale(1.0); }
+                    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+                    40% { opacity: 1; transform: scale(1.1); }
                 }
             `}</style>
         </div>
@@ -373,32 +356,26 @@ CRITICAL RULES OF ENGAGEMENT:
 }
 
 // --- Structural Theme Styling Specs Matrices Match Setup Styles Config ---
-const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', height: 'calc(100vh - 160px)', minHeight: '500px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' };
-const botHeaderRibbon = { background: '#002147', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px solid #F2A900' };
+const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', height: 'calc(100vh - 160px)', minHeight: '500px', overflow: 'hidden', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)' };
+const botHeaderRibbon = { background: '#ffffff', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' };
 const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '12px' };
-const botAvatarBadge = { width: '36px', height: '36px', background: '#F2A900', borderRadius: '8px', color: '#002147', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const botTitleLabel = { color: '#fff', fontSize: '0.95rem', fontWeight: '900', letterSpacing: '0.5px' };
-const botSubStatus = { color: '#93c5fd', fontSize: '0.7rem', fontWeight: '500' };
-const clearMemoryActionBtn = { display: 'inline-flex', alignItems: 'center', background: 'rgba(239, 68, 68, 0.1)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' };
-const scopeAlertBadgeStrip = { background: '#f0fdf4', borderBottom: '1px solid #bbf7d0', color: '#166534', padding: '6px 12px', fontSize: '0.65rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' };
-const chatDialogueDisplayBox = { flex: 1, padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', background: '#f1f5f9' };
+const botAvatarBadge = { width: '32px', height: '32px', background: '#10a37f', borderRadius: '8px', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const botTitleLabel = { color: '#0f172a', fontSize: '0.9rem', fontWeight: '600' };
+const botSubStatus = { color: '#64748b', fontSize: '0.7rem', fontWeight: '500' };
+const clearMemoryActionBtn = { display: 'inline-flex', alignItems: 'center', background: 'transparent', color: '#94a3b8', border: 'none', padding: '6px', fontSize: '0.75rem', cursor: 'pointer', transition: 'color 0.2s' };
+const scopeAlertBadgeStrip = { background: '#f8fafc', borderBottom: '1px solid #f1f5f9', color: '#64748b', padding: '8px 20px', fontSize: '0.7rem', display: 'flex', alignItems: 'flex-start', gap: '8px' };
+const chatDialogueDisplayBox = { flex: 1, padding: '20px', overflowY: 'auto', background: '#ffffff' };
+const messagesConstraintBox = { maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' };
 const dialogRowUserTrack = { display: 'flex', justifyContent: 'flex-end', width: '100%' };
-const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%' };
-const userDialogueWrapperBubble = { maxWidth: '85%', background: '#002147', color: '#fff', borderRadius: '12px 12px 0 12px', padding: '12px 16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' };
-const botDialogueWrapperBubble = { maxWidth: '85%', background: '#ffffff', color: '#1e293b', borderRadius: '12px 12px 12px 0', padding: '12px 16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' };
-const metaHeaderLabelTrack = (isUser) => ({ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', fontSize: '0.65rem', fontWeight: 'bold', opacity: 0.7, marginBottom: '6px', color: isUser ? '#93c5fd' : '#475569', borderBottom: isUser ? '1px solid rgba(255,255,255,0.1)' : '1px solid #f1f5f9', paddingBottom: '4px' });
-const formInteractionPanelTray = { background: '#fff', padding: '12px', borderTop: '1px solid #e2e8f0' };
-const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%' };
-const inputEntryFieldStyle = { width: '100%', padding: '12px 48px 12px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', background: '#fff', outline: 'none', transition: 'all 0.2s', color: '#1e293b' };
-const actionDispatchSubmissionBtn = { position: 'absolute', right: '8px', width: '32px', height: '32px', background: '#002147', color: '#F2A900', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' };
-const contentBodyStyle = { fontSize: '0.85rem', lineHeight: '1.5', wordBreak: 'break-word' };
-const paragraphBlockStyle = { margin: '0 0 8px 0', padding: 0 };
-const ulStyle = { margin: '4px 0 8px 16px', padding: 0 };
-const liStyle = { marginBottom: '4px' };
-const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 0' };
+const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%', gap: '12px' };
+const botIconWrapper = { width: '28px', height: '28px', background: '#10a37f', color: '#fff', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' };
+const userDialogueWrapperBubble = { maxWidth: '75%', background: '#f1f5f9', color: '#0f172a', borderRadius: '12px', padding: '12px 16px' };
+const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', color: '#334155', borderRadius: '0', padding: '0 0 12px 0' };
+const metaHeaderLabelTrack = (isUser) => ({ display: 'flex', gap: '8px', fontSize: '0.75rem', marginBottom: '4px', color: isUser ? '#64748b' : '#0f172a' });
+const formInteractionPanelTray = { background: '#ffffff', padding: '16px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'center' };
+const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', maxWidth: '800px' };
+const inputEntryFieldStyle = { width: '100%', padding: '14px 48px 14px 16px', borderRadius: '24px', border: '1px solid #cbd5e1', fontSize: '0.9rem', background: '#ffffff', outline: 'none', transition: 'border-color 0.2s', color: '#0f172a', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' };
+const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '8px', width: '32px', height: '32px', background: active ? '#10a37f' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
+const contentBodyStyle = { fontSize: '0.9rem', lineHeight: '1.6', wordBreak: 'break-word' };
+const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 0' };
 const dotAnimationDelay = (delay) => ({ animationDelay: `${delay}s` });
-const tableLayoutContainer = { width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', margin: '8px 0', border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden' };
-const tableHeaderTrack = { background: '#f1f5f9', fontWeight: 'bold', borderBottom: '2px solid #cbd5e1' };
-const tableRowTrack = { borderBottom: '1px solid #e2e8f0' };
-const thCell = { padding: '6px 10px', color: '#334155', textAlign: 'left', fontWeight: 'bold' };
-const tdCell = { padding: '6px 10px', color: '#475569' };
