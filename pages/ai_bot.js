@@ -49,6 +49,11 @@ export default function AIBot({ groqApiKey }) {
         return 'Unknown Semester';
     };
 
+    // Helper for 12-hour AM/PM Time Format
+    const getCurrentTime12Hour = () => {
+        return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    };
+
     // --- Core Lifecycle Optimization (Unchanged Logic) ---
     useEffect(() => {
         const savedSelection = localStorage.getItem('iub_user_selection');
@@ -91,7 +96,7 @@ export default function AIBot({ groqApiKey }) {
                     id: 'welcome',
                     sender: 'bot',
                     text: `Hi, I am IUB AI Assitant, How Can I help you in Schedule, Course Outline, Points Timing and Your Section's Teachers Info?`,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    timestamp: getCurrentTime12Hour()
                 }
             ]);
         }
@@ -124,7 +129,7 @@ export default function AIBot({ groqApiKey }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // --- Context Compilation Architecture (Unchanged Logic) ---
+    // --- Context Compilation Architecture ---
     const buildSystemContextInstruction = () => {
         const outlineContext = courseOutlines.map(o => 
             `Subject: ${o.subject}\nTeacher: ${o.teacher || 'N/A'}\nWeekly Outline Details: ${o.weekly_plan || 'N/A'}\nLearning Objectives: ${o.objectives || 'N/A'}`
@@ -156,10 +161,10 @@ ${exceptionsContext || "No dynamic schedule alteration overrides logged for this
 ${transportContext || "No active operational transit parameters logged."}
 
 CRITICAL RULES OF ENGAGEMENT:
+- CONCISENESS IS REQUIRED: If the user says "Hi", "Hello", or gives a basic greeting, ONLY reply with a short, polite greeting (e.g. "Hi ${userMeta.name}, how can I help you today?"). DO NOT output schedule or transport data unless explicitly asked.
+- DATA PRESENTATION: When asked about data (transport points, schedule, etc.), DO NOT output the raw database text. Summarize and organize it beautifully into natural conversational language, bullet points, or clean Markdown tables.
 - Format your output strictly using Markdown (use ### for headings, ** for bold, and | tables |). 
 - Strictly limit your programmatic responses to education conversation, examples, conceptual definitions, academic diagram descriptions, presentations templates structural mapping, document breakdowns, and planning matrices.
-- Use clean formatting, tables, lists, text structures, blockquotes, code wrappers, or formulas to structure high-density knowledge files cleanly.
-- You have deep operational context regarding classroom numbers, standard structural schedules, transit points logs, and lecture exception structures (cancelled vs confirmed status updates). 
 - ABSOLUTELY PROHIBITED: You do not possess structural permissions maps for viewing personalized numerical attendance data properties. If asked for attendance, state politely that attendance matrices must be evaluated safely via the dedicated custom circular dashboards interface inside the Attendance view block directly.
 - Maintain a highly sophisticated, adaptive, supportive yet peer-like academic posture. Provide actionable answers concisely without fluff.`;
     };
@@ -170,7 +175,7 @@ CRITICAL RULES OF ENGAGEMENT:
         if (!inputValue.trim()) return;
 
         const studentMessageText = inputValue.trim();
-        const timestampString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const timestampString = getCurrentTime12Hour();
         
         const newUserMessage = {
             id: `msg-${Date.now()}-user`,
@@ -221,7 +226,7 @@ CRITICAL RULES OF ENGAGEMENT:
                 id: `msg-${Date.now()}-bot`,
                 sender: 'bot',
                 text: aiGeneratedText,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                timestamp: getCurrentTime12Hour()
             };
 
             setMessages(prev => [...prev, newBotMessage]);
@@ -232,7 +237,7 @@ CRITICAL RULES OF ENGAGEMENT:
                 id: `msg-${Date.now()}-err`,
                 sender: 'bot',
                 text: "An execution timeout anomaly occurred in the remote network pipeline interface layer. Please check your network connection status parameters.",
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                timestamp: getCurrentTime12Hour()
             }]);
         } finally {
             setIsTyping(false);
@@ -246,10 +251,14 @@ CRITICAL RULES OF ENGAGEMENT:
                     id: 'welcome-reset',
                     sender: 'bot',
                     text: `Hi, I am IUB AI Assitant, How Can I help you in Schedule, Course Outline, Points Timing and Your Section's Teachers Info?`,
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    timestamp: getCurrentTime12Hour()
                 }
             ]);
         }
+    };
+
+    const handleSidebarClick = () => {
+        alert("Sidebar navigation and previous chats feature will be integrated soon!");
     };
 
     // Identify if the chat only has the initial greeting
@@ -278,128 +287,130 @@ CRITICAL RULES OF ENGAGEMENT:
     };
 
     return (
-        <div className="ai-chat-wrapper" style={botContainerWrapper}>
-            {/* Minimal Header Ribbon Section */}
-            <div style={botHeaderRibbon}>
-                <div style={flexAlignRow}>
-                    {!isNewChat && <div style={botAvatarBadge}><IubAvatar size={18} /></div>}
-                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <div style={botTitleLabel}>IUB Assistant AI</div>
-                        <div style={botSubStatus}>
-                            {userMeta.semester || userMeta.session || 'Session'} • {userMeta.section || 'Section'}
+        <div style={{ backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'center' }}>
+            <div className="ai-chat-wrapper" style={botContainerWrapper}>
+                {/* Minimal Header Ribbon Section */}
+                <div style={botHeaderRibbon}>
+                    <div style={flexAlignRow}>
+                        {!isNewChat && <div style={botAvatarBadge}><IubAvatar size={18} /></div>}
+                        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <div style={botTitleLabel}>IUB Assistant AI</div>
+                            <div style={botSubStatus}>
+                                {userMeta.semester || userMeta.session || 'Session'} • {userMeta.section || 'Section'}
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div style={flexAlignRow}>
-                    <button onClick={clearChatHistoryStateLog} style={clearMemoryActionBtn} title="Clear Chat">
-                        {ICONS.trash}
-                    </button>
-                    <button style={clearMemoryActionBtn} title="Previous Chats (Sidebar)">
-                        {ICONS.menu}
-                    </button>
-                </div>
-            </div>
-
-            {/* Interactive Dialogue Stream Box Canvas Container */}
-            <div style={chatDialogueDisplayBox}>
-                {isNewChat ? (
-                    <div style={heroEntranceCenter}>
-                        <div style={heroLogoWrap}><IubAvatar size={42} /></div>
-                        <h2 style={heroTitle}>IUB AI Assistant</h2>
-                        <p style={heroSubtitle}>{messages[0].text}</p>
+                    <div style={flexAlignRow}>
+                        <button onClick={clearChatHistoryStateLog} style={clearMemoryActionBtn} title="Clear Chat">
+                            {ICONS.trash}
+                        </button>
+                        <button onClick={handleSidebarClick} style={clearMemoryActionBtn} title="Previous Chats (Sidebar)">
+                            {ICONS.menu}
+                        </button>
                     </div>
-                ) : (
-                    <div style={messagesConstraintBox}>
-                        {messages.map((msg) => {
-                            const isUserMessage = msg.sender === 'user';
-                            return (
-                                <div key={msg.id} style={isUserMessage ? dialogRowUserTrack : dialogRowBotTrack}>
-                                    {!isUserMessage && (
-                                        <div style={botIconWrapper}><IubAvatar size={16} /></div>
-                                    )}
-                                    <div style={isUserMessage ? userDialogueWrapperBubble : botDialogueWrapperBubble}>
-                                        <StructuralMessageBlock text={msg.text} />
+                </div>
+
+                {/* Interactive Dialogue Stream Box Canvas Container */}
+                <div style={chatDialogueDisplayBox}>
+                    {isNewChat ? (
+                        <div style={heroEntranceCenter}>
+                            <div style={heroLogoWrap}><IubAvatar size={42} /></div>
+                            <h2 style={heroTitle}>IUB AI Assistant</h2>
+                            <p style={heroSubtitle}>{messages[0].text}</p>
+                        </div>
+                    ) : (
+                        <div style={messagesConstraintBox}>
+                            {messages.map((msg) => {
+                                const isUserMessage = msg.sender === 'user';
+                                return (
+                                    <div key={msg.id} style={isUserMessage ? dialogRowUserTrack : dialogRowBotTrack}>
+                                        {!isUserMessage && (
+                                            <div style={botIconWrapper}><IubAvatar size={16} /></div>
+                                        )}
+                                        <div style={isUserMessage ? userDialogueWrapperBubble : botDialogueWrapperBubble}>
+                                            <StructuralMessageBlock text={msg.text} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {/* Simulated Real-Time Dynamic Interface Typing Component */}
+                            {isTyping && (
+                                <div style={dialogRowBotTrack}>
+                                    <div style={botIconWrapper}><IubAvatar size={16} /></div>
+                                    <div style={botDialogueWrapperBubble}>
+                                        <div style={typingLoaderWrap}>
+                                            <div className="typing-dot" style={dotAnimationDelay(0)}></div>
+                                            <div className="typing-dot" style={dotAnimationDelay(0.2)}></div>
+                                            <div className="typing-dot" style={dotAnimationDelay(0.4)}></div>
+                                        </div>
                                     </div>
                                 </div>
-                            );
-                        })}
-
-                        {/* Simulated Real-Time Dynamic Interface Typing Component */}
-                        {isTyping && (
-                            <div style={dialogRowBotTrack}>
-                                <div style={botIconWrapper}><IubAvatar size={16} /></div>
-                                <div style={botDialogueWrapperBubble}>
-                                    <div style={typingLoaderWrap}>
-                                        <div className="typing-dot" style={dotAnimationDelay(0)}></div>
-                                        <div className="typing-dot" style={dotAnimationDelay(0.2)}></div>
-                                        <div className="typing-dot" style={dotAnimationDelay(0.4)}></div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} style={{ height: '1px' }} />
-                    </div>
-                )}
-            </div>
-
-            {/* Ultra Minimal Neon-AI Input Form */}
-            <form onSubmit={handleSendMessage} style={formInteractionPanelTray}>
-                <div style={inputContainerBoxRel}>
-                    <input 
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="Message IUB AI..."
-                        style={inputEntryFieldStyle}
-                        disabled={isTyping}
-                    />
-                    <button type="submit" style={actionDispatchSubmissionBtn(inputValue.trim())} disabled={!inputValue.trim()}>
-                        {ICONS.send}
-                    </button>
+                            )}
+                            <div ref={messagesEndRef} style={{ height: '1px' }} />
+                        </div>
+                    )}
                 </div>
-            </form>
 
-            <style>{`
-                .ai-chat-wrapper {
-                    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                    animation: slideUpFade 0.3s ease-out forwards;
-                }
-                
-                @keyframes slideUpFade {
-                    0% { opacity: 0; transform: translateY(10px); }
-                    100% { opacity: 1; transform: translateY(0); }
-                }
+                {/* Ultra Minimal Neon-AI Input Form */}
+                <form onSubmit={handleSendMessage} style={formInteractionPanelTray}>
+                    <div style={inputContainerBoxRel}>
+                        <input 
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder="Message IUB AI..."
+                            style={inputEntryFieldStyle}
+                            disabled={isTyping}
+                        />
+                        <button type="submit" style={actionDispatchSubmissionBtn(inputValue.trim())} disabled={!inputValue.trim()}>
+                            {ICONS.send}
+                        </button>
+                    </div>
+                </form>
 
-                .modern-markdown-body p { margin-bottom: 0.75rem; }
-                .modern-markdown-body p:last-child { margin-bottom: 0; }
-                .modern-markdown-body h1, .modern-markdown-body h2, .modern-markdown-body h3 { font-weight: 600; color: #111827; margin-top: 1rem; margin-bottom: 0.5rem; }
-                .modern-markdown-body h3 { font-size: 0.95rem; }
-                .modern-markdown-body ul, .modern-markdown-body ol { margin-bottom: 0.75rem; padding-left: 1.5rem; }
-                .modern-markdown-body li { margin-bottom: 0.2rem; }
-                .modern-markdown-body strong { font-weight: 600; color: #111827; }
-                .modern-markdown-body code { font-family: ui-monospace, monospace; background: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.85em; color: #cf222e; }
-                .modern-markdown-body pre code { display: block; padding: 0.85rem; overflow-x: auto; background: #f8fafc; color: #24292f; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.8rem; line-height: 1.4; }
-                
-                .typing-dot {
-                    width: 4px;
-                    height: 4px;
-                    background-color: #94a3b8;
-                    border-radius: 50%;
-                    display: inline-block;
-                    animation: bounceLoaderState 1.4s infinite ease-in-out both;
-                }
-                @keyframes bounceLoaderState {
-                    0%, 80%, 100% { opacity: 0.4; transform: scale(0.8); }
-                    40% { opacity: 1; transform: scale(1.2); background-color: #0ea5e9; }
-                }
-            `}</style>
+                <style>{`
+                    .ai-chat-wrapper {
+                        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                        animation: slideUpFade 0.3s ease-out forwards;
+                    }
+                    
+                    @keyframes slideUpFade {
+                        0% { opacity: 0; transform: translateY(10px); }
+                        100% { opacity: 1; transform: translateY(0); }
+                    }
+
+                    .modern-markdown-body p { margin-bottom: 0.75rem; }
+                    .modern-markdown-body p:last-child { margin-bottom: 0; }
+                    .modern-markdown-body h1, .modern-markdown-body h2, .modern-markdown-body h3 { font-weight: 600; color: #111827; margin-top: 1rem; margin-bottom: 0.5rem; }
+                    .modern-markdown-body h3 { font-size: 0.95rem; }
+                    .modern-markdown-body ul, .modern-markdown-body ol { margin-bottom: 0.75rem; padding-left: 1.5rem; }
+                    .modern-markdown-body li { margin-bottom: 0.2rem; }
+                    .modern-markdown-body strong { font-weight: 600; color: #111827; }
+                    .modern-markdown-body code { font-family: ui-monospace, monospace; background: #f8fafc; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.85em; color: #cf222e; }
+                    .modern-markdown-body pre code { display: block; padding: 0.85rem; overflow-x: auto; background: #f8fafc; color: #24292f; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.8rem; line-height: 1.4; }
+                    
+                    .typing-dot {
+                        width: 4px;
+                        height: 4px;
+                        background-color: #94a3b8;
+                        border-radius: 50%;
+                        display: inline-block;
+                        animation: bounceLoaderState 1.4s infinite ease-in-out both;
+                    }
+                    @keyframes bounceLoaderState {
+                        0%, 80%, 100% { opacity: 0.4; transform: scale(0.8); }
+                        40% { opacity: 1; transform: scale(1.2); background-color: #0ea5e9; }
+                    }
+                `}</style>
+            </div>
         </div>
     );
 }
 
 // --- Structural Theme Styling Specs ---
-// Edge-to-edge layout styling
-const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', width: '100%', height: 'calc(100vh - 80px)', minHeight: '500px' };
+// Perfect alignment: Max width constraints for PC, 100% for mobile.
+const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', width: '100%', maxWidth: '1000px', margin: '0 auto', height: 'calc(100vh - 80px)', minHeight: '500px', boxShadow: '0 0 20px rgba(0,0,0,0.03)' };
 const botHeaderRibbon = { background: '#ffffff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f8fafc' };
 const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '8px' };
 const botAvatarBadge = { width: '28px', height: '28px', border: '1px solid #f1f5f9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#ffffff', overflow: 'hidden' };
