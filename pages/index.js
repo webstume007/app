@@ -772,14 +772,15 @@ export default function Home() {
                 if (e.type === 'lecture') return (e.endMins * 60) > currentTotalSecs;
                 return (e.timeMins * 60) > currentTotalSecs;
             });
-            if (activeIdx === -1) activeIdx = todayEvents.length - 1;
+            if (activeIdx === -1) activeIdx = todayEvents.length - 1; // All finished, show last
             setNoticeIndex(activeIdx);
         }
-    }, [todayEvents.length, currentTab]); 
+    }, [todayEvents.length, currentTab]); // Run on load/tab switch
 
     const nextNotice = () => setNoticeIndex((prev) => (prev + 1) % todayEvents.length);
     const prevNotice = () => setNoticeIndex((prev) => (prev - 1 + todayEvents.length) % todayEvents.length);
 
+    // --- ATTENDANCE LOGIC ---
     const getFilteredAttendance = () => {
         const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         const allMySubjects = [...new Set(myClasses.map(c => c.course))];
@@ -1174,6 +1175,16 @@ export default function Home() {
             </Head>
 
             <style>{`
+                /* Add global reset to remove the white border caused by default body margin */
+                body, html {
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f0f2f5;
+                }
+                * {
+                    box-sizing: border-box;
+                }
+
                 .desktop-nav { display: none; }
                 .mobile-nav { display: flex; }
                 
@@ -1189,29 +1200,29 @@ export default function Home() {
                 @media (max-width: 767px) {
                     .mobile-hide { display: none !important; }
                     
-                    /* Mobile Nav Animations */
-                    .main-header.mobile-collapsed .header-title-text {
-                        max-width: 0px !important;
-                        opacity: 0 !important;
-                        gap: 0 !important;
-                        padding: 0 !important;
-                        margin: 0 !important;
+                    /* Mobile Nav Animations - HIDING ENTIRE HEADER */
+                    .main-header {
+                        max-height: 100px;
+                        transition: all 0.4s ease;
                         overflow: hidden;
                     }
-                    .header-title-text {
-                        max-width: 200px;
-                        opacity: 1;
-                        transition: all 0.4s ease;
-                    }
                     .main-header.mobile-collapsed {
-                        padding: 8px 10px !important;
+                        max-height: 0px !important;
+                        opacity: 0 !important;
+                        padding-top: 0 !important;
+                        padding-bottom: 0 !important;
+                        margin: 0 !important;
+                        overflow: hidden !important;
+                        border: none !important;
                     }
+
                     .mobile-sub-bar.mobile-collapsed {
                         max-height: 0px !important;
                         opacity: 0 !important;
                         padding-top: 0 !important;
                         padding-bottom: 0 !important;
                         border-top: none !important;
+                        margin: 0 !important;
                     }
                     .mobile-sub-bar {
                         max-height: 50px;
@@ -1354,7 +1365,7 @@ export default function Home() {
 
             <div className="main-content-area" style={{ 
                 padding: currentTab === 'ai_bot' ? '0' : '10px 12px', 
-                maxWidth: '600px', 
+                maxWidth: currentTab === 'ai_bot' ? '100%' : '600px', 
                 margin: '0 auto', 
                 flex: 1, 
                 width: '100%', 
