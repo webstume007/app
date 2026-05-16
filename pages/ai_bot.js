@@ -269,7 +269,7 @@ CRITICAL RULES OF ENGAGEMENT:
             {
                 id: `welcome-${Date.now()}`,
                 sender: 'bot',
-                text: `Hi, I am IUB AI Assitant, How Can I help you in Schedule, Course Outline, Points Timing and Your Section's Teachers Info?`,
+                text: `Hi, I am IUB AI Assistant, How Can I help you with Schedule, Course Outline, Points Timing and any other info regarding your Study?`,
                 timestamp: getCurrentTime12Hour()
             }
         ]);
