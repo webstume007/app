@@ -231,7 +231,7 @@ CRITICAL RULES OF ENGAGEMENT:
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: "llama-3.3-70b-versatile",
+                    model: "llama3-8b-8192", // DEFAULT GROQ MODEL SETTING
                     messages: targetPayloadMessages,
                     temperature: 0.3,
                     max_tokens: 1500
