@@ -363,9 +363,6 @@ CRITICAL RULES OF ENGAGEMENT:
                                         const isUserMessage = msg.sender === 'user';
                                         return (
                                             <div key={msg.id} style={isUserMessage ? dialogRowUserTrack : dialogRowBotTrack}>
-                                                {!isUserMessage && (
-                                                    <div style={botIconWrapper}><IubAvatar size={16} /></div>
-                                                )}
                                                 <div style={isUserMessage ? userDialogueWrapperBubble : botDialogueWrapperBubble}>
                                                     <StructuralMessageBlock text={msg.text} />
                                                 </div>
@@ -376,7 +373,6 @@ CRITICAL RULES OF ENGAGEMENT:
                                     {/* Simulated Real-Time Dynamic Interface Typing Component */}
                                     {isTyping && (
                                         <div style={dialogRowBotTrack}>
-                                            <div style={botIconWrapper}><IubAvatar size={16} /></div>
                                             <div style={botDialogueWrapperBubble}>
                                                 <div style={typingLoaderWrap}>
                                                     <div className="typing-dot" style={dotAnimationDelay(0)}></div>
