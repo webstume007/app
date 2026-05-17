@@ -144,6 +144,7 @@ export default function Home() {
     const [teachersData, setTeachersData] = useState([]); 
     const [contactsData, setContactsData] = useState([]); 
     const [milestones, setMilestones] = useState([]);
+    const [examSchedules, setExamSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const [studentsData, setStudentsData] = useState([]);
@@ -423,10 +424,12 @@ export default function Home() {
         const { data: allBaseData } = await fetchAllRows('base_schedule');
         const { data: allExcData } = await fetchAllRows('schedule_exceptions');
         const { data: milestonesData } = await fetchAllRows('academic_milestones');
+        const { data: examData } = await fetchAllRows('exam_schedules');
         
         setAllBaseSchedule(allBaseData || []);
         setExceptions(allExcData || []);
         setMilestones(milestonesData || []);
+        setExamSchedules(examData || []);
 
         const uniqueSessions = [...new Set((allBaseData || []).map(x => x.session))].filter(Boolean);
         const uniqueRooms = [...new Set((allBaseData || []).map(x => x.room))].filter(Boolean).sort();
@@ -579,6 +582,7 @@ export default function Home() {
     };
 
     const activeMilestone = milestones.find(m => m.status === 'active');
+    const isExamMode = activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type);
 
     const availableSessions = dropdownMeta.sessions.sort((a, b) => {
         const semA = parseInt(getSemesterFromSession(a)) || 99;
@@ -649,6 +653,7 @@ export default function Home() {
     };
 
     const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const todayStrCA = currentTime.toLocaleDateString('en-CA');
     const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
     const currentSecs = currentTime.getSeconds();
 
@@ -740,52 +745,75 @@ export default function Home() {
     const todayEvents = useMemo(() => {
         const events = [];
 
-        if (activeMilestone) {
-            let title = '';
-            let desc = '';
-            let typeVal = 'milestone';
-            if (activeMilestone.event_type === 'mid_term') { title = 'Mid-Term Exams Ongoing'; desc = 'Check date sheet for paper timings.'; typeVal = 'exam'; }
-            else if (activeMilestone.event_type === 'final_term') { title = 'Final Exams Ongoing'; desc = 'Check date sheet for paper timings.'; typeVal = 'exam'; }
-            else if (activeMilestone.event_type === 'summer_vacation' || activeMilestone.event_type === 'holidays') { title = 'Vacations / Holidays'; desc = `From: ${new Date(activeMilestone.planned_start).toLocaleDateString()} To: ${new Date(activeMilestone.planned_end).toLocaleDateString()}`; typeVal = 'vacation'; }
-            
-            if (title) events.push({ type: typeVal, title, desc, raw: activeMilestone });
-        }
+        if (isExamMode) {
+            const todayExams = examSchedules.filter(e => 
+                e.exam_date === todayStrCA && 
+                e.target_group.includes(userSection?.section) && 
+                e.target_group.includes(getSemesterFromSession(userSection?.session))
+            );
 
-        const dynamicMyClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
-        const myTodayClasses = dynamicMyClasses.filter(c => {
-            if (c.day !== currentDayStr) return false;
-            const status = getStatusStyles(c);
-            if (status && status.label.toLowerCase().includes('cancelled')) return false;
-            return true;
-        }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+            if (todayExams.length > 0) {
+                const sortedExams = todayExams.sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+                const firstExam = sortedExams[0];
+                const lastExam = sortedExams[sortedExams.length - 1];
 
-        if (myTodayClasses.length > 0) {
-            const firstCls = myTodayClasses[0];
-            const lastCls = myTodayClasses[myTodayClasses.length - 1];
+                const ptsFirst = getNearestPoints({ start_time: firstExam.start_time, end_time: firstExam.end_time, day: currentDayStr });
+                if (ptsFirst.up !== 'N/A') {
+                    events.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+                }
 
-            const ptsFirst = getNearestPoints(firstCls);
-            if (ptsFirst.up !== 'N/A') {
-                events.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+                sortedExams.forEach(ex => {
+                    events.push({ type: 'exam', title: ex.course, room: ex.room, startMins: parseTime(ex.start_time), endMins: parseTime(ex.end_time), raw: ex });
+                });
+
+                const ptsLast = getNearestPoints({ start_time: lastExam.start_time, end_time: lastExam.end_time, day: currentDayStr });
+                if (ptsLast.down !== 'N/A') {
+                    events.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+                }
+            } else {
+                events.push({ type: 'milestone', title: 'No Exams Today', desc: 'Enjoy your preparation time.', raw: activeMilestone });
             }
+        } else {
+            if (activeMilestone && (activeMilestone.event_type === 'summer_vacation' || activeMilestone.event_type === 'holidays')) {
+                events.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `From: ${new Date(activeMilestone.planned_start).toLocaleDateString()} To: ${new Date(activeMilestone.planned_end).toLocaleDateString()}`, raw: activeMilestone });
+            } else {
+                const dynamicMyClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
+                const myTodayClasses = dynamicMyClasses.filter(c => {
+                    if (c.day !== currentDayStr) return false;
+                    const status = getStatusStyles(c);
+                    if (status && status.label.toLowerCase().includes('cancelled')) return false;
+                    return true;
+                }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
 
-            myTodayClasses.forEach(c => {
-                events.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
-            });
+                if (myTodayClasses.length > 0) {
+                    const firstCls = myTodayClasses[0];
+                    const lastCls = myTodayClasses[myTodayClasses.length - 1];
 
-            const ptsLast = getNearestPoints(lastCls);
-            if (ptsLast.down !== 'N/A') {
-                events.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+                    const ptsFirst = getNearestPoints(firstCls);
+                    if (ptsFirst.up !== 'N/A') {
+                        events.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+                    }
+
+                    myTodayClasses.forEach(c => {
+                        events.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
+                    });
+
+                    const ptsLast = getNearestPoints(lastCls);
+                    if (ptsLast.down !== 'N/A') {
+                        events.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+                    }
+                }
             }
         }
         return events;
-    }, [allBaseSchedule, currentDayStr, exceptions, pointsData, userSection, activeMilestone]);
+    }, [allBaseSchedule, examSchedules, currentDayStr, todayStrCA, exceptions, pointsData, userSection, activeMilestone, isExamMode]);
     
     useEffect(() => {
         if (todayEvents.length > 0 && currentTab === 'home') {
             const currentTotalSecs = new Date().getHours() * 3600 + new Date().getMinutes() * 60 + new Date().getSeconds();
             let activeIdx = todayEvents.findIndex(e => {
-                if (e.type === 'exam' || e.type === 'vacation') return true; 
-                if (e.type === 'lecture') return (e.endMins * 60) > currentTotalSecs;
+                if (e.type === 'vacation' || e.type === 'milestone') return true; 
+                if (e.type === 'lecture' || e.type === 'exam') return (e.endMins * 60) > currentTotalSecs;
                 return (e.timeMins * 60) > currentTotalSecs;
             });
             if (activeIdx === -1) activeIdx = todayEvents.length - 1; // All finished, show last
@@ -879,6 +907,68 @@ export default function Home() {
                 {icon} {status}
             </span>
         );
+    };
+
+    const renderExamCards = () => {
+        const myExams = examSchedules.filter(e => 
+            e.target_group.includes(userSection?.section) && 
+            e.target_group.includes(getSemesterFromSession(userSection?.session))
+        ).sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date));
+
+        if (myExams.length === 0) {
+            return (
+                <div style={{ ...whiteCard, textAlign: 'center', padding: '20px 10px' }}>
+                    <div style={{ marginBottom: '10px', color: '#999', fontSize: '0.85rem', fontWeight: 'bold' }}>No exams scheduled for your section yet.</div>
+                </div>
+            );
+        }
+
+        return myExams.map((ex, idx) => {
+            const examDateStr = new Date(ex.exam_date).toLocaleDateString('en-CA');
+            const isToday = examDateStr === todayStrCA;
+            const isPast = new Date(ex.exam_date) < new Date(todayStrCA);
+            
+            let bgCol = '#fff';
+            let borderCol = '#F2A900';
+            
+            if (isToday) {
+                bgCol = '#fff9e6';
+                borderCol = '#dc3545';
+            } else if (isPast) {
+                bgCol = '#f8f9fa';
+                borderCol = '#adb5bd';
+            }
+
+            return (
+                <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid #eee' }}>
+                    <div style={{ ...cardBase, marginBottom: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {SVGS.calendar} {new Date(ex.exam_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                </div>
+                                <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '6px 0', color: isPast ? '#6c757d' : '#111827' }}>{ex.course}</div>
+                                <div style={{ color: '#555', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(ex.start_time)} - {convertTo12Hour(ex.end_time)}</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {ex.room}</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {ex.teacher}</span>
+                                </div>
+                            </div>
+                            {isToday && (
+                                <div style={{ background: '#fef2f2', color: '#dc3545', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #fecaca' }}>
+                                    TODAY
+                                </div>
+                            )}
+                            {isPast && (
+                                <div style={{ background: '#e9ecef', color: '#6c757d', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #ced4da' }}>
+                                    FINISHED
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        });
     };
 
     const renderClassCards = (scheduleList, displayContext) => {
@@ -1204,11 +1294,11 @@ export default function Home() {
             <svg width="0" height="0" style={{ position: 'absolute' }}>
                 <defs>
                     <linearGradient id="aiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#ff007f">
-                            <animate attributeName="stop-color" values="#ff007f;#7928ca;#0070f3;#00dfd8;#ff007f" dur="4s" repeatCount="indefinite" />
+                        <stop offset="0%" stopColor="#4facfe">
+                            <animate attributeName="stop-color" values="#4facfe;#00f2fe;#3b82f6;#8b5cf6;#4facfe" dur="5s" repeatCount="indefinite" />
                         </stop>
-                        <stop offset="100%" stopColor="#7928ca">
-                            <animate attributeName="stop-color" values="#7928ca;#0070f3;#00dfd8;#ff007f;#7928ca" dur="4s" repeatCount="indefinite" />
+                        <stop offset="100%" stopColor="#00f2fe">
+                            <animate attributeName="stop-color" values="#00f2fe;#3b82f6;#8b5cf6;#4facfe;#00f2fe" dur="5s" repeatCount="indefinite" />
                         </stop>
                     </linearGradient>
                 </defs>
@@ -1300,40 +1390,49 @@ export default function Home() {
                     100% { background-position: 0% 50%; }
                 }
                 @keyframes aiShineLayer {
-                    0% { transform: translateX(-150%) skewX(-15deg); }
-                    50% { transform: translateX(150%) skewX(-15deg); }
-                    100% { transform: translateX(150%) skewX(-15deg); }
+                    0% { transform: translateX(-100%); }
+                    20% { transform: translateX(200%); }
+                    100% { transform: translateX(200%); }
                 }
                 .ai-tutor-btn-active, .ai-tutor-btn-inactive {
                     position: relative;
                     overflow: hidden;
+                    border-radius: 8px !important;
                 }
                 .ai-tutor-btn-active::before, .ai-tutor-btn-inactive::before {
                     content: "";
                     position: absolute;
                     top: 0; left: 0; width: 100%; height: 100%;
-                    background: linear-gradient(90deg, rgba(255,0,128,0.1), rgba(121,40,202,0.15), rgba(0,112,243,0.1), rgba(255,0,128,0.1));
+                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(59,130,246,0.1), rgba(139,92,246,0.1));
                     background-size: 300% 300%;
-                    animation: aiBgPulse 4s ease infinite;
+                    animation: aiBgPulse 5s ease infinite;
                     z-index: 0;
                 }
                 .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
                     content: "";
                     position: absolute;
-                    top: 0; left: 0; width: 30%; height: 100%;
-                    background: rgba(255,255,255,0.4);
-                    animation: aiShineLayer 5s infinite ease-in-out;
+                    top: 0; left: 0; width: 50%; height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+                    animation: aiShineLayer 6s infinite ease-in-out;
                     z-index: 1;
+                    filter: blur(2px);
                 }
                 .ai-tutor-text-gradient {
-                    background: linear-gradient(90deg, #ff0080, #7928ca, #0070f3, #ff0080);
+                    background: linear-gradient(90deg, #4facfe, #00f2fe, #3b82f6, #8b5cf6);
                     background-size: 300% 300%;
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
-                    animation: aiBgPulse 4s ease infinite;
+                    animation: aiBgPulse 5s ease infinite;
                     font-weight: 900 !important;
                     position: relative;
                     z-index: 2;
+                }
+                .desktop-ai-btn {
+                    background: rgba(255,255,255,0.1) !important;
+                    border: 1px solid rgba(79,172,254,0.3) !important;
+                }
+                .desktop-ai-btn:hover {
+                    background: rgba(255,255,255,0.2) !important;
                 }
                 .ai-tutor-icon-svg {
                     position: relative;
@@ -1377,7 +1476,7 @@ export default function Home() {
                             <div 
                                 key={tab.id} 
                                 onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
-                                className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
+                                className={`${isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''} ${isAIBot ? 'desktop-ai-btn' : ''}`}
                                 style={{
                                     cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
                                     background: isActive && !isAIBot ? '#F2A900' : 'transparent',
@@ -1386,7 +1485,7 @@ export default function Home() {
                                 }}
                             >
                                 <span className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
-                                <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                                <span className={isAIBot ? 'ai-tutor-text-gradient' : ''} style={isAIBot ? {color: '#fff', WebkitTextFillColor: 'initial', textShadow: '0 0 10px rgba(79,172,254,0.5)'} : {}}>{tab.label}</span>
                             </div>
                         )
                     })}
@@ -1570,11 +1669,44 @@ export default function Home() {
                                             ) : (() => {
                                                 const targetEvent = todayEvents[noticeIndex];
 
-                                                if (targetEvent.type === 'exam' || targetEvent.type === 'vacation') {
+                                                if (targetEvent.type === 'exam') {
+                                                    const currentTotalSecs = currentMins * 60 + currentSecs;
+                                                    const startSecs = targetEvent.startMins * 60;
+                                                    const endSecs = targetEvent.endMins * 60;
+                                                    let noticeState = "Finished";
+                                                    let remainingSecs = 0;
+                                                    
+                                                    if (currentTotalSecs < startSecs) {
+                                                        noticeState = "Starts In";
+                                                        remainingSecs = startSecs - currentTotalSecs;
+                                                    } else if (currentTotalSecs >= startSecs && currentTotalSecs < endSecs) {
+                                                        noticeState = "Ongoing";
+                                                        remainingSecs = endSecs - currentTotalSecs;
+                                                    }
+
+                                                    return (
+                                                        <div className="expand-anim" key={`ex-${noticeIndex}`}>
+                                                            <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#155724', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                                {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Exam Concluded' : `${noticeState} Exam`}
+                                                            </div>
+                                                            <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
+                                                            <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                                {SVGS.location} Room {targetEvent.room}
+                                                            </div>
+                                                            {noticeState !== 'Finished' && (
+                                                                <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
+                                                                    {formatCountdown(remainingSecs)} <span style={{fontSize: '0.65rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                }
+                                                
+                                                if (targetEvent.type === 'vacation' || targetEvent.type === 'milestone') {
                                                     return (
                                                         <div className="expand-anim" key={`ms-${noticeIndex}`}>
-                                                            <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: targetEvent.type === 'exam' ? '#dc3545' : '#155724', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                                {targetEvent.type === 'exam' ? SVGS.alertCircle : SVGS.sparkle} {targetEvent.type === 'exam' ? 'Examinations' : 'Holidays'}
+                                                            <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#155724', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                                {SVGS.sparkle} {targetEvent.title.includes('Holiday') || targetEvent.title.includes('Vacation') ? 'Holidays' : 'Notice'}
                                                             </div>
                                                             <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
                                                             <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>{targetEvent.desc}</div>
@@ -1737,30 +1869,39 @@ export default function Home() {
                             <>
                                 {activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type) && (
                                     <div style={{background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center'}}>
-                                        {SVGS.alertCircle} Examination Period Active. Regular classes may be suspended. Please follow official date sheets.
+                                        {SVGS.alertCircle} Examination Period Active.
                                     </div>
                                 )}
-                                <div style={dayFilter}>
-                                    {filterDays.map(day => {
-                                        const isActive = activeSchedDays.includes(day);
-                                        const isSelected = selectedDay === day;
-                                        let bg = '#f1f5f9';
-                                        let col = '#94a3b8';
-                                        if (isSelected) {
-                                            bg = '#002147';
-                                            col = '#F2A900';
-                                        } else if (day === 'ALL' || isActive) {
-                                            bg = '#dcfce7';
-                                            col = '#15803d';
-                                        }
-                                        return (
-                                            <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(isSelected), background: bg, color: col}}>{day}</button>
-                                        );
-                                    })}
-                                </div>
-                                <div className="expand-anim">
-                                    {renderClassCards(mySchedule, 'class')}
-                                </div>
+                                
+                                {isExamMode ? (
+                                    <div className="expand-anim">
+                                        {renderExamCards()}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div style={dayFilter}>
+                                            {filterDays.map(day => {
+                                                const isActive = activeSchedDays.includes(day);
+                                                const isSelected = selectedDay === day;
+                                                let bg = '#f1f5f9';
+                                                let col = '#94a3b8';
+                                                if (isSelected) {
+                                                    bg = '#002147';
+                                                    col = '#F2A900';
+                                                } else if (day === 'ALL' || isActive) {
+                                                    bg = '#dcfce7';
+                                                    col = '#15803d';
+                                                }
+                                                return (
+                                                    <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(isSelected), background: bg, color: col}}>{day}</button>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="expand-anim">
+                                            {renderClassCards(mySchedule, 'class')}
+                                        </div>
+                                    </>
+                                )}
                             </>
                         )}
 
