@@ -2,7 +2,6 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet'; 
-import AIBot from './ai_bot'; // Imported AI Bot
 
 // Helper function to dynamically calculate Semester
 const getSemesterFromSession = (session) => {
@@ -59,8 +58,6 @@ const SVGS = {
     rocket: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z"/></svg>,
     eye: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
     cap: <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
-    bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
-    botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
 
 export default function TeacherLoginAndDashboard() {
@@ -179,8 +176,7 @@ export default function TeacherLoginAndDashboard() {
         { id: 'weekly', label: 'SCHEDULE', icon: SVGS.calendar },
         { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
         { id: 'updates', label: 'UPDATES', icon: SVGS.updates },
-        { id: 'permanent', label: 'BASE PLAN', icon: SVGS.building },
-        { id: 'ai_bot', label: 'AI TUTOR', icon: SVGS.bot }
+        { id: 'permanent', label: 'BASE PLAN', icon: SVGS.building }
     ];
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -913,17 +909,6 @@ export default function TeacherLoginAndDashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    const handleSectionSelectionToggle = (ssStr) => {
-        const obj = JSON.parse(ssStr);
-        const exists = selectedSectionsForAnn.some(x => x.session === obj.session && x.section === obj.section);
-        if (exists) {
-            setSelectedSectionsForAnn(selectedSectionsForAnn.filter(x => !(x.session === obj.session && x.section === obj.section)));
-        } else {
-            setSelectedSectionsForAnn([...selectedSectionsForAnn, obj]);
-        }
-    };
-
-
     // --- Notice Board Math ---
     const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
     const todayStrCA = currentTime.toLocaleDateString('en-CA');
@@ -1158,19 +1143,6 @@ export default function TeacherLoginAndDashboard() {
                 <meta name="theme-color" content="#002147" />
             </Head>
 
-            <svg width="0" height="0" style={{ position: 'absolute' }}>
-                <defs>
-                    <linearGradient id="aiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#4facfe">
-                            <animate attributeName="stop-color" values="#4facfe;#00f2fe;#3b82f6;#8b5cf6;#4facfe" dur="5s" repeatCount="indefinite" />
-                        </stop>
-                        <stop offset="100%" stopColor="#00f2fe">
-                            <animate attributeName="stop-color" values="#00f2fe;#3b82f6;#8b5cf6;#4facfe;#00f2fe" dur="5s" repeatCount="indefinite" />
-                        </stop>
-                    </linearGradient>
-                </defs>
-            </svg>
-
             <style>{`
                 .desktop-nav { display: none; }
                 .mobile-nav { display: flex; }
@@ -1186,77 +1158,6 @@ export default function TeacherLoginAndDashboard() {
                     to { opacity: 1; transform: translateY(0); }
                 }
                 .expand-anim { animation: fadeInSlide 0.3s ease forwards; }
-
-                /* AI Tutor Moving Gradient CSS */
-                @keyframes aiBgPulse {
-                    0% { background-position: 0% 50%; }
-                    50% { background-position: 100% 50%; }
-                    100% { background-position: 0% 50%; }
-                }
-                @keyframes aiShineLayer {
-                    0% { transform: translateX(-100%); }
-                    20% { transform: translateX(200%); }
-                    100% { transform: translateX(200%); }
-                }
-                .ai-tutor-btn-active, .ai-tutor-btn-inactive {
-                    position: relative;
-                    overflow: hidden;
-                    border-radius: 8px !important;
-                }
-                .ai-tutor-btn-active::before, .ai-tutor-btn-inactive::before {
-                    content: "";
-                    position: absolute;
-                    top: 0; left: 0; width: 100%; height: 100%;
-                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(59,130,246,0.1), rgba(139,92,246,0.1));
-                    background-size: 300% 300%;
-                    animation: aiBgPulse 5s ease infinite;
-                    z-index: 0;
-                }
-                .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
-                    content: "";
-                    position: absolute;
-                    top: 0; left: 0; width: 50%; height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-                    animation: aiShineLayer 6s infinite ease-in-out;
-                    z-index: 1;
-                    filter: blur(2px);
-                }
-                .ai-tutor-text-gradient {
-                    background: linear-gradient(90deg, #4facfe, #00f2fe, #3b82f6, #8b5cf6);
-                    background-size: 300% 300%;
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    animation: aiBgPulse 5s ease infinite;
-                    font-weight: 900 !important;
-                    position: relative;
-                    z-index: 2;
-                }
-                .desktop-ai-btn {
-                    background: rgba(255,255,255,0.1) !important;
-                    border: 1px solid rgba(79,172,254,0.3) !important;
-                }
-                .desktop-ai-btn:hover {
-                    background: rgba(255,255,255,0.2) !important;
-                }
-                .ai-tutor-icon-svg {
-                    position: relative;
-                    z-index: 2;
-                }
-
-                ${currentTab === 'ai_bot' ? `
-                    .ai-chat-wrapper {
-                        max-width: 100% !important;
-                        border-radius: 0 !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                        height: calc(100vh - 45px) !important;
-                    }
-                    @media (min-width: 768px) {
-                        .ai-chat-wrapper {
-                            height: calc(100vh - 65px) !important;
-                        }
-                    }
-                ` : ''}
             `}</style>
 
             <div style={{ ...toastStyle, opacity: toast.show ? 1 : 0, transform: toast.show ? 'translateY(0)' : 'translateY(-20px)', backgroundColor: toast.type === 'error' ? '#dc3545' : '#28a745' }}>
@@ -1278,22 +1179,20 @@ export default function TeacherLoginAndDashboard() {
 
                 <div className="desktop-nav">
                     {allTabs.map(tab => {
-                        const isAIBot = tab.id === 'ai_bot';
                         const isActive = currentTab === tab.id;
                         return (
                             <div 
                                 key={tab.id} 
                                 onClick={() => { setCurrentTab(tab.id); setIsSidebarOpen(false); }}
-                                className={`${isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''} ${isAIBot ? 'desktop-ai-btn' : ''}`}
                                 style={{
                                     cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
-                                    background: isActive && !isAIBot ? '#F2A900' : 'transparent',
-                                    color: isActive && !isAIBot ? '#002147' : '#fff',
+                                    background: isActive ? '#F2A900' : 'transparent',
+                                    color: isActive ? '#002147' : '#fff',
                                     transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
                                 }}
                             >
-                                <span className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
-                                <span className={isAIBot ? 'ai-tutor-text-gradient' : ''} style={isAIBot ? {color: '#fff', WebkitTextFillColor: 'initial', textShadow: '0 0 10px rgba(79,172,254,0.5)'} : {}}>{tab.label}</span>
+                                <span>{tab.icon}</span> 
+                                <span>{tab.label}</span>
                             </div>
                         )
                     })}
@@ -1312,16 +1211,14 @@ export default function TeacherLoginAndDashboard() {
                             <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
                         {allTabs.map(tab => {
-                            const isAIBot = tab.id === 'ai_bot';
                             return (
                                 <button 
                                     key={tab.id} 
                                     onClick={() => { setCurrentTab(tab.id); setIsSidebarOpen(false); }} 
                                     style={sidebarBtn(currentTab === tab.id)}
-                                    className={isAIBot ? 'ai-tutor-btn-inactive' : ''}
                                 >
-                                    <span style={{ opacity: 0.7 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
-                                    <span style={{ marginLeft: '10px' }} className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                                    <span style={{ opacity: 0.7 }}>{tab.icon}</span> 
+                                    <span style={{ marginLeft: '10px' }}>{tab.label}</span>
                                     {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={redBadgeStyle}>{pendingAttendances.length}</span>}
                                 </button>
                             )
@@ -1332,19 +1229,17 @@ export default function TeacherLoginAndDashboard() {
 
             <div className="mobile-nav" style={tabBar}>
                 {visibleTabs.map(tab => {
-                    const isAIBot = tab.id === 'ai_bot';
                     const isActive = currentTab === tab.id;
                     return (
                         <button 
                             key={tab.id} 
                             onClick={() => { setCurrentTab(tab.id); }} 
                             style={tabBtn(isActive)}
-                            className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
                         >
-                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>
-                                {isAIBot ? SVGS.botGradient : tab.icon}
+                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }}>
+                                {tab.icon}
                             </div>
-                            <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                            <span>{tab.label}</span>
                             {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={newsRedDot}></span>}
                         </button>
                     )
@@ -2117,13 +2012,6 @@ export default function TeacherLoginAndDashboard() {
                         )}
                     </div>
                 )}
-                
-                {/* ======================= AI TUTOR TAB ======================= */}
-                {currentTab === 'ai_bot' && (
-                    <div className="expand-anim">
-                        <AIBot />
-                    </div>
-                )}
             </div>
 
             <footer style={footerStyle}>
@@ -2239,6 +2127,8 @@ const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', h
 const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' };
 const cancelBtnStyle = { flex: 1, padding: '14px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s ease' };
 const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', transition: 'background 0.2s ease' };
+const bigBtn = { width: '100%', padding: '14px', background: '#002147', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.3s ease' };
+const selectStyle = inputStyle;
 
 // Sidebar Styles
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
