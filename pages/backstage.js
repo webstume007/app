@@ -30,8 +30,10 @@ const SVGS = {
     bus: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8M8 11h8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM8 19v2a1 1 0 01-2 0v-2M18 19v2a1 1 0 01-2 0v-2"></path></svg>,
     hamburger: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>,
     phone: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>,
-    email: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>,
-    eye: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+    email: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v10a2 2 0 002 2z"/></svg>,
+    eye: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
+    flag: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 2H19a2 2 0 012 2v8a2 2 0 01-2 2h-5l-1-2H5v6z"/></svg>,
+    cog: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
 };
 
 // ==========================================
@@ -181,6 +183,10 @@ export default function AdminDashboard() {
     const [pointSchedules, setPointSchedules] = useState([]);
     const [students, setStudents] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    
+    // NEW: Milestones and Semesters State Payload
+    const [semesters, setSemesters] = useState([]);
+    const [academicMilestones, setAcademicMilestones] = useState([]);
 
     // Sub-Tabs & Granular Filters
     const [userSubTab, setUserSubTab] = useState('crs'); 
@@ -191,6 +197,10 @@ export default function AdminDashboard() {
     const [analyticsView, setAnalyticsView] = useState('attendance'); 
     const [auditSession, setAuditSession] = useState('');
     const [auditSection, setAuditSection] = useState('');
+    
+    // NEW: Academic Periods Sub-tabs
+    const [academicSubTab, setAcademicSubTab] = useState('semesters');
+    const [milestoneFilterSem, setMilestoneFilterSem] = useState('');
 
     // Feature Form States
     const [leaveTeacher, setLeaveTeacher] = useState('');
@@ -216,6 +226,13 @@ export default function AdminDashboard() {
     const [uploadStatus, setUploadStatus] = useState({ type: '', text: '' });
     const [scheduleUploadMode, setScheduleUploadMode] = useState('append');
     const [pointsUploadMode, setPointsUploadMode] = useState('append');
+
+    // NEW: Modals for Semesters and Milestones
+    const [isSemesterModalOpen, setIsSemesterModalOpen] = useState(false);
+    const [semesterForm, setSemesterForm] = useState({ id: null, name: '', start_date: '', end_date: '', is_active: false });
+
+    const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
+    const [milestoneForm, setMilestoneForm] = useState({ id: null, semester_id: '', event_type: 'regular_classes', planned_start: '', planned_end: '', actual_start: '', actual_end: '', status: 'upcoming' });
 
     // File Upload Refs
     const fileInputRef = useRef(null);
@@ -308,7 +325,8 @@ export default function AdminDashboard() {
         try {
             const [
                 crRes, teacherRes, baseRes, excRes, 
-                attSessRes, attRecRes, ptsRes, stdRes, notifRes
+                attSessRes, attRecRes, ptsRes, stdRes, notifRes,
+                semRes, msRes // NEW FETCH CALLS
             ] = await Promise.all([
                 fetchAllRows('cr_profiles'),
                 fetchAllRows('teacher_profiles'),
@@ -318,7 +336,9 @@ export default function AdminDashboard() {
                 fetchAllRows('attendance_records'),
                 fetchAllRows('point_schedules'),
                 fetchAllRows('students'),
-                fetchAllRows('notifications')
+                fetchAllRows('notifications'),
+                fetchAllRows('semesters'),
+                fetchAllRows('academic_milestones')
             ]);
             
             setCrProfiles(crRes);
@@ -330,6 +350,9 @@ export default function AdminDashboard() {
             setPointSchedules(ptsRes);
             setStudents(stdRes.sort((a,b) => a.registration_number.localeCompare(b.registration_number)));
             setNotifications(notifRes.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
+            
+            setSemesters(semRes);
+            setAcademicMilestones(msRes);
             
         } catch (error) {
             console.error("Deep Sync Failure:", error);
@@ -775,7 +798,7 @@ export default function AdminDashboard() {
 
     // --- Attendance Override Engine ---
     const handleOpenAttendanceEditor = async (session) => {
-        setActionLoading(true);
+        setActionProcessing(true); // Using processing state
         const base = baseSchedule.find(b => b.id === session.base_schedule_id);
         const targetStudents = students.filter(s => s.session === base.session && s.section === base.section);
         const targetRecords = attendanceRecords.filter(r => r.session_id === session.id);
@@ -786,7 +809,7 @@ export default function AdminDashboard() {
 
         setAttendanceEditData({ session, recordsMap: map, studentsList: targetStudents });
         setIsAttendanceModalOpen(true);
-        setActionLoading(false);
+        setActionProcessing(false);
     };
 
     const handleSaveAttendanceEdits = async () => {
@@ -854,6 +877,44 @@ export default function AdminDashboard() {
         reader.readAsText(file);
     };
 
+    // --- NEW: Semester and Milestones Handlers ---
+    const handleSaveSemester = async (e) => {
+        e.preventDefault();
+        setActionProcessing(true);
+        const payload = { name: semesterForm.name, start_date: semesterForm.start_date, end_date: semesterForm.end_date, is_active: semesterForm.is_active };
+        
+        if (payload.is_active) {
+            await supabase.from('semesters').update({ is_active: false }).neq('id', semesterForm.id || 0);
+        }
+
+        if (semesterForm.id) await supabase.from('semesters').update(payload).eq('id', semesterForm.id);
+        else await supabase.from('semesters').insert([payload]);
+
+        setIsSemesterModalOpen(false);
+        await fetchDeepDatabase();
+        setActionProcessing(false);
+    };
+
+    const handleSaveMilestone = async (e) => {
+        e.preventDefault();
+        setActionProcessing(true);
+        const payload = { 
+            semester_id: milestoneForm.semester_id, 
+            event_type: milestoneForm.event_type, 
+            planned_start: milestoneForm.planned_start, 
+            planned_end: milestoneForm.planned_end,
+            actual_start: milestoneForm.actual_start || null,
+            actual_end: milestoneForm.actual_end || null,
+            status: milestoneForm.status
+        };
+        if (milestoneForm.id) await supabase.from('academic_milestones').update(payload).eq('id', milestoneForm.id);
+        else await supabase.from('academic_milestones').insert([payload]);
+
+        setIsMilestoneModalOpen(false);
+        await fetchDeepDatabase();
+        setActionProcessing(false);
+    };
+
 
     // ==========================================
     // F. MAIN RENDER PIPELINE
@@ -861,6 +922,7 @@ export default function AdminDashboard() {
 
     const TABS = [
         { id: 'overview', label: 'HOD Radar', icon: SVGS.chart },
+        { id: 'academic', label: 'Terms & Rules', icon: SVGS.flag }, // NEW TAB
         { id: 'users', label: 'Directory', icon: SVGS.users, badge: crProfiles.filter(c=>!c.is_approved).length + teachers.filter(t=>!t.is_approved).length },
         { id: 'leaves', label: 'Leaves & Cancel', icon: SVGS.userTie },
         { id: 'schedule', label: 'Global Matrix', icon: SVGS.calendar },
@@ -1001,6 +1063,93 @@ export default function AdminDashboard() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* ============================================================== */}
+                {/* NEW TAB: ACADEMIC TERMS & RULES (Semesters + Milestones) */}
+                {/* ============================================================== */}
+                {activeTab === 'academic' && (
+                    <div className="expand-anim" style={styles.whiteCard}>
+                        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '15px', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button onClick={() => setAcademicSubTab('semesters')} style={styles.subTab(academicSubTab === 'semesters')}>{SVGS.flag} Semesters</button>
+                                <button onClick={() => setAcademicSubTab('milestones')} style={styles.subTab(academicSubTab === 'milestones')}>{SVGS.calendar} Milestones</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <button onClick={() => academicSubTab === 'semesters' ? openCreateUserModal('NA') /* Using existing modal logic replaced below */ : setIsMilestoneModalOpen(true)} 
+                                        onClickCapture={() => {
+                                            if (academicSubTab === 'semesters') {
+                                                setSemesterForm({ id: null, name: '', start_date: '', end_date: '', is_active: false });
+                                                setIsSemesterModalOpen(true);
+                                            } else {
+                                                setMilestoneForm({ id: null, semester_id: '', event_type: 'regular_classes', planned_start: '', planned_end: '', actual_start: '', actual_end: '', status: 'upcoming' });
+                                                setIsMilestoneModalOpen(true);
+                                            }
+                                        }}
+                                        style={styles.btnPrimarySm}>{SVGS.plus} Add {academicSubTab === 'semesters' ? 'Semester' : 'Milestone'}</button>
+                            </div>
+                        </div>
+                        
+                        {academicSubTab === 'semesters' && (
+                            <div className="expand-anim">
+                                <p style={styles.subText}>Govern macro academic periods. Only one semester operates in LIVE mode to prevent spatial tearing.</p>
+                                <div style={styles.grid3}>
+                                    {semesters.map(sem => (
+                                        <div key={sem.id} style={{ background: sem.is_active ? 'linear-gradient(135deg, #002147, #003366)' : '#f8f9fa', color: sem.is_active ? '#fff' : '#333', padding: '20px', borderRadius: '15px', border: sem.is_active ? 'none' : '1px solid #eee', position: 'relative', overflow: 'hidden', transition: 'all 0.3s ease' }}>
+                                            {sem.is_active && <div style={{position: 'absolute', top: 0, right: 0, background: '#28a745', padding: '4px 12px', fontSize: '0.65rem', fontWeight: 900, borderBottomLeftRadius: '10px'}}>LIVE NOW</div>}
+                                            <h4 style={{margin: '0 0 10px 0', fontSize: '1.2rem', color: sem.is_active ? '#F2A900' : '#002147'}}>{sem.name}</h4>
+                                            <div style={{fontSize: '0.8rem', opacity: 0.8, marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px'}}>{SVGS.calendar} Start: {new Date(sem.start_date).toLocaleDateString()}</div>
+                                            <div style={{fontSize: '0.8rem', opacity: 0.8, marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '5px'}}>{SVGS.calendar} End: {new Date(sem.end_date).toLocaleDateString()}</div>
+                                            <button onClick={() => { setSemesterForm(sem); setIsSemesterModalOpen(true); }} style={sem.is_active ? styles.btnNeutralSm : styles.btnPrimarySm}>{SVGS.edit} Edit Vector</button>
+                                        </div>
+                                    ))}
+                                    {semesters.length === 0 && <div style={styles.emptyBox}>No macro timelines declared.</div>}
+                                </div>
+                            </div>
+                        )}
+
+                        {academicSubTab === 'milestones' && (
+                            <div className="expand-anim">
+                                <p style={styles.subText}>Micro timelines inside semesters affecting dashboard states (e.g. Exam Mode, Vacations).</p>
+                                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
+                                    <div style={{flex: 1}}>
+                                        <label style={styles.label}>Isolate Target Semester</label>
+                                        <select value={milestoneFilterSem} onChange={e=>setMilestoneFilterSem(e.target.value)} style={{...styles.inputBox, marginBottom: 0}}>
+                                            <option value="">-- Required Select --</option>
+                                            {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {!milestoneFilterSem ? (
+                                    <div style={styles.emptyBox}>
+                                        <div style={{color: '#F2A900', marginBottom: '10px', display: 'flex', justifyContent: 'center'}}>{SVGS.alertTriangle}</div>
+                                        Acknowledge: Please select a target semester to reveal its milestone configurations.
+                                    </div>
+                                ) : (
+                                    <div className="hide-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '500px', overflowY: 'auto' }}>
+                                        {academicMilestones.filter(m => String(m.semester_id) === String(milestoneFilterSem)).length === 0 ? <div style={styles.emptyBox}>No milestones recorded.</div> :
+                                         academicMilestones.filter(m => String(m.semester_id) === String(milestoneFilterSem)).sort((a,b) => new Date(a.planned_start) - new Date(b.planned_start)).map(ms => {
+                                            const statusStyles = styles.dynamicTag(ms.status);
+                                            return (
+                                                <div key={ms.id} style={{ background: '#fff', borderLeft: `5px solid ${ms.status==='active'?'#28a745':ms.status==='upcoming'?'#F2A900':ms.status==='completed'?'#0369a1':'#dc3545'}`, padding: '15px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '1.05rem', fontWeight: 900, color: '#002147', textTransform: 'capitalize' }}>{ms.event_type.replace('_', ' ')}</div>
+                                                        <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '5px' }}>{SVGS.clock} Planned: {new Date(ms.planned_start).toLocaleString([], {dateStyle:'short', timeStyle:'short'})} ➔ {new Date(ms.planned_end).toLocaleString([], {dateStyle:'short', timeStyle:'short'})}</div>
+                                                        {(ms.actual_start || ms.actual_end) && <div style={{ fontSize: '0.8rem', color: '#dc3545', fontWeight: 'bold', marginTop: '4px' }}>⚠️ System Override Detected (Shifted Base Dates)</div>}
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                                                        <span style={statusStyles}>{ms.status.toUpperCase()}</span>
+                                                        <button onClick={() => { setMilestoneForm({...ms, planned_start: ms.planned_start.slice(0,16), planned_end: ms.planned_end.slice(0,16), actual_start: ms.actual_start ? ms.actual_start.slice(0,16) : '', actual_end: ms.actual_end ? ms.actual_end.slice(0,16) : ''}); setIsMilestoneModalOpen(true); }} style={styles.btnNeutralSm}>{SVGS.edit} Adjust Node</button>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -1186,11 +1335,11 @@ export default function AdminDashboard() {
                             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
                                 <div style={{flex: 1, minWidth: '150px'}}>
                                     <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Isolate Session</label>
-                                    <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...styles.inputBox, marginBottom: 0}}><option value="">All Sessions</option>{uniqueSessions.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                                    <select value={filterSem} onChange={e=>setFilterSem(e.target.value)} style={{...styles.inputBox, marginBottom: 0}}><option value="">-- Required Select --</option>{uniqueSessions.map(s => <option key={s} value={s}>{s}</option>)}</select>
                                 </div>
                                 <div style={{flex: 1, minWidth: '150px'}}>
                                     <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Isolate Section</label>
-                                    <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...styles.inputBox, marginBottom: 0}}><option value="">All Sections</option>{uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                                    <select value={filterSec} onChange={e=>setFilterSec(e.target.value)} style={{...styles.inputBox, marginBottom: 0}}><option value="">-- Required Select --</option>{uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}</select>
                                 </div>
                                 <div style={{flex: 1, minWidth: '150px'}}>
                                     <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Temporal Filter</label>
@@ -1198,75 +1347,82 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
-                            <div className="hide-scroll" style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
-                                <table style={styles.table}>
-                                    <thead>
-                                        <tr style={styles.thRow}>
-                                            <th style={styles.th}>Vector (Session/Sec)</th>
-                                            <th style={styles.th}>Course & Instructor</th>
-                                            <th style={styles.th}>Space/Time Coordinates</th>
-                                            <th style={{...styles.th, textAlign: 'right'}}>Admin Interventions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {scheduleSubTab === 'base' ? (
-                                            baseSchedule
-                                                .filter(b => (filterSem ? b.session === filterSem : true) && (filterSec ? b.section === filterSec : true) && (filterDay !== 'ALL' ? b.day === filterDay : true))
-                                                .map(cls => (
-                                                    <tr key={cls.id} style={styles.tdRow}>
-                                                        <td style={styles.td}>
-                                                            <div style={{fontWeight: 900, color: '#002147'}}>{cls.session}</div>
-                                                            <div style={{fontSize: '0.8rem', color: '#666', fontWeight: 'bold'}}>Section {cls.section}</div>
-                                                        </td>
-                                                        <td style={styles.td}>
-                                                            <div style={{fontWeight: 'bold', fontSize: '0.95rem'}}>{cls.course}</div>
-                                                            <div style={{fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px'}}>{SVGS.userTie} {cls.teacher}</div>
-                                                        </td>
-                                                        <td style={styles.td}>
-                                                            <div style={{fontWeight: 900, color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px'}}>{SVGS.door} Room {cls.room} | {cls.day}</div>
-                                                            <div style={{fontSize: '0.8rem', color: '#555', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px'}}>{SVGS.clock} {convertTo12Hour(cls.start_time)} ➔ {convertTo12Hour(cls.end_time)}</div>
-                                                        </td>
-                                                        <td style={{...styles.td, textAlign: 'right'}}>
-                                                            <div style={{display:'flex', gap:'5px', justifyContent: 'flex-end'}}>
-                                                                <button onClick={() => { setBaseForm({...cls}); setIsBaseModalOpen(true); }} style={styles.btnNeutralSm}>{SVGS.edit} Modify</button>
-                                                                <button onClick={() => handleDeleteBaseSchedule(cls.id)} style={styles.btnDangerSm}>{SVGS.trash} Eradicate</button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                        ) : (
-                                            exceptions
-                                                .filter(ex => {
-                                                    const b = baseSchedule.find(bs => bs.id === ex.base_schedule_id);
-                                                    if(!b) return false;
-                                                    return (filterSem ? b.session === filterSem : true) && (filterSec ? b.section === filterSec : true);
-                                                })
-                                                .map(ex => {
-                                                    const base = baseSchedule.find(b => b.id === ex.base_schedule_id);
-                                                    return (
-                                                    <tr key={ex.id} style={styles.tdRow}>
-                                                        <td style={styles.td}>
-                                                            <div style={{fontWeight: 900, color: '#002147'}}>{base?.session}</div>
-                                                            <div style={{fontSize: '0.8rem', color: '#666', fontWeight: 'bold'}}>Sec {base?.section}</div>
-                                                        </td>
-                                                        <td style={styles.td}>
-                                                            <div style={{fontWeight: 'bold', fontSize: '0.95rem'}}>{base?.course}</div>
-                                                            <div style={{fontSize: '0.8rem', color: '#666', marginTop: '4px'}}>Target: {ex.exception_date}</div>
-                                                        </td>
-                                                        <td style={styles.td}>
-                                                            {ex.status === 'cancelled' && <span style={styles.tagRed}>CANCELLED</span>}
-                                                            {ex.status === 'confirmed' && <span style={styles.tagGreen}>CONFIRMED</span>}
-                                                            {ex.status === 'rescheduled' && <span style={styles.tagBlue}>MOVED: {convertTo12Hour(ex.new_start_time)} (Rm {ex.new_room})</span>}
-                                                        </td>
-                                                        <td style={{...styles.td, textAlign: 'right'}}>
-                                                            <button onClick={() => handleDeleteException(ex.id)} style={styles.btnDangerSm}>{SVGS.undo} Reverse</button>
-                                                        </td>
-                                                    </tr>
-                                                )})
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                            {(!filterSem || !filterSec) ? (
+                                <div className="expand-anim" style={styles.emptyBox}>
+                                    <div style={{color: '#F2A900', marginBottom: '10px', display: 'flex', justifyContent: 'center', transform: 'scale(1.5)'}}>{SVGS.alertTriangle}</div>
+                                    Acknowledge: Please select both Session and Section parameters to render the Spatial/Temporal Matrix.
+                                </div>
+                            ) : (
+                                <div className="hide-scroll expand-anim" style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
+                                    <table style={styles.table}>
+                                        <thead>
+                                            <tr style={styles.thRow}>
+                                                <th style={styles.th}>Vector (Session/Sec)</th>
+                                                <th style={styles.th}>Course & Instructor</th>
+                                                <th style={styles.th}>Space/Time Coordinates</th>
+                                                <th style={{...styles.th, textAlign: 'right'}}>Admin Interventions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {scheduleSubTab === 'base' ? (
+                                                baseSchedule
+                                                    .filter(b => (filterSem ? b.session === filterSem : true) && (filterSec ? b.section === filterSec : true) && (filterDay !== 'ALL' ? b.day === filterDay : true))
+                                                    .map(cls => (
+                                                        <tr key={cls.id} style={styles.tdRow}>
+                                                            <td style={styles.td}>
+                                                                <div style={{fontWeight: 900, color: '#002147'}}>{cls.session}</div>
+                                                                <div style={{fontSize: '0.8rem', color: '#666', fontWeight: 'bold'}}>Section {cls.section}</div>
+                                                            </td>
+                                                            <td style={styles.td}>
+                                                                <div style={{fontWeight: 'bold', fontSize: '0.95rem'}}>{cls.course}</div>
+                                                                <div style={{fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px'}}>{SVGS.userTie} {cls.teacher}</div>
+                                                            </td>
+                                                            <td style={styles.td}>
+                                                                <div style={{fontWeight: 900, color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px'}}>{SVGS.door} Room {cls.room} | {cls.day}</div>
+                                                                <div style={{fontSize: '0.8rem', color: '#555', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px'}}>{SVGS.clock} {convertTo12Hour(cls.start_time)} ➔ {convertTo12Hour(cls.end_time)}</div>
+                                                            </td>
+                                                            <td style={{...styles.td, textAlign: 'right'}}>
+                                                                <div style={{display:'flex', gap:'5px', justifyContent: 'flex-end'}}>
+                                                                    <button onClick={() => { setBaseForm({...cls}); setIsBaseModalOpen(true); }} style={styles.btnNeutralSm}>{SVGS.edit} Modify</button>
+                                                                    <button onClick={() => handleDeleteBaseSchedule(cls.id)} style={styles.btnDangerSm}>{SVGS.trash} Eradicate</button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                            ) : (
+                                                exceptions
+                                                    .filter(ex => {
+                                                        const b = baseSchedule.find(bs => bs.id === ex.base_schedule_id);
+                                                        if(!b) return false;
+                                                        return (filterSem ? b.session === filterSem : true) && (filterSec ? b.section === filterSec : true);
+                                                    })
+                                                    .map(ex => {
+                                                        const base = baseSchedule.find(b => b.id === ex.base_schedule_id);
+                                                        return (
+                                                        <tr key={ex.id} style={styles.tdRow}>
+                                                            <td style={styles.td}>
+                                                                <div style={{fontWeight: 900, color: '#002147'}}>{base?.session}</div>
+                                                                <div style={{fontSize: '0.8rem', color: '#666', fontWeight: 'bold'}}>Sec {base?.section}</div>
+                                                            </td>
+                                                            <td style={styles.td}>
+                                                                <div style={{fontWeight: 'bold', fontSize: '0.95rem'}}>{base?.course}</div>
+                                                                <div style={{fontSize: '0.8rem', color: '#666', marginTop: '4px'}}>Target: {ex.exception_date}</div>
+                                                            </td>
+                                                            <td style={styles.td}>
+                                                                {ex.status === 'cancelled' && <span style={styles.tagRed}>CANCELLED</span>}
+                                                                {ex.status === 'confirmed' && <span style={styles.tagGreen}>CONFIRMED</span>}
+                                                                {ex.status === 'rescheduled' && <span style={styles.tagBlue}>MOVED: {convertTo12Hour(ex.new_start_time)} (Rm {ex.new_room})</span>}
+                                                            </td>
+                                                            <td style={{...styles.td, textAlign: 'right'}}>
+                                                                <button onClick={() => handleDeleteException(ex.id)} style={styles.btnDangerSm}>{SVGS.undo} Reverse</button>
+                                                            </td>
+                                                        </tr>
+                                                    )})
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1312,11 +1468,16 @@ export default function AdminDashboard() {
                     <div className="expand-anim">
                         
                         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}>
-                            <div style={{flex: 1}}><label style={styles.label}>Audit Target Session</label><select value={auditSession} onChange={e=>{setAuditSession(e.target.value); setFilterSem(e.target.value);}} style={{...styles.inputBox, marginBottom:0}}><option value="">-- Required --</option>{uniqueSessions.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                            <div style={{flex: 1}}><label style={styles.label}>Audit Target Section</label><select value={auditSection} onChange={e=>{setAuditSection(e.target.value); setFilterSec(e.target.value);}} style={{...styles.inputBox, marginBottom:0}}><option value="">-- Required --</option>{uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                            <div style={{flex: 1}}><label style={styles.label}>Audit Target Session</label><select value={auditSession} onChange={e=>{setAuditSession(e.target.value); setFilterSem(e.target.value);}} style={{...styles.inputBox, marginBottom:0}}><option value="">-- Required Select --</option>{uniqueSessions.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                            <div style={{flex: 1}}><label style={styles.label}>Audit Target Section</label><select value={auditSection} onChange={e=>{setAuditSection(e.target.value); setFilterSec(e.target.value);}} style={{...styles.inputBox, marginBottom:0}}><option value="">-- Required Select --</option>{uniqueSections.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                         </div>
 
-                        {(!auditSession || !auditSection) ? <div style={styles.emptyBox}>Select Audit Parameters to unlock the HOD Vaults.</div> : (
+                        {(!auditSession || !auditSection) ? (
+                            <div className="expand-anim" style={styles.emptyBox}>
+                                <div style={{color: '#002147', marginBottom: '10px', display: 'flex', justifyContent: 'center', transform: 'scale(1.5)'}}>{SVGS.shield}</div>
+                                Acknowledge: Select Audit Parameters to unlock the HOD Vaults.
+                            </div>
+                        ) : (
                             <>
                                 {/* DEFAULTER LOGIC */}
                                 {defaultersList.length > 0 && (
@@ -1334,7 +1495,7 @@ export default function AdminDashboard() {
                                     </div>
                                 )}
 
-                                <div style={styles.grid2}>
+                                <div className="expand-anim" style={styles.grid2}>
                                     
                                     {/* ROSTER MANAGEMENT */}
                                     <div style={styles.whiteCard}>
@@ -1359,6 +1520,9 @@ export default function AdminDashboard() {
                                                             </td>
                                                         </tr>
                                                     ))}
+                                                    {students.filter(s => s.session === auditSession && s.section === auditSection).length === 0 && (
+                                                        <tr><td colSpan="3" style={{textAlign: 'center', padding: '20px', color: '#999', fontSize: '0.8rem'}}>No roster records found.</td></tr>
+                                                    )}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1394,6 +1558,12 @@ export default function AdminDashboard() {
                                                     </div>
                                                 );
                                             })}
+                                            {attendanceSessions.filter(s => {
+                                                const b = baseSchedule.find(bs => bs.id === s.base_schedule_id);
+                                                return b && b.session === auditSession && b.section === auditSection;
+                                            }).length === 0 && (
+                                                <div style={styles.emptyBox}>No records secured in vault.</div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -1630,6 +1800,107 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* 6. NEW: Semester Editor Modal */}
+            {isSemesterModalOpen && (
+                <div style={styles.modalBackdrop}>
+                    <div className="expand-anim" style={styles.modalContent}>
+                        <h3 style={{...styles.cardHeader, fontSize: '1.1rem'}}>{SVGS.flag} Macro Semester Entity</h3>
+                        <form onSubmit={handleSaveSemester} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div>
+                                <label style={styles.label}>Semester Target Identity (Name)</label>
+                                <input type="text" required placeholder="e.g. Spring 2026" value={semesterForm.name} onChange={e=>setSemesterForm({...semesterForm, name:e.target.value})} style={styles.inputBox} />
+                            </div>
+                            <div style={{display: 'flex', gap: '10px'}}>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Epoch Start Date</label>
+                                    <input type="date" required value={semesterForm.start_date} onChange={e=>setSemesterForm({...semesterForm, start_date:e.target.value})} style={styles.inputBox} />
+                                </div>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Epoch End Date</label>
+                                    <input type="date" required value={semesterForm.end_date} onChange={e=>setSemesterForm({...semesterForm, end_date:e.target.value})} style={styles.inputBox} />
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #eee' }}>
+                                <input type="checkbox" id="semActive" checked={semesterForm.is_active} onChange={e=>setSemesterForm({...semesterForm, is_active:e.target.checked})} style={{width: '20px', height: '20px', accentColor: '#28a745'}} />
+                                <label htmlFor="semActive" style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#002147', cursor: 'pointer' }}>Set LIVE as Active Default Semester</label>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={()=>setIsSemesterModalOpen(false)} style={styles.btnNeutral}>Abort</button>
+                                <button type="submit" style={{...styles.btnPrimary, flex: 2}}>Commit Vector</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* 7. NEW: Milestone Editor Modal */}
+            {isMilestoneModalOpen && (
+                <div style={styles.modalBackdrop}>
+                    <div className="expand-anim" style={{...styles.modalContent, maxWidth: '500px'}}>
+                        <h3 style={{...styles.cardHeader, fontSize: '1.1rem'}}>{SVGS.calendar} Micro Milestone Configuration</h3>
+                        <form onSubmit={handleSaveMilestone} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{display: 'flex', gap: '10px'}}>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Bind to Semester Matrix</label>
+                                    <select required value={milestoneForm.semester_id} onChange={e=>setMilestoneForm({...milestoneForm, semester_id:e.target.value})} style={styles.inputBox}>
+                                        <option value="">-- Target DB PK --</option>
+                                        {semesters.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                                    </select>
+                                </div>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Event Domain Type</label>
+                                    <select required value={milestoneForm.event_type} onChange={e=>setMilestoneForm({...milestoneForm, event_type:e.target.value})} style={styles.inputBox}>
+                                        <option value="regular_classes">Regular Classes</option>
+                                        <option value="mid_term">Mid-Term Exams</option>
+                                        <option value="final_term">Final-Term Exams</option>
+                                        <option value="summer_vacation">Summer Vacation</option>
+                                        <option value="holidays">General Holidays</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div style={{display: 'flex', gap: '10px'}}>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Original Planned Start</label>
+                                    <input type="datetime-local" required value={milestoneForm.planned_start} onChange={e=>setMilestoneForm({...milestoneForm, planned_start:e.target.value})} style={styles.inputBox} />
+                                </div>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Original Planned End</label>
+                                    <input type="datetime-local" required value={milestoneForm.planned_end} onChange={e=>setMilestoneForm({...milestoneForm, planned_end:e.target.value})} style={styles.inputBox} />
+                                </div>
+                            </div>
+
+                            <div style={{display: 'flex', gap: '10px', padding: '10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px'}}>
+                                <div style={{flex: 1}}>
+                                    <label style={{...styles.label, color: '#991b1b'}}>System Override Start (Actual)</label>
+                                    <input type="datetime-local" value={milestoneForm.actual_start} onChange={e=>setMilestoneForm({...milestoneForm, actual_start:e.target.value})} style={{...styles.inputBox, background: '#fff', borderColor: '#fca5a5'}} />
+                                </div>
+                                <div style={{flex: 1}}>
+                                    <label style={{...styles.label, color: '#991b1b'}}>System Override End (Actual)</label>
+                                    <input type="datetime-local" value={milestoneForm.actual_end} onChange={e=>setMilestoneForm({...milestoneForm, actual_end:e.target.value})} style={{...styles.inputBox, background: '#fff', borderColor: '#fca5a5'}} />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={styles.label}>Operational Status</label>
+                                <select required value={milestoneForm.status} onChange={e=>setMilestoneForm({...milestoneForm, status:e.target.value})} style={{...styles.inputBox, fontWeight: '900', color: milestoneForm.status === 'active' ? '#15803d' : '#002147'}}>
+                                    <option value="upcoming">UPCOMING</option>
+                                    <option value="active">ACTIVE</option>
+                                    <option value="paused">PAUSED</option>
+                                    <option value="completed">COMPLETED</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={()=>setIsMilestoneModalOpen(false)} style={styles.btnNeutral}>Abort</button>
+                                <button type="submit" style={{...styles.btnPrimary, flex: 2}}>Commit Node</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
@@ -1693,6 +1964,13 @@ const styles = {
     tagYellow: { background: '#fef3c7', color: '#b45309', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #fde68a' },
     tagBlue: { background: '#eff6ff', color: '#0369a1', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #bae6fd' },
     
+    dynamicTag: (status) => {
+        if(status === 'active') return { background: '#dcfce7', color: '#15803d', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #86efac' };
+        if(status === 'upcoming') return { background: '#fef3c7', color: '#b45309', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #fde68a' };
+        if(status === 'completed') return { background: '#eff6ff', color: '#0369a1', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #bae6fd' };
+        return { background: '#fef2f2', color: '#dc3545', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #fecaca' };
+    },
+
     badgeRed: { position: 'absolute', top: '-5px', right: '-5px', background: '#dc3545', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.65rem', fontWeight: 'bold', boxShadow: '0 2px 4px rgba(220,53,69,0.4)', minWidth: '18px', textAlign: 'center' },
     
     sysAlertBanner: { background: '#eff6ff', color: '#0369a1', padding: '15px', borderRadius: '10px', textAlign: 'center', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', border: '2px solid #bae6fd', fontSize: '0.9rem', letterSpacing: '1px' },
@@ -1700,6 +1978,6 @@ const styles = {
     csvHint: { fontSize: '0.78rem', color: '#475569', marginBottom: '14px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '10px 12px' },
     
     modalBackdrop: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,33,71,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px', boxSizing: 'border-box', backdropFilter: 'blur(5px)' },
-    modalContent: { background: '#fff', padding: '30px', borderRadius: '20px', width: '100%', maxWidth: '450px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box' },
+    modalContent: { background: '#fff', padding: '30px', borderRadius: '20px', width: '100%', maxWidth: '450px', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', boxSizing: 'border-box', overflowY: 'auto', maxHeight: '90vh' },
     sidebar: { width: '280px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '5px 0 25px rgba(0,0,0,0.3)' }
 };
