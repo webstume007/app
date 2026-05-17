@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
-import AttendanceSheet from '../components/AttendanceSheet';
-import AIBot from './ai_bot';
+import AttendanceSheet from '../components/AttendanceSheet'; 
+import AIBot from './ai_bot'; // Imported AI Bot
 
 // Helper function to dynamically calculate Semester
 const getSemesterFromSession = (session) => {
@@ -29,15 +29,17 @@ const getSemesterFromSession = (session) => {
     return `${semestersPassed}${suffix}`;
 };
 
-// --- Custom SVGs for UI ---
+// --- Custom Nano SVGs for UI ---
 const SVGS = {
-    tick: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
-    cross: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
-    bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
-    calendar: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
-    attendance: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
-    updates: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
-    clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
+    tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
+    cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
+    chevronDown: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
+    chevronUp: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
+    bell: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
+    attendance: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
+    updates: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
+    clock: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
     door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
     userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
     home: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
@@ -53,14 +55,12 @@ const SVGS = {
     download: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>,
     chart: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>,
     plus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>,
-    save: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>,
-    lock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>,
     undo: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>,
-    file: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>,
-    eye: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
-    history: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+    building: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>,
+    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3"/></svg>,
     rocket: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z"/></svg>,
-    sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+    eye: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
+    cap: <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
     bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
@@ -87,6 +87,7 @@ export default function Dashboard() {
     const [availableTeachers, setAvailableTeachers] = useState([]);
     const [teacherCourseMap, setTeacherCourseMap] = useState({}); 
     const [semesters, setSemesters] = useState([]);
+    const [milestones, setMilestones] = useState([]);
     const [examSchedules, setExamSchedules] = useState([]);
     const [pointsData, setPointsData] = useState([]);
 
@@ -132,6 +133,10 @@ export default function Dashboard() {
     const [upcomingLectures, setUpcomingLectures] = useState([]);
     const [currentTime, setCurrentTime] = useState(new Date());
     const notifiedDeadlines = useRef(new Set()); 
+
+    // --- NEW: Added States to Fix Build Errors ---
+    const [resendTimer, setResendTimer] = useState(0);
+    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -350,13 +355,15 @@ export default function Dashboard() {
                 return; 
             }
 
-            const [semRes, examRes, ptsRes] = await Promise.all([
+            const [semRes, msRes, examRes, ptsRes] = await Promise.all([
                 fetchAllRows('sem_status'),
+                fetchAllRows('academic_milestones'),
                 fetchAllRows('exam_schedules'),
                 fetchAllRows('point_schedules')
             ]);
             
             setSemesters(semRes.data || []);
+            setMilestones(msRes.data || []);
             setExamSchedules(examRes.data || []);
             setPointsData(ptsRes.data || []);
 
@@ -917,7 +924,6 @@ export default function Dashboard() {
     };
 
     const activeMilestone = semesters.find(s => s.is_active);
-    const todayStrCA = new Date().toLocaleDateString('en-CA');
     const isExamMode = activeMilestone && (
         (todayStrCA >= (activeMilestone.mid_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.mid_term_end || '0000-01-01')) ||
         (todayStrCA >= (activeMilestone.final_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.final_term_end || '0000-01-01'))
@@ -946,7 +952,7 @@ export default function Dashboard() {
     }
 
     const filteredWeeklySchedule = schedule
-        .filter(cls => cls.day === selectedDay)
+        .filter(cls => cls.day === selectedDay && cls.session === profile.session)
         .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
     
     const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
@@ -991,39 +997,41 @@ export default function Dashboard() {
         } else {
             todayEvents.push({ type: 'milestone', title: 'No Exams Today', desc: 'Enjoy your preparation time.', raw: activeMilestone });
         }
-    } else if (isVacation) {
-        todayEvents.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `Enjoy your holidays.`, raw: activeMilestone });
     } else {
-        const dynamicMyClasses = baseSchedule.filter(c => c.section === profile.section && c.session === profile.session);
-        const myTodayClasses = dynamicMyClasses.filter(c => {
-            if (c.day !== currentDayStr) return false;
-            const status = getStatusStyles(c);
-            if (status && status.label.toLowerCase().includes('cancelled')) return false;
-            return true;
-        }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+        if (activeMilestone && (activeMilestone.event_type === 'summer_vacation' || activeMilestone.event_type === 'holidays')) {
+            todayEvents.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `From: ${new Date(activeMilestone.planned_start).toLocaleDateString()} To: ${new Date(activeMilestone.planned_end).toLocaleDateString()}`, raw: activeMilestone });
+        } else {
+            const dynamicMyClasses = allBaseSchedule.filter(c => c.section === profile.section && c.session === profile.session);
+            const myTodayClasses = dynamicMyClasses.filter(c => {
+                if (c.day !== currentDayStr) return false;
+                const status = getStatusStyles(c);
+                if (status && status.label.toLowerCase().includes('cancelled')) return false;
+                return true;
+            }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
 
-        if (myTodayClasses.length > 0) {
-            const firstCls = myTodayClasses[0];
-            const lastCls = myTodayClasses[myTodayClasses.length - 1];
+            if (myTodayClasses.length > 0) {
+                const firstCls = myTodayClasses[0];
+                const lastCls = myTodayClasses[myTodayClasses.length - 1];
 
-            const ptsFirst = getNearestPoints(firstCls);
-            if (ptsFirst.up !== 'N/A') {
-                todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
-            }
+                const ptsFirst = getNearestPoints(firstCls);
+                if (ptsFirst.up !== 'N/A') {
+                    todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+                }
 
-            myTodayClasses.forEach(c => {
-                todayEvents.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
-            });
+                myTodayClasses.forEach(c => {
+                    todayEvents.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
+                });
 
-            const ptsLast = getNearestPoints(lastCls);
-            if (ptsLast.down !== 'N/A') {
-                todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+                const ptsLast = getNearestPoints(lastCls);
+                if (ptsLast.down !== 'N/A') {
+                    todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+                }
             }
         }
     }
 
     const ongoingClasses = schedule.filter(cls => {
-        if (cls.day !== currentDay || cls.isCancelled) return false;
+        if (cls.day !== currentDay || cls.isCancelled || cls.session !== profile.session) return false;
         const startMins = parseTime(cls.start_time);
         const endMins = parseTime(cls.end_time);
         return currentMins >= startMins && currentMins <= endMins;
@@ -1065,9 +1073,10 @@ export default function Dashboard() {
                     100% { background-position: 0% 50%; }
                 }
                 @keyframes aiShineLayer {
-                    0% { transform: translateX(-200%) skewX(-20deg); }
-                    30% { transform: translateX(300%) skewX(-20deg); }
-                    100% { transform: translateX(300%) skewX(-20deg); }
+                    0% { transform: translateX(-150%) skewX(-15deg); opacity: 0; }
+                    20% { opacity: 1; }
+                    40% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
+                    100% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
                 }
                 .ai-tutor-btn-active, .ai-tutor-btn-inactive {
                     position: relative;
@@ -1078,7 +1087,7 @@ export default function Dashboard() {
                     content: "";
                     position: absolute;
                     top: 0; left: 0; width: 100%; height: 100%;
-                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(139,92,246,0.15), rgba(79,172,254,0.1));
+                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(59,130,246,0.1), rgba(139,92,246,0.1));
                     background-size: 300% 300%;
                     animation: aiBgPulse 5s ease infinite;
                     z-index: 0;
@@ -1086,9 +1095,9 @@ export default function Dashboard() {
                 .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
                     content: "";
                     position: absolute;
-                    top: 0; left: 0; width: 50%; height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-                    animation: aiShineLayer 6s infinite linear;
+                    top: 0; left: 0; width: 40%; height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+                    animation: aiShineLayer 6s infinite ease-in-out;
                     z-index: 1;
                     filter: blur(4px);
                 }
@@ -1103,17 +1112,31 @@ export default function Dashboard() {
                     z-index: 2;
                 }
                 .desktop-ai-btn {
-                    background: rgba(255,255,255,0.05) !important;
-                    border: 1px solid rgba(79,172,254,0.4) !important;
-                    box-shadow: 0 0 10px rgba(139,92,246,0.2) inset !important;
+                    background: rgba(255,255,255,0.1) !important;
+                    border: 1px solid rgba(79,172,254,0.3) !important;
                 }
                 .desktop-ai-btn:hover {
-                    background: rgba(255,255,255,0.15) !important;
+                    background: rgba(255,255,255,0.2) !important;
                 }
                 .ai-tutor-icon-svg {
                     position: relative;
                     z-index: 2;
                 }
+
+                ${currentTab === 'ai_bot' ? `
+                    .ai-chat-wrapper {
+                        max-width: 100% !important;
+                        border-radius: 0 !important;
+                        border: none !important;
+                        box-shadow: none !important;
+                        height: calc(100vh - 45px) !important;
+                    }
+                    @media (min-width: 768px) {
+                        .ai-chat-wrapper {
+                            height: calc(100vh - 65px) !important;
+                        }
+                    }
+                ` : ''}
             `}</style>
 
             <header style={headerStyle}>
@@ -1132,12 +1155,12 @@ export default function Dashboard() {
                 <div className="desktop-nav">
                     {visibleTabs.map(tab => {
                         const isAIBot = tab.id === 'ai_bot';
-                        const isActive = activeTab === tab.id;
+                        const isActive = currentTab === tab.id;
                         return (
                             <div 
                                 key={tab.id} 
-                                onClick={() => setActiveTab(tab.id)}
-                                className={isAIBot ? (isActive ? 'ai-tutor-btn-active desktop-ai-btn' : 'ai-tutor-btn-inactive desktop-ai-btn') : ''}
+                                onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
+                                className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
                                 style={{
                                     cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
                                     background: isActive && !isAIBot ? '#F2A900' : 'transparent',
@@ -1167,13 +1190,13 @@ export default function Dashboard() {
                             <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
                             <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
-                        {visibleTabs.map(tab => {
+                        {[{id: 'weekly', label: 'Weekly Timetable', icon: SVGS.calendar}, {id: 'permanent', label: 'Base Schedule', icon: SVGS.home}, {id: 'students', label: 'Manage Students', icon: SVGS.users}, {id: 'attendance', label: 'Attendance', icon: SVGS.attendance}, {id: 'announcements', label: 'Announcements', icon: SVGS.updates}].map(tab => {
                             const isAIBot = tab.id === 'ai_bot';
                             return (
                                 <button 
                                     key={tab.id} 
-                                    onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }} 
-                                    style={sidebarBtn(activeTab === tab.id)}
+                                    onClick={() => { setCurrentTab(tab.id); setIsSidebarOpen(false); }} 
+                                    style={sidebarBtn(currentTab === tab.id)}
                                     className={isAIBot ? 'ai-tutor-btn-inactive' : ''}
                                 >
                                     <span style={{ opacity: 0.7 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
@@ -1188,16 +1211,19 @@ export default function Dashboard() {
             <div className="mobile-nav" style={tabBar}>
                 {visibleTabs.map(tab => {
                     const isAIBot = tab.id === 'ai_bot';
-                    const isActive = activeTab === tab.id;
+                    const isActive = currentTab === tab.id;
                     return (
                         <button 
                             key={tab.id} 
-                            onClick={() => setActiveTab(tab.id)} 
+                            onClick={() => { setCurrentTab(tab.id); }} 
                             style={tabBtn(isActive)}
                             className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
                         >
-                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</div>
+                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>
+                                {isAIBot ? SVGS.botGradient : tab.icon}
+                            </div>
                             <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                            {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={newsRedDot}></span>}
                         </button>
                     )
                 })}
@@ -1259,7 +1285,7 @@ export default function Dashboard() {
                 )}
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
-                {activeTab === 'weekly' && (
+                {currentTab === 'weekly' && (
                     <div className="expand-anim">
                         {activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type) && (
                             <div style={{background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center'}}>
@@ -1394,7 +1420,7 @@ export default function Dashboard() {
                 )}
 
                 {/* ================= SPLIT ATTENDANCE TAB ================= */}
-                {activeTab === 'attendance' && (
+                {currentTab === 'attendance' && (
                     <div className="expand-anim">
                         <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', background: '#e9ecef', padding: '5px', borderRadius: '10px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }} className="scroll-hide">
                             <button onClick={() => setAttendanceView('mark')} style={subTabBtn(attendanceView === 'mark')}>{SVGS.tickCircle} Mark</button>
@@ -1407,61 +1433,49 @@ export default function Dashboard() {
                         {attendanceView === 'mark' && (
                             <div className="expand-anim" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 {attendanceStats.map(stat => {
-                                    const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
-                                    let isOngoing = false;
-                                    let canEdit = false;
-                                    let todaySession = null;
+                                    const todayClass = schedule.find(c => c.course === stat.subject && c.section === stat.section && c.session === stat.session && c.day === currentDayStr && !c.isCancelled);
+                                    if (!todayClass) return null;
 
-                                    if (todayClass) {
-                                        const startMins = parseTime(todayClass.start_time);
-                                        const endMins = parseTime(todayClass.end_time);
-                                        isOngoing = currentMins >= startMins && currentMins <= endMins;
-                                        todaySession = todayClass.attendanceSession;
-                                        
-                                        if (todaySession) {
-                                            const sessionTime = new Date(todaySession.created_at).getTime();
-                                            const now = new Date().getTime();
-                                            const diffMins = (now - sessionTime) / 60000;
-                                            if (diffMins <= 30 && todaySession.status === 'pending') {
-                                                canEdit = true;
-                                            }
+                                    const startMins = parseTime(todayClass.start_time);
+                                    const endMins = parseTime(todayClass.end_time);
+                                    const isOngoing = currentMins >= startMins && currentMins <= endMins;
+                                    const todaySession = todayClass.attendanceSession;
+                                    let canEdit = false;
+
+                                    if (todaySession) {
+                                        const sessionTime = new Date(todaySession.created_at).getTime();
+                                        const now = new Date().getTime();
+                                        const diffMins = (now - sessionTime) / 60000;
+                                        if (diffMins <= 30 && todaySession.status === 'pending') {
+                                            canEdit = true;
                                         }
                                     }
 
-                                    if (!todayClass) return null; 
-
                                     return (
-                                        <div key={`mark-${stat.subject}`} style={{...whiteCard, borderTop: '4px solid #28a745'}}>
-                                            <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h3>
-                                            <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                {SVGS.clock} {todayClass.start_time} - {todayClass.end_time} | {SVGS.location} Room {todayClass.room}
-                                            </p>
-                                            
+                                        <div key={`mark-today-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', borderTop: '4px solid #28a745', border: '1px solid #eee' }}>
+                                            <h3 style={{ margin: '0 0 6px 0', color: '#002147', fontSize: '1.05rem', fontWeight: '900' }}>{stat.subject}</h3>
+                                            <p style={{ margin: '0 0 16px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Sec: {stat.section} | {todayClass.start_time} - {todayClass.end_time}</p>
+
                                             {isOngoing && !todaySession && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#28a745', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
-                                                    {SVGS.note} Mark Attendance (Ongoing)
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', animation: 'pulse 2s infinite', fontSize: '0.8rem' }}>
+                                                    {SVGS.edit} Mark Attendance (Ongoing)
                                                 </button>
                                             )}
-                                            {todaySession && canEdit && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#007bff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
-                                                    {SVGS.edit} Edit Attendance
+                                            {(!isOngoing && !todaySession) && (
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                                                    {SVGS.edit} Mark Attendance
                                                 </button>
                                             )}
-                                            {todaySession && !canEdit && (
-                                                <button disabled style={{...bigBtn, background: '#6c757d', color: 'white', opacity: 0.8, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
-                                                    {SVGS.lock} Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending'})
+                                            {todaySession && (
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                                                    {SVGS.edit} Edit Today's Attendance
                                                 </button>
-                                            )}
-                                            {!isOngoing && !todaySession && (
-                                                <div style={{ textAlign: 'center', padding: '10px', color: '#856404', background: '#fff3cd', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                                                    Not currently active.
-                                                </div>
                                             )}
                                         </div>
                                     );
                                 })}
-                                {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled)).length === 0 && (
-                                    <div style={whiteCard}><div style={emptyState}>No classes scheduled for today to mark attendance.</div></div>
+                                {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.section === stat.section && c.session === stat.session && c.day === currentDayStr && !c.isCancelled)).length === 0 && (
+                                    <div style={emptyState}>No classes scheduled for today.</div>
                                 )}
                             </div>
                         )}
@@ -1471,171 +1485,83 @@ export default function Dashboard() {
                                 <div style={{ marginBottom: '10px', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
                                     <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Filter by Semester</label>
                                     <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{...selectStyle, marginBottom: 0}}>
-                                        {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
-                                    </select>
-                                </div>
-                                {attendanceStats.map(stat => (
-                                    <div key={`dl-${stat.subject}`} style={{...whiteCard, borderLeft: '4px solid #17a2b8'}}>
-                                        <h4 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h4>
-                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
-                                        <div style={{ display: 'flex', gap: '10px' }}>
-                                            <button onClick={() => downloadCSV(stat, false)} style={{...actionBtn, background: '#17a2b8', color: '#fff'}}>{SVGS.download} Download CSV</button>
-                                            <button onClick={() => downloadCSV(stat, true)} style={{...actionBtn, background: '#6c757d', color: '#fff'}}>{SVGS.eye} View Table</button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {attendanceView === 'csv_management' && (
-                            <div className="expand-anim" style={whiteCard}>
-                                {uploadStatus === 'idle' && (
-                                    <>
-                                        <h3 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.upload} Upload Attendance CSV</h3>
-                                        <p style={{fontSize: '0.8rem', color: '#666', marginBottom: '15px'}}>Select a subject and upload your CSV. If attendance for any dates inside the CSV already exists, it will be <strong>replaced entirely</strong> with the new file's data.</p>
-                                        
-                                        <select value={uploadCsvSubject} onChange={(e) => setUploadCsvSubject(e.target.value)} style={selectStyle}>
-                                            <option value="">-- Select Subject --</option>
-                                            {availableCourses.map(c => <option key={`up-${c}`} value={c}>{c}</option>)}
-                                        </select>
-
-                                        {uploadCsvSubject && (
-                                            <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '10px', border: '2px dashed #ccc', textAlign: 'center', cursor: 'pointer', transition: '0.3s ease' }} onClick={() => fileInputRef.current.click()}>
-                                                <div style={{ color: '#002147', marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>{SVGS.file}</div>
-                                                <p style={{ fontSize: '0.9rem', color: '#002147', fontWeight: 'bold', margin: '0 0 5px 0' }}>Click to select CSV File</p>
-                                                <p style={{ fontSize: '0.7rem', color: '#666', margin: 0 }}>Format: Name, Registration Number, YYYY-MM-DD...</p>
-                                                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} />
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-
-                                {uploadStatus === 'confirm' && csvMeta && (
-                                    <div className="expand-anim" style={{textAlign: 'center'}}>
-                                        <h3 style={{color: '#002147', margin: '0 0 15px 0'}}>Confirm Upload</h3>
-                                        <div style={{background: '#e7f1ff', padding: '15px', borderRadius: '10px', border: '1px solid #b8daff', marginBottom: '15px', textAlign: 'left', fontSize: '0.85rem'}}>
-                                            <p style={{margin: '0 0 8px 0'}}><strong>Subject:</strong> {uploadCsvSubject}</p>
-                                            <p style={{margin: '0 0 8px 0'}}><strong>Total Students/Rows:</strong> {csvMeta.totalRecords}</p>
-                                            <p style={{margin: '0 0 8px 0'}}><strong>Dates to Overwrite/Insert ({csvMeta.dateCols.length}):</strong></p>
-                                            <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
-                                                {csvMeta.dateCols.map(d => (
-                                                    <span key={d.dateStr} style={{background: '#fff', border: '1px solid #ccc', padding: '3px 8px', borderRadius: '15px', fontSize: '0.7rem', fontWeight: 'bold'}}>{d.dateStr}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '10px' }}>
-                                            <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); }} style={{...actionBtn, background: '#ccc', color: '#333'}}>Cancel</button>
-                                            <button onClick={executeCsvUpload} style={{...actionBtn, background: '#28a745', color: '#fff', flex: 2}}>{SVGS.upload} Confirm & Upload Data</button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {uploadStatus === 'uploading' && (
-                                    <div className="expand-anim" style={{textAlign: 'center', padding: '30px 0'}}>
-                                        <h3 style={{color: '#002147', margin: '0 0 15px 0'}}>Processing Data...</h3>
-                                        <div style={{width: '100%', height: '12px', background: '#eee', borderRadius: '6px', overflow: 'hidden'}}>
-                                            <div style={{width: `${uploadProgress}%`, height: '100%', background: '#F2A900', transition: 'width 0.3s ease'}}></div>
-                                        </div>
-                                        <p style={{fontWeight: 'bold', marginTop: '8px', color: '#555', fontSize: '0.85rem'}}>{uploadProgress}%</p>
-                                    </div>
-                                )}
-
-                                {uploadStatus === 'success' && (
-                                    <div className="expand-anim" style={{textAlign: 'center', padding: '20px 0'}}>
-                                        <div style={{color: '#28a745', marginBottom: '10px', display: 'flex', justifyContent: 'center', transform: 'scale(2)'}}>{SVGS.tickCircle}</div>
-                                        <h3 style={{color: '#28a745', margin: '0 0 10px 0'}}>Upload Complete!</h3>
-                                        <p style={{color: '#666', marginBottom: '20px', fontSize: '0.85rem'}}>The attendance data has been successfully stored.</p>
-                                        <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); setUploadCsvSubject(''); }} style={bigBtn}>Upload Another File</button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {attendanceView === 'csv_history' && (
-                            <div className="expand-anim" style={whiteCard}>
-                                <h3 style={{ margin: '0 0 15px 0', color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.history} Upload History & Undo</h3>
-                                {uploadLogs.length === 0 ? (
-                                    <div style={emptyState}>No upload history found.</div>
-                                ) : (
-                                    <div style={{ overflowX: 'auto' }} className="scroll-hide">
-                                        <table style={tableStyle}>
-                                            <thead>
-                                                <tr style={tableHeaderRow}>
-                                                    <th style={tableHeaderCell}>Date</th>
-                                                    <th style={tableHeaderCell}>Subject</th>
-                                                    <th style={tableHeaderCell}>Dates Processed</th>
-                                                    <th style={{...tableHeaderCell, textAlign: 'right'}}>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {uploadLogs.map(log => (
-                                                    <tr key={log.id} style={tableDataRow}>
-                                                        <td style={tableDataCell}>{new Date(log.created_at).toLocaleDateString()}</td>
-                                                        <td style={{...tableDataCell, fontWeight: 'bold', color: '#002147'}}>{log.subject}</td>
-                                                        <td style={{...tableDataCell, maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{log.dates_included}</td>
-                                                        <td style={{...tableDataCell, textAlign: 'right'}}>
-                                                            <button onClick={() => handleUndoUpload(log)} style={{ padding: '4px 8px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                                                {SVGS.undo} Undo
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {attendanceView === 'stats' && (
-                            <div className="expand-anim" style={whiteCard}>
-                                <div style={{ marginBottom: '10px', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
-                                    <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Filter by Semester</label>
-                                    <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{...selectStyle, marginBottom: 0}}>
                                         <option value="ALL">All Semesters</option>
                                         {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
                                     </select>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.chart} Student Stats</h3>
-                                    <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                                        <option value="ALL">All Subjects (Overall)</option>
-                                        {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                                    {attendanceStats.filter(stat => attendanceSemesterFilter === 'ALL' || stat.session === attendanceSemesterFilter).map(stat => (
+                                        <div key={`dl-${stat.subject}-${stat.section}-${stat.session}`} style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', borderTop: '4px solid #17a2b8', border: '1px solid #eee' }}>
+                                            <h3 style={{ margin: '0 0 6px 0', color: '#002147', fontSize: '1.05rem', fontWeight: '900' }}>{stat.subject}</h3>
+                                            <p style={{ margin: '0 0 6px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Session: {getSemesterFromSession(stat.session)} ({stat.session})</p>
+                                            <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Section: {stat.section}</p>
+                                            <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong style={{ color: '#000' }}>{stat.totalConducted}</strong></p>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button onClick={() => downloadCSV(stat, false)} style={{ flex: 1, padding: '10px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.75rem' }}>
+                                                    {SVGS.download} CSV
+                                                </button>
+                                                <button onClick={() => downloadCSV(stat, true)} style={{ flex: 1, padding: '10px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.75rem' }}>
+                                                    {SVGS.eye} Show
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                
-                                <div style={{ overflowX: 'auto' }} className="scroll-hide">
-                                    <table style={tableStyle}>
-                                        <thead>
-                                            <tr style={tableHeaderRow}>
-                                                <th style={tableHeaderCell}>Reg No</th>
-                                                <th style={tableHeaderCell}>Name</th>
-                                                <th style={{...tableHeaderCell, textAlign: 'right'}}>%</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {roster.map(student => {
-                                                const pct = getStudentAttendance(student.registration_number, attendanceSubjectFilter);
-                                                return (
-                                                    <tr key={student.registration_number} style={tableDataRow}>
-                                                        <td style={{...tableDataCell, fontWeight: 'bold'}}>{student.registration_number}</td>
-                                                        <td style={tableDataCell}>{student.student_name}</td>
-                                                        <td style={{...tableDataCell, textAlign: 'right', fontWeight: 'bold', color: pct >= 75 ? '#28a745' : '#dc3545' }}>
-                                                            {pct}%
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            })}
-                                        </tbody>
-                                    </table>
+                            </div>
+                        )}
+
+                        {attendanceView === 'stats' && (
+                            <div className="expand-anim" style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
+                                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '16px', gap: '10px' }}>
+                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem', fontWeight: '900' }}>Attendance Overview</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: isMobile ? '100%' : '300px' }}>
+                                        <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                            <option value="ALL">All Semesters</option>
+                                            {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
+                                        </select>
+                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                            <option value="ALL">All Sections</option>
+                                            {mySections.map(s => <option key={s} value={s}>Section {s}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
+
+                                {(attendanceSectionFilter !== 'ALL' || attendanceSemesterFilter !== 'ALL') ? (
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
+                                            <thead>
+                                                <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                                                    <th style={{ padding: '12px' }}>Registration No.</th>
+                                                    <th style={{ padding: '12px' }}>Name</th>
+                                                    <th style={{ padding: '12px', textAlign: 'right' }}>Overall Att %</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {roster.filter(s => (attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter) && (attendanceSemesterFilter === 'ALL' || s.session === attendanceSemesterFilter)).map(student => {
+                                                    const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter, attendanceSemesterFilter);
+                                                    return (
+                                                        <tr key={student.registration_number} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                                                            <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{student.registration_number}</td>
+                                                            <td style={{ padding: '12px', color: '#333' }}>{student.student_name}</td>
+                                                            <td style={{ padding: '12px', textAlign: 'right', fontWeight: '900', color: pct > 75 ? '#28a745' : '#dc3545' }}>
+                                                                {pct}%
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div style={emptyState}>Select a session or section filter to view statistics.</div>
+                                )}
                             </div>
                         )}
                     </div>
                 )}
 
                 {/* ================= ANNOUNCEMENTS TAB ================= */}
-                {activeTab === 'announcements' && (
+                {currentTab === 'updates' && (
                     <div className="expand-anim">
                         <div style={whiteCard}>
                             <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1643,83 +1569,116 @@ export default function Dashboard() {
                             </h3>
                             <form onSubmit={submitAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                    <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({...announcementForm, type: e.target.value})} style={{...selectStyle, flex: 1, fontWeight: 'bold', marginBottom: 0}}>
+                                    <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({ ...announcementForm, type: e.target.value })} style={{ ...inputStyle, flex: 1, fontWeight: 'bold', marginBottom: 0 }}>
                                         <option value="assignment">Assignment</option>
                                         <option value="message">Simple Message</option>
                                     </select>
                                     <select required value={announcementForm.subject} onChange={(e) => {
-                                        setAnnouncementForm({...announcementForm, subject: e.target.value, lecture_selector: ''});
-                                    }} style={{...selectStyle, flex: 2, marginBottom: 0}}>
+                                        setAnnouncementForm({ ...announcementForm, subject: e.target.value });
+                                        setAnnSectionsList(['']);
+                                    }} style={{ ...inputStyle, flex: 2, marginBottom: 0 }}>
                                         <option value="" disabled>-- Select Subject --</option>
                                         <option value="General">General / Off-Topic</option>
-                                        {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
+                                        {mySubjects.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
 
-                                {announcementForm.type === 'assignment' && announcementForm.subject && (
-                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                                        <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px'}}>Select Deadline</label>
-                                        
-                                        {upcomingLectures.length > 0 && announcementForm.subject !== 'General' && (
+                                <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px' }}>Select Class Sections</label>
+                                    
+                                    {annSectionsList.map((selectedVal, idx) => (
+                                        <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                                             <select 
-                                                value={announcementForm.lecture_selector} 
+                                                required 
+                                                value={selectedVal} 
+                                                onChange={(e) => {
+                                                    const newList = [...annSectionsList];
+                                                    newList[idx] = e.target.value;
+                                                    setAnnSectionsList(newList);
+                                                }} 
+                                                style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+                                            >
+                                                <option value="" disabled>-- Select Section --</option>
+                                                {uniqueValidSections.map(ss => (
+                                                    <option key={ss} value={ss} disabled={annSectionsList.includes(ss) && ss !== selectedVal}>
+                                                        {getSemesterFromSession(JSON.parse(ss).session)} - Sec {JSON.parse(ss).section}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {annSectionsList.length > 1 && (
+                                                <button type="button" onClick={() => {
+                                                    const newList = annSectionsList.filter((_, i) => i !== idx);
+                                                    setAnnSectionsList(newList);
+                                                }} style={{ background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}>
+                                                    {SVGS.cross}
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {annSectionsList.length < uniqueValidSections.length && annSectionsList[annSectionsList.length - 1] !== '' && (
+                                        <button type="button" onClick={() => setAnnSectionsList([...annSectionsList, ''])} style={{ background: '#e0f2fe', color: '#0369a1', border: '1px dashed #bae6fd', borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', width: 'max-content' }}>
+                                            {SVGS.plus} Add Another Section
+                                        </button>
+                                    )}
+                                </div>
+
+                                {announcementForm.type === 'assignment' && announcementForm.subject && (
+                                    <div style={{ display: 'flex', gap: '10px' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px' }}>Deadline Date</label>
+                                            <select 
+                                                required 
+                                                value={`${announcementForm.deadline_date}|${announcementForm.deadline_time}`} 
                                                 onChange={(e) => {
                                                     const val = e.target.value;
-                                                    setAnnouncementForm({...announcementForm, lecture_selector: val});
-                                                    if (val && val !== 'manual') {
+                                                    if (val !== 'manual') {
                                                         const [d, t] = val.split('|');
                                                         setAnnouncementForm(prev => ({...prev, deadline_date: d, deadline_time: t}));
+                                                    } else {
+                                                        setAnnouncementForm(prev => ({...prev, deadline_date: '', deadline_time: '8:00 AM'}));
                                                     }
                                                 }} 
-                                                style={selectStyle}
+                                                style={{...inputStyle, marginBottom: 0}}
                                             >
-                                                <option value="" disabled>-- Select Upcoming Lecture Date --</option>
+                                                <option value="|" disabled>-- Select Upcoming Lecture Date --</option>
                                                 {upcomingLectures.map(l => {
                                                     const dDate = getNextLectureDate(l.day);
                                                     const timeFmt = convertTo12Hour(l.start_time);
-                                                    return <option key={l.id} value={`${dDate}|${timeFmt}`}>{l.day} {dDate} (By {timeFmt})</option>;
+                                                    return <option key={l.id} value={`${dDate}|${l.start_time}`}>{l.day} {dDate} (By {timeFmt})</option>;
                                                 })}
                                                 <option value="manual">+ Provide Manual Date & Time</option>
                                             </select>
-                                        )}
 
-                                        {(announcementForm.lecture_selector === 'manual' || upcomingLectures.length === 0 || announcementForm.subject === 'General') && (
-                                            <div style={{ display: 'flex', gap: '10px' }}>
-                                                <div style={{flex: 1}}>
-                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px'}}>Date</label>
-                                                    <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_date: e.target.value})} style={{...selectStyle, marginBottom: 0}} />
+                                            {(!upcomingLectures.some(l => getNextLectureDate(l.day) === announcementForm.deadline_date) && announcementForm.deadline_date !== '') && (
+                                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                                    <div style={{flex: 1}}>
+                                                        <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({ ...announcementForm, deadline_date: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }} />
+                                                    </div>
+                                                    <div style={{flex: 1}}>
+                                                        <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({ ...announcementForm, deadline_time: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }}>
+                                                            {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                                            <option value="11:59 PM">11:59 PM (Midnight)</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
-                                                <div style={{flex: 1}}>
-                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px'}}>Time</label>
-                                                    <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_time: e.target.value})} style={{...selectStyle, marginBottom: 0}}>
-                                                        {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                                                        <option value="11:59 PM">11:59 PM (Midnight)</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
-                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4 Exercises)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({...announcementForm, topics: e.target.value})} style={{...selectStyle, marginBottom: 0}} />
-                                <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({...announcementForm, details: e.target.value})} style={{...selectStyle, minHeight: '80px', resize: 'vertical', marginBottom: 0}} />
-                                
-                                <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
-                                    {editAnnId && (
-                                        <button type="button" onClick={() => { setEditAnnId(null); setAnnouncementForm({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' }); }} style={{...actionBtn, background: '#ccc', color: '#333'}}>
-                                            Cancel
-                                        </button>
-                                    )}
-                                    <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900', flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
-                                        {editAnnId ? <>{SVGS.save} Update</> : <>{SVGS.rocket} Push to Class</>}
-                                    </button>
-                                </div>
+                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4 Exercises)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({ ...announcementForm, topics: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }} />
+                                <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({ ...announcementForm, details: e.target.value })} style={{ ...inputStyle, minHeight: '80px', resize: 'vertical', marginBottom: 0 }} />
+
+                                <button type="submit" style={{ ...actionBtn, background: '#002147', color: '#F2A900', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', marginTop: '5px' }}>
+                                    {SVGS.rocket} Push Announcement
+                                </button>
                             </form>
                         </div>
 
                         <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '10px', marginLeft: '5px' }}>Active Announcements</h3>
-                        {announcements.length === 0 ? <div style={whiteCard}><div style={emptyState}>No announcements yet.</div></div> : (
-                            announcements.map(ann => {
+                        {filteredAnnouncements.length === 0 ? <div style={whiteCard}><div style={emptyState}>No announcements yet.</div></div> : (
+                            filteredAnnouncements.map(ann => {
                                 let timeRemainingDisplay = null;
                                 let isExpired = false;
 
@@ -1727,9 +1686,9 @@ export default function Dashboard() {
                                     const deadlineDate = new Date(ann.deadline_date);
                                     const deadlineMins = parseTime(ann.deadline_time);
                                     deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
-                                    
+
                                     const diffMs = deadlineDate - currentTime;
-                                    
+
                                     if (diffMs > 0) {
                                         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                                         const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
@@ -1745,13 +1704,13 @@ export default function Dashboard() {
                                     <div key={ann.id} style={{ ...whiteCard, borderLeft: ann.type === 'assignment' ? '5px solid #F2A900' : '5px solid #3b82f6', borderTop: 'none', opacity: isExpired ? 0.7 : 1 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
                                             <span style={{ fontSize: '0.65rem', fontWeight: 'bold', background: '#f0f2f5', padding: '3px 8px', borderRadius: '12px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                {ann.subject}
+                                                {ann.subject} | Sec {ann.section}
                                             </span>
                                             <span style={{ fontSize: '0.7rem', color: '#999' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
                                         </div>
                                         <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', color: '#111827' }}>{ann.topics}</h4>
                                         <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
-                                        
+
                                         {ann.type === 'assignment' && (
                                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isExpired ? '#fef2f2' : '#fff9e6', border: `1px solid ${isExpired ? '#fecaca' : '#F2A900'}`, borderRadius: '6px', padding: '6px 10px', fontSize: '0.75rem', marginTop: '4px', width: '100%', boxSizing: 'border-box' }}>
                                                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isExpired ? '#991b1b' : '#856404', fontWeight: 'bold' }}>
@@ -1766,7 +1725,7 @@ export default function Dashboard() {
                                                 {SVGS.edit} Edit
                                             </button>
                                             <button onClick={async () => {
-                                                if(window.confirm('Delete this announcement globally?')) {
+                                                if (window.confirm('Delete this announcement globally?')) {
                                                     await supabase.from('class_announcements').delete().eq('id', ann.id);
                                                     fetchProfileAndSchedule(session.user.id);
                                                 }
@@ -1782,189 +1741,132 @@ export default function Dashboard() {
                 )}
 
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
-                {activeTab === 'permanent' && (
+                {currentTab === 'permanent' && (
                     <div className="expand-anim">
                         <button onClick={() => openBaseModal()} style={{...bigBtn, marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.plus} Add New Lecture</button>
                         
-                        {baseSchedule.filter(c => c.session === profile.session).length === 0 ? <div style={whiteCard}><div style={emptyState}>No base schedule found.</div></div> : (
-                            baseSchedule.filter(c => c.session === profile.session).sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
-                                <div key={`base-${cls.id}`} style={whiteCard}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={dayFilter}>
+                            {filterDays.map(day => (
+                                <button key={`base-day-${day}`} onClick={() => setBasePlanDayFilter(day)} style={{ ...dayBtnStyle(basePlanDayFilter === day), background: basePlanDayFilter === day ? '#002147' : '#f8f9fa' }}>
+                                    {day}
+                                </button>
+                            ))}
+                        </div>
+
+                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Your Base Schedule</h3>
+                        {filteredBaseSchedule.length === 0 ? <div style={emptyState}>No base schedule found.</div> : (
+                            filteredBaseSchedule.map((cls) => (
+                                <div key={`base-${cls.id}`} style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', border: '1px solid #eee' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#111827', marginBottom: '4px' }}>{cls.course}</div>
-                                            <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher} | {SVGS.location} Room {cls.room}</div>
+                                            <div style={{ fontWeight: '900', fontSize: '1rem', color: '#000' }}>{cls.course}</div>
+                                            <div style={{ color: '#666', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                                                {SVGS.users} Sec {cls.section} ({getSemesterFromSession(cls.session)}) | {SVGS.location} Room {cls.room}
+                                            </div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.85rem' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.75rem' }}>{cls.day}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        <button onClick={() => openBaseModal(cls)} style={{...actionBtn, background: '#f0f2f5', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.edit} Edit</button>
-                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.trash} Delete</button>
+                                        <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8', SVGS.edit)}>Edit Lecture</button>
+                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course, cls.section)} style={btnStyle('#dc3545', SVGS.trash)}>Delete</button>
                                     </div>
                                 </div>
                             ))
                         )}
                     </div>
                 )}
-
-                {/* ================= MANAGE STUDENTS TAB ================= */}
-                {activeTab === 'students' && (
-                    <div className="expand-anim" style={whiteCard}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.plus} Add Student</h3>
-                            <div>
-                                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
-                                <button onClick={() => fileInputRef.current.click()} style={{ padding: '6px 12px', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    {SVGS.upload} Import CSV
-                                </button>
-                            </div>
-                        </div>
-
-                        <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
-                            <input type="text" placeholder="Reg No (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...selectStyle, flex: 1, minWidth: '130px', marginBottom: 0}} />
-                            <input type="text" placeholder="Student Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...selectStyle, flex: 2, minWidth: '150px', marginBottom: 0}} />
-                            <button type="submit" style={{...actionBtn, background: '#28a745', color: '#fff', flex: 'none', width: 'auto'}}>{SVGS.plus} Add</button>
-                        </form>
-
-                        <h3 style={{ color: '#002147', fontSize: '1rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.users} Class Roster ({roster.length})</h3>
-                        {roster.length === 0 ? <div style={emptyState}>No students added yet.</div> : (
-                            <div style={{ overflowX: 'auto' }} className="scroll-hide">
-                                <table style={tableStyle}>
-                                    <thead>
-                                        <tr style={tableHeaderRow}>
-                                            <th style={tableHeaderCell}>Reg Number</th>
-                                            <th style={tableHeaderCell}>Name</th>
-                                            <th style={{...tableHeaderCell, textAlign: 'center'}}>Att %</th>
-                                            <th style={{...tableHeaderCell, textAlign: 'right'}}>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {roster.map(student => {
-                                            const pct = getStudentAttendance(student.registration_number, 'ALL');
-                                            return (
-                                                <tr key={student.registration_number} style={tableDataRow}>
-                                                    <td style={{...tableDataCell, fontWeight: 'bold', fontSize: '0.8rem'}}>{student.registration_number}</td>
-                                                    <td style={{...tableDataCell, fontSize: '0.8rem'}}>{student.student_name}</td>
-                                                    <td style={{...tableDataCell, textAlign: 'center', fontWeight: 'bold', color: pct >= 75 ? '#28a745' : '#dc3545', fontSize: '0.8rem' }}>{pct}%</td>
-                                                    <td style={{...tableDataCell, textAlign: 'right'}}>
-                                                        <button onClick={() => handleDeleteStudent(student.registration_number)} style={{ padding: '4px 8px', background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}>Delete</button>
-                                                    </td>
-                                                </tr>
-                                            )
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )}
                 
                 {/* ======================= AI TUTOR TAB ======================= */}
-                {activeTab === 'ai_bot' && (
+                {currentTab === 'ai_bot' && (
                     <div className="expand-anim">
                         <AIBot />
                     </div>
                 )}
             </div>
 
-            {/* MODALS */}
+            <footer style={footerStyle}>
+                Made with love by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin | Muntaha | Waleeja | Nazakat — BSAI 3RD 3M</a>
+            </footer>
+
+            {/* ATTENDANCE SHEET MODAL */}
             {activeAttendanceLecture && (
-                <AttendanceSheet 
-                    lecture={activeAttendanceLecture} 
-                    profile={profile}
-                    roster={roster}
-                    students={roster}
+                <AttendanceSheet
+                    lecture={activeAttendanceLecture}
+                    profile={{ name: profile.name, isTeacher: true, section: activeAttendanceLecture.section, session: activeAttendanceLecture.session }}
                     existingSession={activeAttendanceLecture.attendanceSession}
+                    students={roster.filter(s => s.section === activeAttendanceLecture.section && s.session === activeAttendanceLecture.session)}
                     onClose={(didUpdate) => {
                         setActiveAttendanceLecture(null);
-                        if (didUpdate) fetchProfileAndSchedule(session.user.id);
-                    }} 
+                        if (didUpdate) fetchProfileAndSchedule(profile.name);
+                    }}
                 />
             )}
 
+            {/* TEMP EXCEPTION EDIT MODAL */}
             {isEditModalOpen && (
-                <div style={sidebarOverlay}>
-                    <div className="expand-anim" style={{ background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '400px', margin: 'auto', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' }}>
-                        <h3 style={{ marginTop: 0, color: '#002147', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>{SVGS.clock} Reschedule Class (Temp)</h3>
-                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={selectStyle} />
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                <div style={modalOverlayStyle}>
+                    <div style={modalContentStyle}>
+                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '1.1rem', marginBottom: '20px' }}>{SVGS.clock} Modify Lecture</h3>
+                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
-                            <select required value={newRoom} onChange={(e) => {
-                                if (e.target.value === 'MANUAL') {
-                                    setIsManualRoom(true); setNewRoom('');
-                                } else {
-                                    setNewRoom(e.target.value);
-                                }
-                            }} style={selectStyle}>
-                                <option value="" disabled>-- Select Dept Room --</option>
-                                {allDepartmentRooms.map(r => <option key={`resch-${r}`} value={r}>{r}</option>)}
-                                <option value="MANUAL">+ Add Room Manually</option>
+                            <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
+                                {availableRooms.length > 0 ? availableRooms.map(r => <option key={r} value={r}>{r}</option>) : <option value={newRoom}>{newRoom}</option>}
                             </select>
-                            {isManualRoom && <input type="text" placeholder="Type Room Name Manually..." required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={{...selectStyle, border: '1px solid #007bff'}} />}
-                            
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={() => { setIsEditModalOpen(false); setIsManualRoom(false); }} style={{...actionBtn, background: '#f0f2f5', color: '#333'}}>Cancel</button>
-                                <button type="submit" style={{...actionBtn, background: '#F2A900', color: '#002147'}}>{SVGS.save} Save</button>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
+                                <button type="submit" style={saveBtnStyle}>Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            
+            {/* EXAM SCHEDULE EDIT MODAL */}
+            {isExamEditModalOpen && (
+                <div style={modalOverlayStyle}>
+                    <div style={modalContentStyle}>
+                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '1.1rem', marginBottom: '20px' }}>{SVGS.clock} Reschedule Exam</h3>
+                        <form onSubmit={submitExamEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <input type="date" required value={examEditForm.exam_date} onChange={(e) => setExamEditForm({...examEditForm, exam_date: e.target.value})} style={inputStyle} />
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                <select value={examEditForm.start_time} onChange={(e) => setExamEditForm({...examEditForm, start_time: e.target.value})} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={examEditForm.end_time} onChange={(e) => setExamEditForm({...examEditForm, end_time: e.target.value})} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                            </div>
+                            <input type="text" required value={examEditForm.room} placeholder="Exam Room" onChange={(e) => setExamEditForm({...examEditForm, room: e.target.value})} style={inputStyle} />
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => setIsExamEditModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
+                                <button type="submit" style={saveBtnStyle}>Save</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
+            {/* BASE MODAL */}
             {isBaseModalOpen && (
-                <div style={sidebarOverlay}>
-                    <div className="expand-anim" style={{ background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '400px', margin: 'auto', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' }}>
-                        <h3 style={{ marginTop: 0, color: '#002147', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>{baseForm.id ? <>{SVGS.edit} Edit Base Lecture</> : <>{SVGS.plus} Add New Lecture</>}</h3>
-                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
-                            <select required value={baseForm.course} onChange={(e) => { 
-                                if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } 
-                                else setBaseForm({...baseForm, course: e.target.value}); 
-                            }} style={{...selectStyle, marginBottom: 0}}>
-                                <option value="" disabled>-- Select Subject --</option>
-                                {availableCourses.map(c => <option key={`bc-${c}`} value={c}>{c}</option>)}
-                                <option value="MANUAL">+ Add Manually</option>
-                            </select>}
-
-                            {isManualTeacher ? <input type="text" placeholder="Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
-                            <select required value={baseForm.teacher} onChange={(e) => { 
-                                if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); } 
-                                else {
-                                    const selectedTeacher = e.target.value;
-                                    const autoCourse = teacherCourseMap[selectedTeacher];
-                                    setBaseForm({...baseForm, teacher: selectedTeacher, course: autoCourse || baseForm.course});
-                                }
-                            }} style={{...selectStyle, marginBottom: 0}}>
-                                <option value="" disabled>-- Select Teacher --</option>
-                                {availableTeachers.map(t => <option key={`bt-${t}`} value={t}>{t}</option>)}
-                                <option value="MANUAL">+ Add Manually</option>
-                            </select>}
-
-                            {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
-                            <select required value={baseForm.room} onChange={(e) => { 
-                                if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } 
-                                else setBaseForm({...baseForm, room: e.target.value}); 
-                            }} style={{...selectStyle, marginBottom: 0}}>
-                                <option value="" disabled>-- Select Room --</option>
-                                {allDepartmentRooms.map(r => <option key={`br-${r}`} value={r}>{r}</option>)}
-                                <option value="MANUAL">+ Add Manually</option>
-                            </select>}
-
-                            <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={{...selectStyle, marginBottom: 0}}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                            
-                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                <div style={modalOverlayStyle}>
+                    <div style={{ ...modalContentStyle, maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '1.1rem', marginBottom: '20px' }}>{SVGS.building} {baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
+                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {isManualSession ? <input type="text" placeholder="Session (e.g. Spring 2026)..." required value={baseForm.session} onChange={(e) => setBaseForm({ ...baseForm, session: e.target.value })} style={inputStyle} /> : <select required value={baseForm.session} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSession(true); setBaseForm({ ...baseForm, session: '' }); } else setBaseForm({ ...baseForm, session: e.target.value }); }} style={inputStyle}><option value="" disabled>-- Select Session --</option>{availableSessions.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualSection ? <input type="text" placeholder="Section (e.g. 1E)..." required value={baseForm.section} onChange={(e) => setBaseForm({ ...baseForm, section: e.target.value })} style={inputStyle} /> : <select required value={baseForm.section} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSection(true); setBaseForm({ ...baseForm, section: '' }); } else setBaseForm({ ...baseForm, section: e.target.value }); }} style={inputStyle}><option value="" disabled>-- Select Section --</option>{availableSections.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({ ...baseForm, course: e.target.value })} style={inputStyle} /> : <select required value={baseForm.course} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({ ...baseForm, course: '' }); } else setBaseForm({ ...baseForm, course: e.target.value }); }} style={inputStyle}><option value="" disabled>-- Select Subject --</option>{availableCourses.map(c => <option key={c} value={c}>{c}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            {isManualRoom ? <input type="text" placeholder="Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({ ...baseForm, room: e.target.value })} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({ ...baseForm, room: '' }); } else setBaseForm({ ...baseForm, room: e.target.value }); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
+                            <select required value={baseForm.day} onChange={(e) => setBaseForm({ ...baseForm, day: e.target.value })} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({ ...baseForm, start_time: e.target.value })} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({ ...baseForm, end_time: e.target.value })} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
-                            
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{...actionBtn, background: '#f0f2f5', color: '#333'}}>Cancel</button>
-                                <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900'}}>{SVGS.save} Save</button>
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
+                                <button type="submit" style={saveBtnStyle}>Save</button>
                             </div>
                         </form>
                     </div>
@@ -1974,32 +1876,32 @@ export default function Dashboard() {
     );
 }
 
-// --- STYLES ---
+// STYLES
 const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
-const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
-const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '48px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
-const subTabBtn = (active) => ({ flex: 1, padding: '8px 12px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' });
-const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
-const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
-const cardBase = { padding: '15px', borderRadius: '12px', transition: 'all 0.3s ease' };
-const bigBtn = { width: '100%', padding: '12px', background: '#002147', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#fff', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
+const welcomeCard = { background: '#fff', padding: '25px', borderRadius: '16px', width: '90%', maxWidth: '380px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '45px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabStyle = (active) => ({ flex: 1, minWidth: '90px', padding: '10px 14px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' });
+const dayFilter = { display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '6px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px 6px', borderRadius: '10px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.7rem', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.04)', transition: 'all 0.3s ease' });
+const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.2s ease' });
+const inputStyle = { width: '100%', padding: '12px 14px', border: '1px solid #dee2e6', borderRadius: '10px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box', background: '#f8f9fa', transition: 'border 0.3s ease' };
 const actionBtn = { flex: 1, minWidth: '80px', padding: '10px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.3s ease' };
-const selectStyle = { width: '100%', padding: '10px 12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#f8f9fa', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease', color: '#333' };
-const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem', background: '#f8f9fa', borderRadius: '8px', border: '1px dashed #dee2e6' };
-const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
-const centerStyle = { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', fontSize: '0.9rem', color: '#002147', fontWeight: 'bold' };
+const whiteCard = { background: '#fff', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', transition: 'all 0.3s ease', border: '1px solid #eee' };
+const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.8rem', background: '#fff', borderRadius: '12px', border: '1px dashed #ddd' };
+const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
+const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '6px', fontWeight: 'bold' };
+const newsRedDot = { position: 'absolute', top: '6px', right: '6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
+const footerStyle = { textAlign: 'center', padding: '16px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,21,47,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
+const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' };
+const cancelBtnStyle = { flex: 1, padding: '14px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s ease' };
+const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', transition: 'background 0.2s ease' };
 
-// Sidebar
+// Sidebar Styles
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
-const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
-
-// Tables
-const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
-const tableHeaderRow = { background: '#f8f9fa', borderBottom: '2px solid #dee2e6' };
-const tableHeaderCell = { padding: '10px 12px', fontSize: '0.75rem', color: '#495057', textTransform: 'uppercase', letterSpacing: '0.5px' };
-const tableDataRow = { borderBottom: '1px solid #eee', transition: 'background 0.2s' };
-const tableDataCell = { padding: '12px', color: '#333' };
+const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '14px 18px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #f8f9fa', transition: 'all 0.3s ease' });
