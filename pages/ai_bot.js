@@ -9,6 +9,7 @@ const ICONS = {
     send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>, 
     menu: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="14" y2="15"/></svg>,
     trash: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+    // NEW: Chevron Up for Model Selector
     chevronUp: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
 };
 
@@ -32,8 +33,8 @@ export default function AIBot({ groqApiKey }) {
     const [currentSessionId, setCurrentSessionId] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // --- UPGRADED: Model Selector States ---
-    const [activeModel, setActiveModel] = useState('llama-3.1-70b-versatile'); // Defaults to Meta Llama 3.1
+    // --- UPGRADED: Model Selector States (Defaults to currently supported Llama 8B) ---
+    const [activeModel, setActiveModel] = useState('llama-3.1-8b-instant'); 
     const [showModelMenu, setShowModelMenu] = useState(false);
 
     const messagesEndRef = useRef(null);
@@ -228,7 +229,7 @@ CRITICAL RULES OF ENGAGEMENT:
 
         try {
             let aiGeneratedText = "";
-            const isGroqModel = ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'].includes(activeModel);
+            const isGroqModel = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b'].includes(activeModel);
 
             if (isGroqModel) {
                 const memoryHorizonArray = messages.slice(-10).map(m => ({
@@ -254,7 +255,7 @@ CRITICAL RULES OF ENGAGEMENT:
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        model: activeModel, // Now dynamically passes the selected Llama/Mixtral model
+                        model: activeModel, 
                         messages: targetPayloadMessages,
                         temperature: 0.3,
                         max_tokens: 1500
@@ -268,7 +269,7 @@ CRITICAL RULES OF ENGAGEMENT:
                 // --- DYNAMIC GEMINI ROUTING ---
                 const systemContextString = buildSystemContextInstruction();
                 const geminiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-                // Safely handles the updated Gemini model IDs
+                // Safely handles the updated Gemini 2.5 models
                 const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${geminiKey}`;
                 
                 const geminiHistory = messages.slice(-10).map(m => ({
@@ -467,7 +468,7 @@ CRITICAL RULES OF ENGAGEMENT:
                                             title="Select AI Model"
                                         >
                                             <span style={{ fontSize: '11px', fontWeight: '700', marginRight: '4px' }}>
-                                                {activeModel.includes('llama') ? 'LLM' : activeModel.includes('mix') ? 'MIX' : 'GEM'}
+                                                {activeModel.includes('llama') ? 'LLM' : activeModel.includes('gpt') ? 'GPT' : 'GEM'}
                                             </span>
                                             {ICONS.chevronUp}
                                         </button>
@@ -477,42 +478,42 @@ CRITICAL RULES OF ENGAGEMENT:
                                                 {/* Groq Models */}
                                                 <div style={menuCategoryHeaderStyle}>Groq (Fast)</div>
                                                 <div 
-                                                    style={modelMenuItem(activeModel === 'llama-3.1-70b-versatile')} 
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('llama-3.1-70b-versatile'); setShowModelMenu(false); }}
-                                                >
-                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Llama 3.1 (70B)</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Smart & Fast</div>
-                                                </div>
-                                                <div 
                                                     style={modelMenuItem(activeModel === 'llama-3.1-8b-instant')} 
                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('llama-3.1-8b-instant'); setShowModelMenu(false); }}
                                                 >
                                                     <div style={{ fontSize: '13px', fontWeight: '600' }}>Llama 3.1 (8B)</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Instant</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Instant / Default</div>
                                                 </div>
                                                 <div 
-                                                    style={modelMenuItem(activeModel === 'mixtral-8x7b-32768')} 
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('mixtral-8x7b-32768'); setShowModelMenu(false); }}
+                                                    style={modelMenuItem(activeModel === 'llama-3.3-70b-versatile')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('llama-3.3-70b-versatile'); setShowModelMenu(false); }}
                                                 >
-                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Mixtral 8x7B</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>High Context</div>
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Llama 3.3 (70B)</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Smart & Versatile</div>
+                                                </div>
+                                                <div 
+                                                    style={modelMenuItem(activeModel === 'openai/gpt-oss-120b')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('openai/gpt-oss-120b'); setShowModelMenu(false); }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>GPT-OSS 120B</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>High Context Reasoning</div>
                                                 </div>
 
                                                 {/* Google Gemini Models */}
                                                 <div style={{...menuCategoryHeaderStyle, borderTop: '1px solid #f1f5f9', marginTop: '4px', paddingTop: '8px'}}>Google (Smart)</div>
                                                 <div 
+                                                    style={modelMenuItem(activeModel === 'gemini-2.5-flash-lite')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gemini-2.5-flash-lite'); setShowModelMenu(false); }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 2.5 Flash-Lite</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Fastest</div>
+                                                </div>
+                                                <div 
                                                     style={modelMenuItem(activeModel === 'gemini-2.5-flash')} 
                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gemini-2.5-flash'); setShowModelMenu(false); }}
                                                 >
                                                     <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 2.5 Flash</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Fast & Multimodal</div>
-                                                </div>
-                                                <div 
-                                                    style={modelMenuItem(activeModel === 'gemini-2.5-pro')} 
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gemini-2.5-pro'); setShowModelMenu(false); }}
-                                                >
-                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 2.5 Pro</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Deep Reasoning</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Multimodal / Reasoning</div>
                                                 </div>
                                             </div>
                                         )}
