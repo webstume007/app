@@ -60,7 +60,7 @@ const SVGS = {
     alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3"/></svg>,
     rocket: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z"/></svg>,
     eye: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
-    cap: <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
+    history: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
     bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
@@ -186,6 +186,12 @@ export default function Dashboard() {
     const [examSchedules, setExamSchedules] = useState([]);
     const [pointsData, setPointsData] = useState([]);
 
+    // --- PWA & NOTIFICATION STATES ---
+    const [isStandalone, setIsStandalone] = useState(true);
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [showNotifBanner, setShowNotifBanner] = useState(false);
+
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
     const [isManualTeacher, setIsManualTeacher] = useState(false);
@@ -244,7 +250,21 @@ export default function Dashboard() {
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
     const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
 
+    // Exam Modal State
+    const [isExamEditModalOpen, setIsExamEditModalOpen] = useState(false);
+    const [examEditForm, setExamEditForm] = useState({ id: null, exam_date: '', start_time: '', end_time: '', room: '' });
+
+    const allTabs = [
+        { id: 'home', label: 'HOME', icon: SVGS.home },
+        { id: 'weekly', label: 'SCHEDULE', icon: SVGS.calendar },
+        { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
+        { id: 'updates', label: 'UPDATES', icon: SVGS.updates },
+        { id: 'permanent', label: 'BASE PLAN', icon: SVGS.building },
+        { id: 'ai_bot', label: 'AI TUTOR', icon: SVGS.bot }
+    ];
+
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+    const filterDays = ["ALL", ...days];
 
     const timeSlots = [];
     let ts = 8 * 60; 
@@ -1167,9 +1187,10 @@ export default function Dashboard() {
                     100% { background-position: 0% 50%; }
                 }
                 @keyframes aiShineLayer {
-                    0% { transform: translateX(-200%) skewX(-20deg); }
-                    30% { transform: translateX(300%) skewX(-20deg); }
-                    100% { transform: translateX(300%) skewX(-20deg); }
+                    0% { transform: translateX(-150%) skewX(-15deg); opacity: 0; }
+                    20% { opacity: 1; }
+                    40% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
+                    100% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
                 }
                 .ai-tutor-btn-active, .ai-tutor-btn-inactive {
                     position: relative;
@@ -1180,7 +1201,7 @@ export default function Dashboard() {
                     content: "";
                     position: absolute;
                     top: 0; left: 0; width: 100%; height: 100%;
-                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(139,92,246,0.15), rgba(79,172,254,0.1));
+                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(59,130,246,0.1), rgba(139,92,246,0.1));
                     background-size: 300% 300%;
                     animation: aiBgPulse 5s ease infinite;
                     z-index: 0;
@@ -1188,9 +1209,9 @@ export default function Dashboard() {
                 .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
                     content: "";
                     position: absolute;
-                    top: 0; left: 0; width: 50%; height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-                    animation: aiShineLayer 6s infinite linear;
+                    top: 0; left: 0; width: 40%; height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+                    animation: aiShineLayer 6s infinite ease-in-out;
                     z-index: 1;
                     filter: blur(4px);
                 }
@@ -1205,12 +1226,11 @@ export default function Dashboard() {
                     z-index: 2;
                 }
                 .desktop-ai-btn {
-                    background: rgba(255,255,255,0.05) !important;
-                    border: 1px solid rgba(79,172,254,0.4) !important;
-                    box-shadow: 0 0 10px rgba(139,92,246,0.2) inset !important;
+                    background: rgba(255,255,255,0.1) !important;
+                    border: 1px solid rgba(79,172,254,0.3) !important;
                 }
                 .desktop-ai-btn:hover {
-                    background: rgba(255,255,255,0.15) !important;
+                    background: rgba(255,255,255,0.2) !important;
                 }
                 .ai-tutor-icon-svg {
                     position: relative;
@@ -1269,7 +1289,7 @@ export default function Dashboard() {
                             <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
                             <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
-                        {visibleTabs.map(tab => {
+                        {[{id: 'weekly', label: 'Weekly Timetable', icon: SVGS.calendar}, {id: 'permanent', label: 'Base Schedule', icon: SVGS.home}, {id: 'students', label: 'Manage Students', icon: SVGS.users}, {id: 'attendance', label: 'Attendance', icon: SVGS.attendance}, {id: 'announcements', label: 'Announcements', icon: SVGS.updates}].map(tab => {
                             const isAIBot = tab.id === 'ai_bot';
                             return (
                                 <button 
@@ -1298,257 +1318,73 @@ export default function Dashboard() {
                             style={tabBtn(isActive)}
                             className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
                         >
-                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</div>
+                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>
+                                {isAIBot ? SVGS.botGradient : tab.icon}
+                            </div>
                             <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                            {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={newsRedDot}></span>}
                         </button>
                     )
                 })}
             </div>
 
             <div style={{ padding: '15px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box', paddingBottom: '30px' }}>
+                
+                <div className="expand-anim" style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
+                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        Welcome, {profile?.first_name} {profile?.last_name}
+                    </h2>
+                    <p style={{ margin: 0, color: '#e0e0e0', fontSize: '0.85rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
+                </div>
 
-                {deferredPrompt && showInstallBanner && (
-                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
-                        <div style={{ flex: 1, paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div>
-                                <b style={{ display: 'block', marginBottom: '2px', fontSize: '0.8rem' }}>Install App</b>
-                                <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add Portal to your home screen for better performance.</span>
-                            </div>
-                        </div>
-                        <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
-                    </div>
-                )}
-                {showNotifBanner && (
-                    <div className="expand-anim" style={notifBannerStyle}>
-                        <div style={{ flex: 1, paddingRight: '10px' }}>
-                            <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>Stay Updated! {SVGS.bell}</b>
-                            <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Allow notifications to get instant lecture reminders.</span>
-                        </div>
-                        <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
-                    </div>
-                )}
-
-                {/* ================= HOME TAB ================= */}
-                {activeTab === 'home' && (
-                    <div className="expand-anim">
-                        <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '16px', padding: '20px', color: '#fff', marginBottom: '16px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1px', color: '#F2A900', marginBottom: '5px', textTransform: 'uppercase' }}>Teacher Portal</div>
-                            <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                Welcome, {profile?.name}
-                            </h2>
-                        </div>
-
-                        <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '1px solid #eee', marginBottom: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                            <div 
-                                onClick={() => setIsAttendanceExpanded(!isAttendanceExpanded)}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-                            >
-                                <div style={{ flex: 1, paddingRight: '15px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '6px' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.attendance} Overall Students Attendance</span>
-                                        <span>{overallAttPct}%</span>
-                                    </div>
-                                    <div style={{ height: '6px', background: '#f0f2f5', borderRadius: '3px', overflow: 'hidden' }}>
-                                        <div style={{ width: `${overallAttPct}%`, height: '100%', background: overallAttPct >= 75 ? '#28a745' : '#dc3545', transition: 'width 0.5s ease' }}></div>
-                                    </div>
-                                </div>
-                                <div style={{ color: '#999', transition: 'transform 0.3s ease', transform: isAttendanceExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                                    {SVGS.chevronDown}
-                                </div>
-                            </div>
+                {!isExamMode && ongoingClasses.length > 0 && (
+                    <div style={{ marginBottom: '20px' }}>
+                        {ongoingClasses.map(ongoingClass => {
+                            const sessionToday = ongoingClass.attendanceSession;
+                            let canEdit = false;
                             
-                            {isAttendanceExpanded && (
-                                <div className="expand-anim" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed #eee', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    {attendanceStats.map((stat, idx) => (
-                                        <div key={idx}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
-                                                <span>{stat.subject} (Sec {stat.section})</span>
-                                                <span>{stat.percentage}%</span>
-                                            </div>
-                                            <div style={{ height: '4px', background: '#f0f2f5', borderRadius: '2px', overflow: 'hidden' }}>
-                                                <div style={{ width: `${stat.percentage}%`, height: '100%', background: stat.percentage >= 75 ? '#28a745' : '#F2A900', transition: 'width 0.5s ease' }}></div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {attendanceStats.length === 0 && <div style={{fontSize: '0.7rem', color: '#999'}}>No attendance records found yet.</div>}
-                                </div>
-                            )}
-                        </div>
+                            if (sessionToday) {
+                                const sessionTime = new Date(sessionToday.created_at).getTime();
+                                const now = new Date().getTime();
+                                const diffMins = (now - sessionTime) / 60000;
+                                if (diffMins <= 30 && sessionToday.status === 'pending') canEdit = true;
+                            }
 
-                        <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
-                            <div style={{ background: '#f8f9fa', padding: '12px 16px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
-                                {SVGS.bell} Notice Board (Today's Schedule)
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px' }}>
-                                {todayEvents.length > 0 && (
-                                    <button onClick={prevNotice} style={{ background: '#f0f2f5', border: 'none', color: '#002147', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{SVGS.leftArrow}</button>
-                                )}
-
-                                <div style={{ flex: 1, textAlign: 'center', margin: '0 15px' }}>
-                                    {todayEvents.length === 0 ? (
-                                        <div>
-                                            {tomorrowEvents.length > 0 ? (
-                                                <>
-                                                    <h3 style={{ margin: '0 0 6px 0', color: '#007bff', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                                                        {SVGS.calendar} No Lectures Today
-                                                    </h3>
-                                                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>You have {tomorrowEvents.length} lecture(s) scheduled for tomorrow.</p>
-                                                </>
-                                            ) : (
-                                                <h3 style={{ margin: '0', color: '#28a745', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                                                    {SVGS.tickCircle} No Lectures Today or Tomorrow
-                                                </h3>
-                                            )}
-                                        </div>
-                                    ) : (() => {
-                                        const targetEvent = todayEvents[noticeIndex];
-
-                                        if (targetEvent.type === 'exam') {
-                                            const currentTotalSecs = currentMins * 60 + currentSecs;
-                                            const startSecs = targetEvent.startMins * 60;
-                                            const endSecs = targetEvent.endMins * 60;
-                                            let noticeState = "Finished";
-                                            let remainingSecs = 0;
-                                            
-                                            if (currentTotalSecs < startSecs) {
-                                                noticeState = "Starts In";
-                                                remainingSecs = startSecs - currentTotalSecs;
-                                            } else if (currentTotalSecs >= startSecs && currentTotalSecs < endSecs) {
-                                                noticeState = "Ongoing";
-                                                remainingSecs = endSecs - currentTotalSecs;
-                                            }
-
-                                            return (
-                                                <div className="expand-anim" key={`ex-${noticeIndex}`}>
-                                                    <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#155724', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                        {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Exam Concluded' : `${noticeState} Exam`}
-                                                    </div>
-                                                    <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
-                                                    <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                        {SVGS.location} Room {targetEvent.room}
-                                                    </div>
-                                                    {noticeState !== 'Finished' && (
-                                                        <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
-                                                            {formatCountdown(remainingSecs)} <span style={{fontSize: '0.65rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        }
-                                        
-                                        if (targetEvent.type === 'vacation' || targetEvent.type === 'milestone') {
-                                            return (
-                                                <div className="expand-anim" key={`ms-${noticeIndex}`}>
-                                                    <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#155724', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                        {SVGS.sparkle} {targetEvent.title.includes('Holiday') || targetEvent.title.includes('Vacation') ? 'Holidays' : 'Notice'}
-                                                    </div>
-                                                    <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
-                                                    <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>{targetEvent.desc}</div>
-                                                </div>
-                                            );
-                                        }
-
-                                        let noticeState = "Finished";
-                                        let remainingSecs = 0;
-
-                                        if (targetEvent) {
-                                            const currentTotalSecs = currentMins * 60 + currentSecs;
-                                            if (targetEvent.type === 'lecture') {
-                                                const startSecs = targetEvent.startMins * 60;
-                                                const endSecs = targetEvent.endMins * 60;
-                                                if (currentTotalSecs < startSecs) {
-                                                    noticeState = "Upcoming";
-                                                    remainingSecs = startSecs - currentTotalSecs;
-                                                } else if (currentTotalSecs >= startSecs && currentTotalSecs < endSecs) {
-                                                    noticeState = "Ongoing";
-                                                    remainingSecs = endSecs - currentTotalSecs;
-                                                }
-                                            }
-                                            if (targetEvent.raw?.isCancelled) noticeState = "Cancelled";
-                                        }
-
-                                        const hasAssignment = announcements.some(a => a.type === 'assignment' && a.subject === targetEvent.title && new Date(a.deadline_date) >= new Date());
-
-                                        return (
-                                            <div className="expand-anim" key={`lec-${noticeIndex}`}>
-                                                <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : noticeState === 'Cancelled' ? '#666' : '#007bff', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                    {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Lecture Concluded' : noticeState === 'Upcoming' ? 'Upcoming Lecture' : noticeState === 'Cancelled' ? 'Cancelled Lecture' : 'Lecture Time Started'}
-                                                </div>
-                                                <h3 style={{ margin: '0 0 6px 0', color: noticeState === 'Cancelled' ? '#999' : '#002147', fontSize: '1.05rem', fontWeight: '900', textDecoration: noticeState === 'Cancelled' ? 'line-through' : 'none' }}>{targetEvent.title}</h3>
-                                                <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                                                    {SVGS.location} Room {targetEvent.room} | Sec {targetEvent.section}
-                                                </div>
-                                                {hasAssignment && (
-                                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fff9e6', color: '#b27b00', padding: '4px 10px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', marginBottom: '10px', border: '1px solid #fde68a' }}>
-                                                        {SVGS.edit} Has Assignment
-                                                    </div>
-                                                )}
-                                                {noticeState !== 'Finished' && noticeState !== 'Cancelled' && (
-                                                    <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '6px 16px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem', marginTop: '5px' }}>
-                                                        {formatCountdown(remainingSecs)} <span style={{ fontSize: '0.7rem', opacity: 0.8, marginLeft: '4px' }}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-
-                                {todayEvents.length > 0 && (
-                                    <button onClick={nextNotice} style={{ background: '#f0f2f5', border: 'none', color: '#002147', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{SVGS.rightArrow}</button>
-                                )}
-                            </div>
-                        </div>
-
-                        {pendingAttendances.length > 0 && (
-                            <div className="expand-anim" style={{ marginBottom: '16px' }}>
-                                <h3 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#dc3545', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '900', textTransform: 'uppercase' }}>
-                                    {SVGS.alertCircle} Action Required: Pending Approvals
-                                </h3>
-                                {pendingAttendances.map(session => (
-                                    <div key={`hm-pend-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '10px', borderLeft: '5px solid #f59e0b', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                                        <div>
-                                            <div style={{ fontWeight: '900', fontSize: '0.95rem', color: '#000' }}>{session.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>Sec {session.section} ({getSemesterFromSession(session.session)}) | {session.session_date}</div>
-                                            <div style={{ color: '#059669', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '6px' }}>{session.presentCount}/{session.totalCount} Present</div>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button onClick={() => {
-                                                const formattedLecture = { ...session.baseLecture, attendanceSession: session };
-                                                setActiveAttendanceLecture(formattedLecture);
-                                            }} style={btnStyle('#f0f2f5', SVGS.edit)}>Verify</button>
-                                        </div>
+                            return (
+                                <div key={`global-ongoing-${ongoingClass.id}`} className="expand-anim" style={{ background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)', padding: '15px 20px', borderRadius: '12px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(21, 128, 61, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                                    <div style={{ color: 'white' }}>
+                                        <h3 style={{ margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
+                                            {SVGS.live} Ongoing: {ongoingClass.course}
+                                        </h3>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            {SVGS.clock} {convertTo12Hour(ongoingClass.start_time)} - {convertTo12Hour(ongoingClass.end_time)} | {SVGS.location} Room {ongoingClass.room}
+                                        </p>
                                     </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                            {[
-                                { id: 'weekly', label: 'Schedule', icon: SVGS.calendar, bg: '#e0f2fe', col: '#0369a1' },
-                                { id: 'attendance', label: 'Attendance', icon: SVGS.attendance, bg: '#dcfce7', col: '#15803d' },
-                                { id: 'updates', label: 'Updates', icon: SVGS.updates, bg: '#fef3c7', col: '#a16207' }
-                            ].map(item => (
-                                <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: item.bg, color: item.col, padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s' }}>
-                                    <div style={{ marginBottom: '8px', opacity: 0.9, display: 'flex', justifyContent: 'center' }}>{item.icon}</div>
-                                    <div style={{ fontSize: '0.7rem', fontWeight: '900' }}>{item.label}</div>
+                                    <div>
+                                        {!sessionToday && (
+                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '8px 15px', background: 'white', color: '#15803d', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                                {SVGS.note} Mark Attendance
+                                            </button>
+                                        )}
+                                        {sessionToday && canEdit && (
+                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '8px 15px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                                {SVGS.edit} Edit Attendance
+                                            </button>
+                                        )}
+                                        {sessionToday && !canEdit && (
+                                            <button disabled style={{ padding: '8px 15px', background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                                {SVGS.lock} Locked ({sessionToday.status === 'approved' ? 'Approved' : 'Pending'})
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                            <div onClick={() => { setCurrentTab('attendance'); setAttendanceView('approve'); }} style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', color: '#065f46', padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s', border: '1px solid #a7f3d0' }}>
-                                <div style={{ marginBottom: '8px', opacity: 0.95, display: 'flex', justifyContent: 'center' }}>{SVGS.tickCircle}</div>
-                                <div style={{ fontSize: '0.72rem', fontWeight: '900' }}>Approve Attendance</div>
-                            </div>
-                            <div onClick={() => { setCurrentTab('attendance'); setAttendanceView('stats'); }} style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', color: '#3730a3', padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s', border: '1px solid #c7d2fe' }}>
-                                <div style={{ marginBottom: '8px', opacity: 0.95, display: 'flex', justifyContent: 'center' }}>{SVGS.stats}</div>
-                                <div style={{ fontSize: '0.72rem', fontWeight: '900' }}>Stats</div>
-                            </div>
-                        </div>
+                            );
+                        })}
                     </div>
                 )}
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
-                {currentTab === 'weekly' && (
+                {activeTab === 'weekly' && (
                     <div className="expand-anim">
                         {activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type) && (
                             <div style={{background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center'}}>
@@ -1558,74 +1394,132 @@ export default function Dashboard() {
                         
                         {isExamMode ? (
                             <div className="expand-anim">
-                                {examSchedules.map((ex, idx) => (
-                                    <div key={`ex-${idx}`} style={whiteCard}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px' }}>
-                                            <div>
-                                                <div style={{ fontWeight: '900', fontSize: '1rem', color: '#000' }}>{ex.course}</div>
-                                                <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '6px' }}>{SVGS.users} Groups: {ex.target_group} | {SVGS.location} Room {ex.room}</div>
-                                                <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.75rem', marginTop: '6px' }}>{new Date(ex.exam_date).toLocaleDateString()}</div>
-                                            </div>
-                                            <div style={{ textAlign: 'right' }}>
-                                                <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem' }}>{SVGS.clock} {convertTo12Hour(ex.start_time)} - {convertTo12Hour(ex.end_time)}</div>
+                                {examSchedules.filter(e => 
+                                    e.target_group.includes(profile.section) && 
+                                    e.target_group.includes(getSemesterFromSession(profile.session))
+                                ).sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date)).map((ex, idx) => {
+                                    const examDateStr = new Date(ex.exam_date).toLocaleDateString('en-CA');
+                                    const isToday = examDateStr === todayStrCA;
+                                    const isPast = new Date(ex.exam_date) < new Date(todayStrCA);
+                                    
+                                    let bgCol = '#fff';
+                                    let borderCol = '#F2A900';
+                                    
+                                    if (isToday) {
+                                        bgCol = '#fff9e6';
+                                        borderCol = '#dc3545';
+                                    } else if (isPast) {
+                                        bgCol = '#f8f9fa';
+                                        borderCol = '#adb5bd';
+                                    }
+
+                                    return (
+                                        <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid #eee' }}>
+                                            <div style={{ ...cardBase, marginBottom: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}` }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            {SVGS.calendar} {new Date(ex.exam_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                        </div>
+                                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '6px 0', color: isPast ? '#6c757d' : '#111827' }}>{ex.course}</div>
+                                                        <div style={{ color: '#555', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(ex.start_time)} - {convertTo12Hour(ex.end_time)}</span>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {ex.room}</span>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {ex.teacher}</span>
+                                                        </div>
+                                                    </div>
+                                                    {isToday && (
+                                                        <div style={{ background: '#fef2f2', color: '#dc3545', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #fecaca' }}>
+                                                            TODAY
+                                                        </div>
+                                                    )}
+                                                    {isPast && (
+                                                        <div style={{ background: '#e9ecef', color: '#6c757d', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #ced4da' }}>
+                                                            FINISHED
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button onClick={() => openExamEditModal(ex)} style={btnStyle('#007bff', SVGS.edit)}>Edit Exam Schedule</button>
-                                        </div>
+                                    );
+                                })}
+                                {examSchedules.filter(e => e.target_group.includes(profile.section) && e.target_group.includes(getSemesterFromSession(profile.session))).length === 0 && (
+                                    <div style={{ ...whiteCard, textAlign: 'center', padding: '20px 10px' }}>
+                                        <div style={{ marginBottom: '10px', color: '#999', fontSize: '0.85rem', fontWeight: 'bold' }}>No exams scheduled for your section yet.</div>
                                     </div>
-                                ))}
-                                {examSchedules.length === 0 && <div style={emptyState}>No exams scheduled for you.</div>}
+                                )}
                             </div>
                         ) : (
-                            <>
+                            <div className="expand-anim">
                                 <div style={dayFilter}>
                                     {days.map(day => (
-                                        <button key={`day-${day}`} onClick={() => setSelectedDay(day)} style={{ ...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa' }}>
+                                        <button key={day} onClick={() => setSelectedDay(day)}
+                                            style={dayBtnStyle(selectedDay === day)}>
                                             {day}
                                         </button>
                                     ))}
                                 </div>
-
-                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Classes for {selectedDay} (Temp Actions)</h3>
-                                {filteredWeeklySchedule.length === 0 ? <div style={emptyState}>No classes scheduled for {selectedDay}.</div> : (
+                                
+                                {filteredWeeklySchedule.length === 0 ? (
+                                    <div style={whiteCard}><div style={emptyState}>No classes scheduled for {selectedDay}.</div></div>
+                                ) : (
                                     filteredWeeklySchedule.map((cls) => (
                                         <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
-                                             style={{ ...cardBase, background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '1px solid #eee', opacity: cls.isCancelled ? 0.6 : 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+                                             style={{ ...cardBase, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', border: '1px solid #eee',
+                                                borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid #F2A900', opacity: cls.isCancelled ? 0.6 : 1 
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
                                                 <div>
-                                                    <div style={{ fontWeight: '900', fontSize: '1rem', color: cls.isCancelled ? '#dc3545' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
-                                                    <div style={{ color: '#666', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-                                                        {SVGS.users} Sec {cls.section} ({getSemesterFromSession(cls.session)}) | {SVGS.location} Room {cls.room}
+                                                    <div style={{ fontWeight: '900', color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                                        {SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}
+                                                    </div>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#111827', textDecoration: cls.isCancelled ? 'line-through' : 'none', marginBottom: '4px' }}>
+                                                        {cls.course}
+                                                    </div>
+                                                    <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room {cls.room}</span>
+                                                    </div>
+                                                    
+                                                    {cls.attendanceSession && (
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', 
+                                                            background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
+                                                            color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
+                                                            {cls.attendanceSession.status === 'approved' ? <>{SVGS.tickCircle} Attendance Approved</> : <>{SVGS.clock} Attendance Pending</>}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {expandedLectureId === cls.id && (
+                                                <div className="expand-anim" style={{ marginTop: '15px' }}>
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                        {cls.isCancelled ? (
+                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Cancel</button>
+                                                        ) : cls.isConfirmed ? (
+                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Remove Confirm</button>
+                                                        ) : cls.isRescheduled ? (
+                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Reschedule</button>
+                                                        ) : (
+                                                            <>
+                                                                <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#28a745', color: '#fff'}}>{SVGS.tickCircle} Confirm</button>
+                                                                <button onClick={(e) => openEditModal(e, cls)} style={{...actionBtn, background: '#007bff', color: '#fff'}}>{SVGS.clock} Reschedule</button>
+                                                                <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#dc3545', color: '#fff'}}>{SVGS.cross} Cancel</button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <div style={{ textAlign: 'right' }}>
-                                                    <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.75rem' }}>{cls.day}</div>
-                                                    <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
-                                                </div>
-                                            </div>
-                                            {cls.isRescheduled && <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})</div>}
-                                            {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Confirmed to be Held on {cls.exceptionDetails?.exception_date}</div>}
-
-                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                {cls.isCancelled ? <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Undo Cancellation</button> : cls.isConfirmed ? <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={() => handleUndoException(cls.id, 'rescheduled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Undo Reschedule</button> : (
-                                                    <>
-                                                        <button onClick={() => handleConfirmClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#28a745', SVGS.tickCircle)}>Will Held</button>
-                                                        <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff', SVGS.edit)}>Modify</button>
-                                                        <button onClick={() => handleCancelClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#dc3545', SVGS.cross)}>Cancel</button>
-                                                    </>
-                                                )}
-                                            </div>
+                                            )}
                                         </div>
                                     ))
                                 )}
-                            </>
+                            </div>
                         )}
                     </div>
                 )}
 
                 {/* ================= SPLIT ATTENDANCE TAB ================= */}
-                {currentTab === 'attendance' && (
+                {activeTab === 'attendance' && (
                     <div className="expand-anim">
                         <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', background: '#e9ecef', padding: '5px', borderRadius: '10px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }} className="scroll-hide">
                             <button onClick={() => setAttendanceView('mark')} style={subTabBtn(attendanceView === 'mark')}>{SVGS.tickCircle} Mark</button>
@@ -1657,22 +1551,24 @@ export default function Dashboard() {
                                     }
 
                                     return (
-                                        <div key={`mark-today-${stat.subject}-${stat.section}`} style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', borderTop: '4px solid #28a745', border: '1px solid #eee' }}>
-                                            <h3 style={{ margin: '0 0 6px 0', color: '#002147', fontSize: '1.05rem', fontWeight: '900' }}>{stat.subject}</h3>
-                                            <p style={{ margin: '0 0 16px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Sec: {stat.section} | {todayClass.start_time} - {todayClass.end_time}</p>
-
+                                        <div key={`mark-today-${stat.subject}-${stat.section}`} style={{...whiteCard, borderTop: '4px solid #28a745'}}>
+                                            <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h3>
+                                            <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                {SVGS.clock} {todayClass.start_time} - {todayClass.end_time} | {SVGS.location} Room {todayClass.room}
+                                            </p>
+                                            
                                             {isOngoing && !todaySession && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', animation: 'pulse 2s infinite', fontSize: '0.8rem' }}>
-                                                    {SVGS.edit} Mark Attendance (Ongoing)
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#28a745', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                                                    {SVGS.note} Mark Attendance (Ongoing)
                                                 </button>
                                             )}
                                             {(!isOngoing && !todaySession) && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#002147', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#002147', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
                                                     {SVGS.edit} Mark Attendance
                                                 </button>
                                             )}
                                             {todaySession && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{ width: '100%', padding: '12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#007bff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
                                                     {SVGS.edit} Edit Today's Attendance
                                                 </button>
                                             )}
@@ -1680,7 +1576,7 @@ export default function Dashboard() {
                                     );
                                 })}
                                 {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.section === stat.section && c.session === stat.session && c.day === currentDayStr && !c.isCancelled)).length === 0 && (
-                                    <div style={emptyState}>No classes scheduled for today.</div>
+                                    <div style={whiteCard}><div style={emptyState}>No classes scheduled for today to mark attendance.</div></div>
                                 )}
                             </div>
                         )}
@@ -1865,8 +1761,8 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* ================= UPDATES TAB ================= */}
-                {currentTab === 'updates' && (
+                {/* ================= ANNOUNCEMENTS TAB ================= */}
+                {activeTab === 'announcements' && (
                     <div className="expand-anim">
                         <div style={whiteCard}>
                             <h3 style={{ marginTop: 0, color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1874,116 +1770,83 @@ export default function Dashboard() {
                             </h3>
                             <form onSubmit={submitAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                    <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({ ...announcementForm, type: e.target.value })} style={{ ...inputStyle, flex: 1, fontWeight: 'bold', marginBottom: 0 }}>
+                                    <select value={announcementForm.type} onChange={(e) => setAnnouncementForm({...announcementForm, type: e.target.value})} style={{...selectStyle, flex: 1, fontWeight: 'bold', marginBottom: 0}}>
                                         <option value="assignment">Assignment</option>
                                         <option value="message">Simple Message</option>
                                     </select>
                                     <select required value={announcementForm.subject} onChange={(e) => {
-                                        setAnnouncementForm({ ...announcementForm, subject: e.target.value });
-                                        setAnnSectionsList(['']);
-                                    }} style={{ ...inputStyle, flex: 2, marginBottom: 0 }}>
+                                        setAnnouncementForm({...announcementForm, subject: e.target.value, lecture_selector: ''});
+                                    }} style={{...selectStyle, flex: 2, marginBottom: 0}}>
                                         <option value="" disabled>-- Select Subject --</option>
                                         <option value="General">General / Off-Topic</option>
-                                        {mySubjects.map(c => <option key={c} value={c}>{c}</option>)}
+                                        {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
 
-                                <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px' }}>Select Class Sections</label>
-                                    
-                                    {annSectionsList.map((selectedVal, idx) => (
-                                        <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                                            <select 
-                                                required 
-                                                value={selectedVal} 
-                                                onChange={(e) => {
-                                                    const newList = [...annSectionsList];
-                                                    newList[idx] = e.target.value;
-                                                    setAnnSectionsList(newList);
-                                                }} 
-                                                style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
-                                            >
-                                                <option value="" disabled>-- Select Section --</option>
-                                                {uniqueValidSections.map(ss => (
-                                                    <option key={ss} value={ss} disabled={annSectionsList.includes(ss) && ss !== selectedVal}>
-                                                        {getSemesterFromSession(JSON.parse(ss).session)} - Sec {JSON.parse(ss).section}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {annSectionsList.length > 1 && (
-                                                <button type="button" onClick={() => {
-                                                    const newList = annSectionsList.filter((_, i) => i !== idx);
-                                                    setAnnSectionsList(newList);
-                                                }} style={{ background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', borderRadius: '8px', padding: '0 10px', cursor: 'pointer' }}>
-                                                    {SVGS.cross}
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-
-                                    {annSectionsList.length < uniqueValidSections.length && annSectionsList[annSectionsList.length - 1] !== '' && (
-                                        <button type="button" onClick={() => setAnnSectionsList([...annSectionsList, ''])} style={{ background: '#e0f2fe', color: '#0369a1', border: '1px dashed #bae6fd', borderRadius: '8px', padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', width: 'max-content' }}>
-                                            {SVGS.plus} Add Another Section
-                                        </button>
-                                    )}
-                                </div>
-
                                 {announcementForm.type === 'assignment' && announcementForm.subject && (
-                                    <div style={{ display: 'flex', gap: '10px' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px' }}>Deadline Date</label>
+                                    <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                                        <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '8px'}}>Select Deadline</label>
+                                        
+                                        {upcomingLectures.length > 0 && announcementForm.subject !== 'General' && (
                                             <select 
-                                                required 
-                                                value={`${announcementForm.deadline_date}|${announcementForm.deadline_time}`} 
+                                                value={announcementForm.lecture_selector} 
                                                 onChange={(e) => {
                                                     const val = e.target.value;
-                                                    if (val !== 'manual') {
+                                                    setAnnouncementForm({...announcementForm, lecture_selector: val});
+                                                    if (val && val !== 'manual') {
                                                         const [d, t] = val.split('|');
                                                         setAnnouncementForm(prev => ({...prev, deadline_date: d, deadline_time: t}));
-                                                    } else {
-                                                        setAnnouncementForm(prev => ({...prev, deadline_date: '', deadline_time: '8:00 AM'}));
                                                     }
                                                 }} 
-                                                style={{...inputStyle, marginBottom: 0}}
+                                                style={selectStyle}
                                             >
-                                                <option value="|" disabled>-- Select Upcoming Lecture Date --</option>
+                                                <option value="" disabled>-- Select Upcoming Lecture Date --</option>
                                                 {upcomingLectures.map(l => {
                                                     const dDate = getNextLectureDate(l.day);
                                                     const timeFmt = convertTo12Hour(l.start_time);
-                                                    return <option key={l.id} value={`${dDate}|${l.start_time}`}>{l.day} {dDate} (By {timeFmt})</option>;
+                                                    return <option key={l.id} value={`${dDate}|${timeFmt}`}>{l.day} {dDate} (By {timeFmt})</option>;
                                                 })}
                                                 <option value="manual">+ Provide Manual Date & Time</option>
                                             </select>
+                                        )}
 
-                                            {(!upcomingLectures.some(l => getNextLectureDate(l.day) === announcementForm.deadline_date) && announcementForm.deadline_date !== '') && (
-                                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                                    <div style={{flex: 1}}>
-                                                        <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({ ...announcementForm, deadline_date: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }} />
-                                                    </div>
-                                                    <div style={{flex: 1}}>
-                                                        <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({ ...announcementForm, deadline_time: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }}>
-                                                            {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
-                                                            <option value="11:59 PM">11:59 PM (Midnight)</option>
-                                                        </select>
-                                                    </div>
+                                        {(announcementForm.lecture_selector === 'manual' || upcomingLectures.length === 0 || announcementForm.subject === 'General') && (
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <div style={{flex: 1}}>
+                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px'}}>Date</label>
+                                                    <input type="date" required value={announcementForm.deadline_date} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_date: e.target.value})} style={{...selectStyle, marginBottom: 0}} />
                                                 </div>
-                                            )}
-                                        </div>
+                                                <div style={{flex: 1}}>
+                                                    <label style={{display: 'block', fontSize: '0.75rem', fontWeight: 'bold', color: '#666', marginBottom: '4px'}}>Time</label>
+                                                    <select required value={announcementForm.deadline_time} onChange={(e) => setAnnouncementForm({...announcementForm, deadline_time: e.target.value})} style={{...selectStyle, marginBottom: 0}}>
+                                                        {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
+                                                        <option value="11:59 PM">11:59 PM (Midnight)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
-                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({ ...announcementForm, topics: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }} />
-                                <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({ ...announcementForm, details: e.target.value })} style={{ ...inputStyle, minHeight: '80px', resize: 'vertical', marginBottom: 0 }} />
-
-                                <button type="submit" style={{ ...actionBtn, background: '#002147', color: '#F2A900', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', marginTop: '5px' }}>
-                                    {SVGS.rocket} Push Announcement
-                                </button>
+                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4 Exercises)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({...announcementForm, topics: e.target.value})} style={{...selectStyle, marginBottom: 0}} />
+                                <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({...announcementForm, details: e.target.value})} style={{...selectStyle, minHeight: '80px', resize: 'vertical', marginBottom: 0}} />
+                                
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                                    {editAnnId && (
+                                        <button type="button" onClick={() => { setEditAnnId(null); setAnnouncementForm({ type: 'assignment', subject: '', lecture_selector: '', deadline_date: '', deadline_time: '8:00 AM', topics: '', details: '' }); }} style={{...actionBtn, background: '#ccc', color: '#333'}}>
+                                            Cancel
+                                        </button>
+                                    )}
+                                    <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900', flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                                        {editAnnId ? <>{SVGS.save} Update</> : <>{SVGS.rocket} Push to Class</>}
+                                    </button>
+                                </div>
                             </form>
                         </div>
 
                         <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '10px', marginLeft: '5px' }}>Active Announcements</h3>
-                        {filteredAnnouncements.length === 0 ? <div style={whiteCard}><div style={emptyState}>No announcements yet.</div></div> : (
-                            filteredAnnouncements.map(ann => {
+                        {announcements.length === 0 ? <div style={whiteCard}><div style={emptyState}>No announcements yet.</div></div> : (
+                            announcements.map(ann => {
                                 let timeRemainingDisplay = null;
                                 let isExpired = false;
 
@@ -1991,9 +1854,9 @@ export default function Dashboard() {
                                     const deadlineDate = new Date(ann.deadline_date);
                                     const deadlineMins = parseTime(ann.deadline_time);
                                     deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
-
+                                    
                                     const diffMs = deadlineDate - currentTime;
-
+                                    
                                     if (diffMs > 0) {
                                         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                                         const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
@@ -2009,13 +1872,13 @@ export default function Dashboard() {
                                     <div key={ann.id} style={{ ...whiteCard, borderLeft: ann.type === 'assignment' ? '5px solid #F2A900' : '5px solid #3b82f6', borderTop: 'none', opacity: isExpired ? 0.7 : 1 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', alignItems: 'center' }}>
                                             <span style={{ fontSize: '0.65rem', fontWeight: 'bold', background: '#f0f2f5', padding: '3px 8px', borderRadius: '12px', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                {ann.subject} | Sec {ann.section}
+                                                {ann.subject}
                                             </span>
                                             <span style={{ fontSize: '0.7rem', color: '#999' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
                                         </div>
                                         <h4 style={{ margin: '0 0 6px 0', fontSize: '1rem', color: '#111827' }}>{ann.topics}</h4>
                                         <p style={{ margin: '0 0 12px 0', fontSize: '0.85rem', color: '#4b5563', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{ann.details}</p>
-
+                                        
                                         {ann.type === 'assignment' && (
                                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isExpired ? '#fef2f2' : '#fff9e6', border: `1px solid ${isExpired ? '#fecaca' : '#F2A900'}`, borderRadius: '6px', padding: '6px 10px', fontSize: '0.75rem', marginTop: '4px', width: '100%', boxSizing: 'border-box' }}>
                                                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: isExpired ? '#991b1b' : '#856404', fontWeight: 'bold' }}>
@@ -2030,7 +1893,7 @@ export default function Dashboard() {
                                                 {SVGS.edit} Edit
                                             </button>
                                             <button onClick={async () => {
-                                                if (window.confirm('Delete this announcement globally?')) {
+                                                if(window.confirm('Delete this announcement globally?')) {
                                                     await supabase.from('class_announcements').delete().eq('id', ann.id);
                                                     fetchProfileAndSchedule(session.user.id);
                                                 }
@@ -2046,7 +1909,7 @@ export default function Dashboard() {
                 )}
 
                 {/* ================= PERMANENT SCHEDULE TAB ================= */}
-                {currentTab === 'permanent' && (
+                {activeTab === 'permanent' && (
                     <div className="expand-anim">
                         <button onClick={() => openBaseModal()} style={{...bigBtn, marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.plus} Add New Lecture</button>
                         
@@ -2085,7 +1948,7 @@ export default function Dashboard() {
                 )}
                 
                 {/* ======================= AI TUTOR TAB ======================= */}
-                {currentTab === 'ai_bot' && (
+                {activeTab === 'ai_bot' && (
                     <div className="expand-anim">
                         <AIBot />
                     </div>
