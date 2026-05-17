@@ -8,7 +8,9 @@ const ICONS = {
     newChat: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
     send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>, 
     menu: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="14" y2="15"/></svg>,
-    trash: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    trash: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+    // NEW: Chevron Up for Model Selector
+    chevronUp: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
 };
 
 // Reusable Favicon Component
@@ -31,7 +33,20 @@ export default function AIBot({ groqApiKey }) {
     const [currentSessionId, setCurrentSessionId] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+    // --- NEW: Model Selector States ---
+    const [activeModel, setActiveModel] = useState('gpt-oss'); // Defaults to GPT OSS
+    const [showModelMenu, setShowModelMenu] = useState(false);
+
     const messagesEndRef = useRef(null);
+
+    // NEW: Close model menu if clicked outside
+    useEffect(() => {
+        const handleClickOutside = () => setShowModelMenu(false);
+        if (showModelMenu) {
+            document.addEventListener('click', handleClickOutside);
+        }
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [showModelMenu]);
 
     // Dynamic Semester Calculator based on Session
     const calculateSemester = (sessionStr) => {
@@ -210,41 +225,70 @@ CRITICAL RULES OF ENGAGEMENT:
         setIsTyping(true);
 
         try {
-            const memoryHorizonArray = messages.slice(-10).map(m => ({
-                role: m.sender === 'user' ? 'user' : 'assistant',
-                content: m.text
-            }));
+            let aiGeneratedText = "";
 
-            const systemContextBlock = {
-                role: 'system',
-                content: buildSystemContextInstruction()
-            };
+            if (activeModel === 'gpt-oss') {
+                const memoryHorizonArray = messages.slice(-10).map(m => ({
+                    role: m.sender === 'user' ? 'user' : 'assistant',
+                    content: m.text
+                }));
 
-            const targetPayloadMessages = [
-                systemContextBlock,
-                ...memoryHorizonArray,
-                { role: 'user', content: studentMessageText }
-            ];
+                const systemContextBlock = {
+                    role: 'system',
+                    content: buildSystemContextInstruction()
+                };
 
-            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${groqApiKey || process.env.NEXT_PUBLIC_GROQ_API_KEY}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "openai/gpt-oss-20b", // STRICT FIX: Implemented Groq's GPT OSS Model
-                    messages: targetPayloadMessages,
-                    temperature: 0.3,
-                    max_tokens: 1500
-                })
-            });
+                const targetPayloadMessages = [
+                    systemContextBlock,
+                    ...memoryHorizonArray,
+                    { role: 'user', content: studentMessageText }
+                ];
 
-            const responseData = await response.json();
-            
-            // STRICT FIX: Surfacing the actual Groq API Error Message (e.g., "Invalid API Key") if choices fail to map
-            const apiErrorCapture = responseData?.error?.message ? `Groq API Error: ${responseData.error.message}` : null;
-            const aiGeneratedText = responseData?.choices?.[0]?.message?.content || apiErrorCapture || "I encountered an optimization block processing this prompt request pipeline. Please re-verify data endpoints transmission constraints.";
+                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${groqApiKey || process.env.NEXT_PUBLIC_GROQ_API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "openai/gpt-oss-20b", // STRICT FIX: Implemented Groq's GPT OSS Model
+                        messages: targetPayloadMessages,
+                        temperature: 0.3,
+                        max_tokens: 1500
+                    })
+                });
+
+                const responseData = await response.json();
+                
+                // STRICT FIX: Surfacing the actual Groq API Error Message (e.g., "Invalid API Key") if choices fail to map
+                const apiErrorCapture = responseData?.error?.message ? `Groq API Error: ${responseData.error.message}` : null;
+                aiGeneratedText = responseData?.choices?.[0]?.message?.content || apiErrorCapture || "I encountered an optimization block processing this prompt request pipeline. Please re-verify data endpoints transmission constraints.";
+            } else {
+                // --- NEW: GEMINI PRO ROUTING ---
+                const systemContextString = buildSystemContextInstruction();
+                const geminiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`;
+                
+                const geminiHistory = messages.slice(-10).map(m => ({
+                    role: m.sender === 'user' ? 'user' : 'model',
+                    parts: [{ text: m.text }]
+                }));
+                geminiHistory.push({ role: 'user', parts: [{ text: studentMessageText }] });
+
+                const response = await fetch(geminiUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        systemInstruction: { parts: [{ text: systemContextString }] },
+                        contents: geminiHistory,
+                        generationConfig: { temperature: 0.3 }
+                    })
+                });
+
+                const responseData = await response.json();
+                const apiErrorCapture = responseData?.error?.message ? `Gemini API Error: ${responseData.error.message}` : null;
+                aiGeneratedText = responseData?.candidates?.[0]?.content?.parts?.[0]?.text || apiErrorCapture || "I encountered an optimization block processing this prompt request pipeline. Please re-verify data endpoints transmission constraints.";
+            }
 
             const newBotMessage = {
                 id: `msg-${Date.now()}-bot`,
@@ -410,9 +454,44 @@ CRITICAL RULES OF ENGAGEMENT:
                                         value={inputValue}
                                         onChange={(e) => setInputValue(e.target.value)}
                                         placeholder="Message IUB AI..."
-                                        style={inputEntryFieldStyle}
+                                        style={{...inputEntryFieldStyle, paddingRight: '96px'}} // OVERRIDE applied here inline to prevent touching your style consts
                                         disabled={isTyping}
                                     />
+
+                                    {/* --- NEW MODEL SELECTOR --- */}
+                                    <div style={{ position: 'absolute', right: '46px', top: '50%', transform: 'translateY(-50%)' }}>
+                                        <button 
+                                            type="button" 
+                                            onClick={(e) => { e.preventDefault(); setShowModelMenu(!showModelMenu); }}
+                                            style={modelDropdownBtnStyle}
+                                            title="Select AI Model"
+                                        >
+                                            <span style={{ fontSize: '11px', fontWeight: '700', marginRight: '4px' }}>
+                                                {activeModel === 'gpt-oss' ? 'GPT' : 'GEM'}
+                                            </span>
+                                            {ICONS.chevronUp}
+                                        </button>
+
+                                        {showModelMenu && (
+                                            <div style={modelMenuPopupStyle}>
+                                                <div 
+                                                    style={modelMenuItem(activeModel === 'gpt-oss')} 
+                                                    onClick={(e) => { e.preventDefault(); setActiveModel('gpt-oss'); setShowModelMenu(false); }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>GPT OSS</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Groq Engine (Fast)</div>
+                                                </div>
+                                                <div 
+                                                    style={modelMenuItem(activeModel === 'gemini-pro')} 
+                                                    onClick={(e) => { e.preventDefault(); setActiveModel('gemini-pro'); setShowModelMenu(false); }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 1.5 Pro</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Google AI (Smart)</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     {/* Send button positioned perfectly inside text bar */}
                                     <button type="submit" style={actionDispatchSubmissionBtn(inputValue.trim())} disabled={!inputValue.trim()}>
                                         {ICONS.send}
@@ -603,6 +682,11 @@ const formInteractionPanelTray = { background: '#ffffff', padding: '10px 20px 16
 const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '20px', boxSizing: 'border-box' };
 const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '20px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
 const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
+
+// --- NEW STYLES FOR DROPDOWN ---
+const modelDropdownBtnStyle = { background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '16px', height: '26px', padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', zIndex: 11 };
+const modelMenuPopupStyle = { position: 'absolute', bottom: 'calc(100% + 12px)', right: '-20px', background: '#ffffff', borderRadius: '14px', padding: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', minWidth: '150px', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '4px' };
+const modelMenuItem = (isActive) => ({ padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s', background: isActive ? '#f0f9ff' : 'transparent', border: isActive ? '1px solid #bae6fd' : '1px solid transparent' });
 
 const contentBodyStyle = { fontSize: '0.9rem', lineHeight: '1.6', wordBreak: 'break-word' };
 const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '3px', padding: '4px 0' };
