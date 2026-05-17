@@ -1,45 +1,17 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react'; 
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
-import AttendanceSheet from '../components/AttendanceSheet'; 
-import AIBot from './ai_bot';
+import AttendanceSheet from '../components/AttendanceSheet';
 
-// Helper function to dynamically calculate Semester
-const getSemesterFromSession = (session) => {
-    if (!session) return "";
-    const match = session.match(/20\d{2}/);
-    if (!match) return session; 
-
-    const startYear = parseInt(match[0], 10);
-    const isSpringStart = session.toLowerCase().includes('spring') || session.toLowerCase().includes('sp');
-    
-    const d = new Date();
-    const currYear = d.getFullYear();
-    const currMonth = d.getMonth(); 
-    
-    let semestersPassed = (currYear - startYear) * 2;
-    if (currMonth >= 7) semestersPassed += 1;
-    if (isSpringStart) semestersPassed += 1;
-    if (semestersPassed <= 0) return "1ST";
-    
-    const suffixes = ["TH", "ST", "ND", "RD"];
-    const v = semestersPassed % 100;
-    const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
-    
-    return `${semestersPassed}${suffix}`;
-};
-
-// --- Custom Nano SVGs for UI ---
+// --- Custom SVGs for UI ---
 const SVGS = {
-    tick: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
-    cross: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
-    chevronDown: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>,
-    chevronUp: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
-    bell: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
-    calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
-    attendance: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
-    updates: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
-    clock: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
+    tick: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>,
+    cross: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path></svg>,
+    bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
+    calendar: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
+    attendance: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
+    updates: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
+    clock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
     door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
     userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
     home: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
@@ -55,109 +27,14 @@ const SVGS = {
     download: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>,
     chart: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>,
     plus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/></svg>,
+    save: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>,
+    lock: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>,
     undo: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>,
-    building: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>,
-    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3"/></svg>,
-    rocket: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z"/></svg>,
+    file: <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>,
     eye: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
     history: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
-    bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
-    botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
-};
-
-// --- STYLES (Moved up here to prevent ReferenceError during Next.js SSR) ---
-const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
-const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
-const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '48px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
-const subTabBtn = (active) => ({ flex: 1, padding: '8px 12px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' });
-const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
-const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
-const cardBase = { padding: '15px', borderRadius: '12px', transition: 'all 0.3s ease' };
-const bigBtn = { width: '100%', padding: '12px', background: '#002147', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#fff', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
-const actionBtn = { flex: 1, minWidth: '80px', padding: '10px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.3s ease' };
-const selectStyle = { width: '100%', padding: '10px 12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#f8f9fa', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease', color: '#333' };
-const inputStyle = { width: '100%', padding: '12px 14px', border: '1px solid #dee2e6', borderRadius: '10px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box', background: '#f8f9fa', transition: 'border 0.3s ease' };
-const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem', background: '#f8f9fa', borderRadius: '8px', border: '1px dashed #dee2e6' };
-const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
-const centerStyle = { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', fontSize: '0.9rem', color: '#002147', fontWeight: 'bold' };
-
-const subTabStyle = (active) => ({ flex: 1, minWidth: '90px', padding: '10px 14px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' });
-const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.2s ease' });
-
-const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
-const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
-const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '6px', fontWeight: 'bold' };
-const newsRedDot = { position: 'absolute', top: '6px', right: '6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
-const footerStyle = { textAlign: 'center', padding: '16px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
-
-const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,21,47,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
-const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' };
-const cancelBtnStyle = { flex: 1, padding: '14px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s ease' };
-const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', transition: 'background 0.2s ease' };
-
-const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
-const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '14px 18px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #f8f9fa', transition: 'all 0.3s ease' });
-
-const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
-const tableHeaderRow = { background: '#f8f9fa', borderBottom: '2px solid #dee2e6' };
-const tableHeaderCell = { padding: '10px 12px', fontSize: '0.75rem', color: '#495057', textTransform: 'uppercase', letterSpacing: '0.5px' };
-const tableDataRow = { borderBottom: '1px solid #eee', transition: 'background 0.2s' };
-const tableDataCell = { padding: '12px', color: '#333' };
-
-
-// --- Custom Realtime Dropdown Search Component ---
-const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
-    const [search, setSearch] = useState(value || '');
-    const [isOpen, setIsOpen] = useState(false);
-    const wrapperRef = useRef(null);
-
-    useEffect(() => { setSearch(value || ''); }, [value]);
-
-    useEffect(() => {
-        const handleClickOutside = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setIsOpen(false); };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const filtered = options.filter(o => {
-        const text = typeof o === 'string' ? o : o.label;
-        return text.toLowerCase().includes(search.toLowerCase());
-    });
-
-    return (
-        <div ref={wrapperRef} style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
-            <input 
-                type="text" 
-                placeholder={placeholder} 
-                value={search} 
-                onChange={e => { setSearch(e.target.value); setIsOpen(true); }}
-                onFocus={() => setIsOpen(true)}
-                style={inputStyle} 
-            />
-            {isOpen && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', maxHeight: '200px', overflowY: 'auto', background: '#fff', border: '1px solid #dee2e6', borderRadius: '6px', zIndex: 50, boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-                    {filtered.length > 0 ? filtered.map((opt, i) => {
-                        const val = typeof opt === 'string' ? opt : opt.value;
-                        const label = typeof opt === 'string' ? opt : opt.label;
-                        return (
-                            <div key={i} 
-                                onClick={() => { onChange(val); setSearch(label); setIsOpen(false); }}
-                                style={{ padding: '10px', fontSize: '0.8rem', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', color: '#333' }}
-                                onMouseEnter={(e) => e.target.style.background = '#f8f9fa'}
-                                onMouseLeave={(e) => e.target.style.background = '#fff'}
-                            >
-                                {label}
-                            </div>
-                        )
-                    }) : <div style={{ padding: '10px', fontSize: '0.8rem', color: '#999', textAlign: 'center' }}>No results found</div>}
-                </div>
-            )}
-        </div>
-    );
+    rocket: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z"/></svg>,
+    sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
 
 export default function Dashboard() {
@@ -171,12 +48,6 @@ export default function Dashboard() {
     // --- GATEKEEPER STATE ---
     const [isPendingApproval, setIsPendingApproval] = useState(false);
 
-    // --- PWA & NOTIFICATION STATES ---
-    const [isStandalone, setIsStandalone] = useState(true);
-    const [showInstallBanner, setShowInstallBanner] = useState(false);
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [showNotifBanner, setShowNotifBanner] = useState(false);
-
     // --- RESPONSIVE & SIDEBAR STATES ---
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -187,10 +58,6 @@ export default function Dashboard() {
     const [availableCourses, setAvailableCourses] = useState([]);
     const [availableTeachers, setAvailableTeachers] = useState([]);
     const [teacherCourseMap, setTeacherCourseMap] = useState({}); 
-    const [semesters, setSemesters] = useState([]);
-    const [milestones, setMilestones] = useState([]);
-    const [examSchedules, setExamSchedules] = useState([]);
-    const [pointsData, setPointsData] = useState([]);
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
@@ -213,9 +80,7 @@ export default function Dashboard() {
     const [attendanceStats, setAttendanceStats] = useState([]); 
     const [allSessionsData, setAllSessionsData] = useState([]); 
     const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); 
-    const [attendanceSemesterFilter, setAttendanceSemesterFilter] = useState('');
     const [uploadCsvSubject, setUploadCsvSubject] = useState('');
-    const [pendingAttendances, setPendingAttendances] = useState([]);
     
     // --- CSV UPLOAD & HISTORY STATES ---
     const [csvMeta, setCsvMeta] = useState(null); 
@@ -236,10 +101,6 @@ export default function Dashboard() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const notifiedDeadlines = useRef(new Set()); 
 
-    // --- MISC STATES ---
-    const [resendTimer, setResendTimer] = useState(0);
-    const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-
     // --- MODAL STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingClass, setEditingClass] = useState(null);
@@ -250,9 +111,6 @@ export default function Dashboard() {
 
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
     const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
-
-    const [isExamEditModalOpen, setIsExamEditModalOpen] = useState(false);
-    const [examEditForm, setExamEditForm] = useState({ id: null, exam_date: '', start_time: '', end_time: '', room: '' });
 
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
@@ -294,41 +152,12 @@ export default function Dashboard() {
         return 0;
     };
 
-    const parseDbTime = (t) => {
-        if (!t) return 0;
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
-    };
-
-    const formatCountdown = (totalSeconds) => {
-        if (totalSeconds <= 0) return "00:00:00";
-        const h = Math.floor(totalSeconds / 3600);
-        const m = Math.floor((totalSeconds % 3600) / 60);
-        const s = totalSeconds % 60;
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    };
-
-    const getRemainingDepartureTime = (depTimeStr) => {
-        const [h, m] = depTimeStr.split(':').map(Number);
-        const depDate = new Date(currentTime);
-        depDate.setHours(h, m, 0, 0);
-        const diffSecs = Math.floor((depDate - currentTime) / 1000);
-        if (diffSecs < 0) return null;
-        return formatCountdown(diffSecs);
-    };
-
-    const currentDayStr = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    const currentDay = currentDayStr;
-    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
-    const currentSecs = new Date().getSeconds();
-    const todayStrCA = new Date().toLocaleDateString('en-CA');
-
     const getDateForCurrentWeekDay = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
-        const cDay = today.getDay(); 
+        const currentDay = today.getDay(); 
         const targetDay = dayMap[dayName.toUpperCase()];
-        const diff = targetDay - cDay;
+        const diff = targetDay - currentDay;
         
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + diff);
@@ -338,32 +167,16 @@ export default function Dashboard() {
     const getNextLectureDate = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
-        const cDay = today.getDay();
+        const currentDay = today.getDay();
         const targetDay = dayMap[dayName.toUpperCase()];
-        let diff = targetDay - cDay;
+        let diff = targetDay - currentDay;
+
         if (diff <= 0) diff += 7;
+
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + diff);
         return targetDate.toLocaleDateString('en-CA');
     };
-
-    const showToast = (message, type = 'success') => {
-        // Fallback to alert to prevent issues if toast state breaks
-        alert(message);
-    };
-
-    useEffect(() => {
-        let interval;
-        if (resendTimer > 0) {
-            interval = setInterval(() => setResendTimer((prev) => prev - 1), 1000);
-        }
-        return () => clearInterval(interval);
-    }, [resendTimer]);
-
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
 
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
@@ -374,21 +187,6 @@ export default function Dashboard() {
     const isMobile = windowWidth < 768;
 
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
-        }
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch((err) => console.error('SW Registration Failed', err));
-        }
-
-        const handleInstall = (e) => {
-            e.preventDefault();
-            setDeferredPrompt(e);
-            setShowInstallBanner(true);
-        };
-        window.addEventListener('beforeinstallprompt', handleInstall);
-
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
         }
@@ -426,10 +224,7 @@ export default function Dashboard() {
             });
         }, 60000);
 
-        return () => {
-            clearInterval(timer);
-            window.removeEventListener('beforeinstallprompt', handleInstall);
-        };
+        return () => clearInterval(timer);
     }, [announcements]);
 
     useEffect(() => {
@@ -471,12 +266,10 @@ export default function Dashboard() {
     };
 
     const fetchProfileAndSchedule = async (userId) => {
-        setLoading(true);
         const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
         
         if (profileData) {
             setProfile(profileData);
-            setAttendanceSemesterFilter(profileData.session);
             
             if (profileData.is_approved === false) {
                 setIsPendingApproval(true);
@@ -484,26 +277,11 @@ export default function Dashboard() {
                 return; 
             }
 
-            const [semRes, msRes, examRes, ptsRes] = await Promise.all([
-                fetchAllRows('sem_status'),
-                fetchAllRows('academic_milestones'),
-                fetchAllRows('exam_schedules'),
-                fetchAllRows('point_schedules')
-            ]);
-            
-            setSemesters(semRes.data || []);
-            setMilestones(msRes.data || []);
-            setExamSchedules(examRes.data || []);
-            setPointsData(ptsRes.data || []);
-
             const { data: rosterData } = await fetchAllRows('students', { session: profileData.session, section: profileData.section });
             const sortedRoster = rosterData.sort((a,b) => a.registration_number.localeCompare(b.registration_number));
             setRoster(sortedRoster);
 
-            const { data: liveScheduleData } = await fetchAllRows('base_schedule', { session: profileData.session, section: profileData.section });
-            const { data: archScheduleData } = await fetchAllRows('base_schedule_archive', { session: profileData.session, section: profileData.section });
-            
-            const scheduleData = [...(liveScheduleData || []), ...(archScheduleData || [])];
+            const { data: scheduleData } = await fetchAllRows('base_schedule', { session: profileData.session, section: profileData.section });
             setBaseSchedule(scheduleData);
             
             const { data: allBaseSchedules } = await supabase.from('base_schedule').select('room, teacher, course');
@@ -530,24 +308,20 @@ export default function Dashboard() {
 
             const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
             
-            const [exceptionsRes, liveSessionsRes, archSessRes, logsRes] = await Promise.all([
+            const [exceptionsRes, sessionsRes, logsRes] = await Promise.all([
                 fetchAllRows('schedule_exceptions'),
                 fetchAllRows('attendance_sessions', null, { column: 'base_schedule_id', values: baseIds }),
-                fetchAllRows('attendance_sessions_archive', null, { column: 'base_schedule_id', values: baseIds }),
                 fetchAllRows('attendance_upload_logs', { session: profileData.session, section: profileData.section })
             ]);
 
             const exceptionsData = exceptionsRes.data || [];
-            const allSessions = [...(liveSessionsRes.data || []), ...(archSessRes.data || [])];
+            const allSessions = sessionsRes.data || [];
             
             const sessionIds = allSessions.map(s => s.id);
             let allRecords = [];
             if (sessionIds.length > 0) {
-                const [liveRecRes, archRecRes] = await Promise.all([
-                    fetchAllRows('attendance_records', null, { column: 'session_id', values: sessionIds }),
-                    fetchAllRows('attendance_records_archive', null, { column: 'session_id', values: sessionIds })
-                ]);
-                allRecords = [...(liveRecRes.data || []), ...(archRecRes.data || [])];
+                const recRes = await fetchAllRows('attendance_records', null, { column: 'session_id', values: sessionIds });
+                allRecords = recRes.data || [];
             }
 
             const sortedLogs = (logsRes.data || []).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
@@ -561,14 +335,7 @@ export default function Dashboard() {
             
             setAllSessionsData(sessionsWithRecords); 
 
-            // FIX: Populating pendingAttendances for CR to see which submitted sessions are pending
-            const pending = sessionsWithRecords.filter(s => s.status === 'pending').map(session => {
-                const presentCount = session.records.filter(r => r.status === 'Present' || r.status === 'Leave').length;
-                return { ...session, presentCount, totalCount: session.records.length };
-            });
-            setPendingAttendances(pending);
-
-            const mergedSchedule = (scheduleData || []).filter(c => c.session === profileData.session).map(cls => {
+            const mergedSchedule = (scheduleData || []).map(cls => {
                 const targetDate = getDateForCurrentWeekDay(cls.day);
                 const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id && ex.exception_date === targetDate);
                 const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === targetDate);
@@ -584,7 +351,7 @@ export default function Dashboard() {
             });
             setSchedule(mergedSchedule);
 
-            const uniqueSubjects = [...new Set((scheduleData || []).filter(c => c.session === attendanceSemesterFilter || c.session === profileData.session).map(s => s.course))];
+            const uniqueSubjects = [...new Set((scheduleData || []).map(s => s.course))];
 
             const stats = uniqueSubjects.map(subject => {
                 const subjectBaseIds = scheduleData.filter(s => s.course === subject).map(s => s.id);
@@ -611,38 +378,6 @@ export default function Dashboard() {
         setLoading(false);
     };
 
-    // Recalculate stats if semester filter changes
-    useEffect(() => {
-        if (!profile || allSessionsData.length === 0) return;
-        const targetBases = baseSchedule.filter(b => b.session === attendanceSemesterFilter && b.section === profile.section);
-        const targetBaseIds = targetBases.map(b => b.id);
-        const targetSessions = allSessionsData.filter(s => targetBaseIds.includes(s.base_schedule_id));
-        
-        const uniqueSubjects = [...new Set(targetBases.map(s => s.course))];
-
-        const stats = uniqueSubjects.map(subject => {
-            const subjectBaseIds = targetBases.filter(s => s.course === subject).map(s => s.id);
-            const subjectSessions = targetSessions.filter(s => subjectBaseIds.includes(s.base_schedule_id));
-            
-            let totalRecords = 0;
-            let presentRecords = 0;
-            
-            subjectSessions.forEach(sess => {
-                sess.records.forEach(rec => {
-                    totalRecords++;
-                    if (rec.status === 'Present' || rec.status === 'Leave') {
-                        presentRecords++;
-                    }
-                });
-            });
-
-            const percentage = totalRecords === 0 ? 0 : Math.round((presentRecords / totalRecords) * 100);
-            return { subject, totalConducted: subjectSessions.length, percentage, sessions: subjectSessions };
-        });
-
-        setAttendanceStats(stats);
-    }, [attendanceSemesterFilter, allSessionsData, baseSchedule, profile]);
-
     const handleLogout = async () => {
         await supabase.auth.signOut();
         window.location.href = '/login';
@@ -650,12 +385,7 @@ export default function Dashboard() {
 
     const getStudentAttendance = (studentReg, subjectFilter) => {
         let present = 0, total = 0;
-        const activeSessions = allSessionsData.filter(s => {
-            const b = baseSchedule.find(bs => bs.id === s.base_schedule_id);
-            return b && b.session === attendanceSemesterFilter;
-        });
-
-        activeSessions.forEach(session => {
+        allSessionsData.forEach(session => {
             if (subjectFilter !== 'ALL' && session.course !== subjectFilter) return;
             const record = session.records.find(r => r.student_id === studentReg);
             if (record) {
@@ -664,32 +394,6 @@ export default function Dashboard() {
             }
         });
         return total === 0 ? 0 : Math.round((present / total) * 100);
-    };
-
-    const getNearestPoints = (cls) => {
-        if (!pointsData || pointsData.length === 0) return { up: '--:--', down: '--:--' };
-        const isSat = cls.day === 'SAT';
-        const clsStartMins = parseTime(cls.start_time);
-        const clsEndMins = parseTime(cls.end_time);
-
-        const targetUpMins = clsStartMins - 30;
-        const validUp = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins).sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
-        const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
-
-        const targetDownMins = clsEndMins;
-        const validDown = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
-        const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
-
-        return { up: bestUp, down: bestDown };
-    };
-
-    const getStatusStyles = (cls) => {
-        const todayStr = new Date().toLocaleDateString('en-CA');
-        const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
-        if (exc?.status === 'cancelled') return { label: `Cancelled on ${exc.exception_date}`, color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
-        if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
-        if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
-        return null; 
     };
 
     const handleEditAnnouncement = (ann) => {
@@ -1059,39 +763,6 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    const handleApproveAttendance = async (sessionId) => {
-        const { error } = await supabase.from('attendance_sessions').update({ status: 'approved' }).eq('id', sessionId);
-        if (error) {
-            alert("Failed to approve: " + error.message);
-        } else {
-            alert("Attendance approved successfully!");
-            fetchProfileAndSchedule(session.user.id);
-        }
-    };
-
-    const handleInstallClick = async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') setDeferredPrompt(null);
-        }
-    };
-
-    const forceNotificationPermission = async () => {
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
-            setShowNotifBanner(false);
-            new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
-        }
-    };
-
-    const activeMilestone = semesters.find(s => s.is_active);
-    const isExamMode = activeMilestone && (
-        (todayStrCA >= (activeMilestone.mid_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.mid_term_end || '0000-01-01')) ||
-        (todayStrCA >= (activeMilestone.final_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.final_term_end || '0000-01-01'))
-    );
-    const isVacation = activeMilestone && (todayStrCA >= (activeMilestone.summer_vacation_start || '9999-12-31') && todayStrCA <= (activeMilestone.summer_vacation_end || '0000-01-01'));
-
     if (loading) return <div style={centerStyle}><div className="custom-spinner"></div> Loading Dashboard...</div>;
     if (!session) return null;
 
@@ -1114,81 +785,22 @@ export default function Dashboard() {
     }
 
     const filteredWeeklySchedule = schedule
-        .filter(cls => cls.day === selectedDay && cls.session === profile.session)
+        .filter(cls => cls.day === selectedDay)
         .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
+    
+    const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
     const visibleTabs = [
         { id: 'weekly', label: 'Weekly', icon: SVGS.calendar },
         ...(!isMobile ? [{ id: 'permanent', label: 'Base', icon: SVGS.home }] : []),
         ...(!isMobile ? [{ id: 'students', label: 'Students', icon: SVGS.users }] : []),
         { id: 'attendance', label: 'Attendance', icon: SVGS.attendance },
-        { id: 'announcements', label: 'Updates', icon: SVGS.updates },
-        { id: 'ai_bot', label: 'AI TUTOR', icon: SVGS.bot }
+        { id: 'announcements', label: 'Updates', icon: SVGS.updates }
     ];
 
-    const todayEvents = [];
-
-    if (isExamMode) {
-        const todayExams = examSchedules.filter(e => 
-            e.exam_date === todayStrCA && 
-            e.target_group.includes(profile.section) && 
-            e.target_group.includes(getSemesterFromSession(profile.session))
-        );
-
-        if (todayExams.length > 0) {
-            const sortedExams = todayExams.sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
-            const firstExam = sortedExams[0];
-            const lastExam = sortedExams[sortedExams.length - 1];
-
-            const ptsFirst = getNearestPoints({ start_time: firstExam.start_time, end_time: firstExam.end_time, day: currentDayStr });
-            if (ptsFirst.up !== 'N/A') {
-                todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
-            }
-
-            sortedExams.forEach(ex => {
-                todayEvents.push({ type: 'exam', title: ex.course, room: ex.room, startMins: parseTime(ex.start_time), endMins: parseTime(ex.end_time), raw: ex });
-            });
-
-            const ptsLast = getNearestPoints({ start_time: lastExam.start_time, end_time: lastExam.end_time, day: currentDayStr });
-            if (ptsLast.down !== 'N/A') {
-                todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
-            }
-        } else {
-            todayEvents.push({ type: 'milestone', title: 'No Exams Today', desc: 'Enjoy your preparation time.', raw: activeMilestone });
-        }
-    } else if (isVacation) {
-        todayEvents.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `Enjoy your holidays.`, raw: activeMilestone });
-    } else {
-        const dynamicMyClasses = baseSchedule.filter(c => c.section === profile.section && c.session === profile.session);
-        const myTodayClasses = dynamicMyClasses.filter(c => {
-            if (c.day !== currentDayStr) return false;
-            const status = getStatusStyles(c);
-            if (status && status.label.toLowerCase().includes('cancelled')) return false;
-            return true;
-        }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
-
-        if (myTodayClasses.length > 0) {
-            const firstCls = myTodayClasses[0];
-            const lastCls = myTodayClasses[myTodayClasses.length - 1];
-
-            const ptsFirst = getNearestPoints(firstCls);
-            if (ptsFirst.up !== 'N/A') {
-                todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
-            }
-
-            myTodayClasses.forEach(c => {
-                todayEvents.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
-            });
-
-            const ptsLast = getNearestPoints(lastCls);
-            if (ptsLast.down !== 'N/A') {
-                todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
-            }
-        }
-    }
-
     const ongoingClasses = schedule.filter(cls => {
-        if (cls.day !== currentDayStr || cls.isCancelled || cls.session !== profile.session) return false;
+        if (cls.day !== currentDay || cls.isCancelled) return false;
         const startMins = parseTime(cls.start_time);
         const endMins = parseTime(cls.end_time);
         return currentMins >= startMins && currentMins <= endMins;
@@ -1222,63 +834,6 @@ export default function Dashboard() {
                 }
                 .custom-spinner { width: 45px; height: 45px; border: 4px solid rgba(0, 33, 71, 0.1); border-left-color: #F2A900; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px auto; }
                 @keyframes spin { to { transform: rotate(360deg); } }
-
-                /* AI Tutor Moving Gradient CSS */
-                @keyframes aiBgPulse {
-                    0% { background-position: 0% 50%; }
-                    50% { background-position: 100% 50%; }
-                    100% { background-position: 0% 50%; }
-                }
-                @keyframes aiShineLayer {
-                    0% { transform: translateX(-200%) skewX(-20deg); }
-                    30% { transform: translateX(300%) skewX(-20deg); }
-                    100% { transform: translateX(300%) skewX(-20deg); }
-                }
-                .ai-tutor-btn-active, .ai-tutor-btn-inactive {
-                    position: relative;
-                    overflow: hidden;
-                    border-radius: 8px !important;
-                }
-                .ai-tutor-btn-active::before, .ai-tutor-btn-inactive::before {
-                    content: "";
-                    position: absolute;
-                    top: 0; left: 0; width: 100%; height: 100%;
-                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(139,92,246,0.15), rgba(79,172,254,0.1));
-                    background-size: 300% 300%;
-                    animation: aiBgPulse 5s ease infinite;
-                    z-index: 0;
-                }
-                .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
-                    content: "";
-                    position: absolute;
-                    top: 0; left: 0; width: 40%; height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-                    animation: aiShineLayer 6s infinite linear;
-                    z-index: 1;
-                    filter: blur(4px);
-                }
-                .ai-tutor-text-gradient {
-                    background: linear-gradient(90deg, #4facfe, #00f2fe, #3b82f6, #8b5cf6);
-                    background-size: 300% 300%;
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                    animation: aiBgPulse 5s ease infinite;
-                    font-weight: 900 !important;
-                    position: relative;
-                    z-index: 2;
-                }
-                .desktop-ai-btn {
-                    background: rgba(255,255,255,0.05) !important;
-                    border: 1px solid rgba(79,172,254,0.4) !important;
-                    box-shadow: 0 0 10px rgba(139,92,246,0.2) inset !important;
-                }
-                .desktop-ai-btn:hover {
-                    background: rgba(255,255,255,0.15) !important;
-                }
-                .ai-tutor-icon-svg {
-                    position: relative;
-                    z-index: 2;
-                }
             `}</style>
 
             <header style={headerStyle}>
@@ -1295,26 +850,20 @@ export default function Dashboard() {
                 </div>
 
                 <div className="desktop-nav">
-                    {visibleTabs.map(tab => {
-                        const isAIBot = tab.id === 'ai_bot';
-                        const isActive = activeTab === tab.id;
-                        return (
-                            <div 
-                                key={tab.id} 
-                                onClick={() => setActiveTab(tab.id)}
-                                className={isAIBot ? (isActive ? 'ai-tutor-btn-active desktop-ai-btn' : 'ai-tutor-btn-inactive desktop-ai-btn') : ''}
-                                style={{
-                                    cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
-                                    background: isActive && !isAIBot ? '#F2A900' : 'transparent',
-                                    color: isActive && !isAIBot ? '#002147' : '#fff',
-                                    transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
-                                }}
-                            >
-                                <span className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
-                                <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
-                            </div>
-                        )
-                    })}
+                    {visibleTabs.map(tab => (
+                        <div 
+                            key={tab.id} 
+                            onClick={() => setActiveTab(tab.id)}
+                            style={{
+                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
+                                background: activeTab === tab.id ? '#F2A900' : 'transparent',
+                                color: activeTab === tab.id ? '#002147' : '#fff',
+                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
+                            }}
+                        >
+                            {tab.icon} {tab.label}
+                        </div>
+                    ))}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1332,44 +881,29 @@ export default function Dashboard() {
                             <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
                             <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
-                        {[{id: 'weekly', label: 'Weekly Timetable', icon: SVGS.calendar}, {id: 'permanent', label: 'Base Schedule', icon: SVGS.home}, {id: 'students', label: 'Manage Students', icon: SVGS.users}, {id: 'attendance', label: 'Attendance', icon: SVGS.attendance}, {id: 'announcements', label: 'Announcements', icon: SVGS.updates}].map(tab => {
-                            const isAIBot = tab.id === 'ai_bot';
-                            return (
-                                <button 
-                                    key={tab.id} 
-                                    onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }} 
-                                    style={sidebarBtn(activeTab === tab.id)}
-                                    className={isAIBot ? 'ai-tutor-btn-inactive' : ''}
-                                >
-                                    <span style={{ opacity: 0.7 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
-                                    <span style={{ marginLeft: '10px' }} className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
-                                </button>
-                            )
-                        })}
+                        {[{id: 'weekly', label: 'Weekly Timetable', icon: SVGS.calendar}, {id: 'permanent', label: 'Base Schedule', icon: SVGS.home}, {id: 'students', label: 'Manage Students', icon: SVGS.users}, {id: 'attendance', label: 'Attendance', icon: SVGS.attendance}, {id: 'announcements', label: 'Announcements', icon: SVGS.updates}].map(tab => (
+                            <button 
+                                key={tab.id} 
+                                onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }} 
+                                style={sidebarBtn(activeTab === tab.id)}
+                            >
+                                <span style={{ opacity: 0.7 }}>{tab.icon}</span> <span style={{ marginLeft: '10px' }}>{tab.label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
             )}
 
             <div className="mobile-nav" style={tabBar}>
-                {visibleTabs.map(tab => {
-                    const isAIBot = tab.id === 'ai_bot';
-                    const isActive = activeTab === tab.id;
-                    return (
-                        <button 
-                            key={tab.id} 
-                            onClick={() => setActiveTab(tab.id)} 
-                            style={tabBtn(isActive)}
-                            className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
-                        >
-                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</div>
-                            <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
-                            {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={newsRedDot}></span>}
-                        </button>
-                    )
-                })}
+                {visibleTabs.map(tab => (
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={tabBtn(activeTab === tab.id)}>
+                        <div style={{ marginBottom: '2px', opacity: activeTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
-            <div style={{ padding: '15px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box', paddingBottom: '30px' }}>
+            <div style={{ padding: '15px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
                 
                 <div className="expand-anim" style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
                     <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1378,7 +912,7 @@ export default function Dashboard() {
                     <p style={{ margin: 0, color: '#e0e0e0', fontSize: '0.85rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
                 </div>
 
-                {!isExamMode && ongoingClasses.length > 0 && (
+                {ongoingClasses.length > 0 && (
                     <div style={{ marginBottom: '20px' }}>
                         {ongoingClasses.map(ongoingClass => {
                             const sessionToday = ongoingClass.attendanceSession;
@@ -1427,134 +961,67 @@ export default function Dashboard() {
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
                     <div className="expand-anim">
-                        {activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type) && (
-                            <div style={{background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center'}}>
-                                {SVGS.alertCircle} Examination Period Active.
-                            </div>
-                        )}
+                        <div style={dayFilter}>
+                            {days.map(day => (
+                                <button key={day} onClick={() => setSelectedDay(day)}
+                                    style={dayBtnStyle(selectedDay === day)}>
+                                    {day}
+                                </button>
+                            ))}
+                        </div>
                         
-                        {isExamMode ? (
-                            <div className="expand-anim">
-                                {examSchedules.filter(e => 
-                                    e.target_group.includes(profile.section) && 
-                                    e.target_group.includes(getSemesterFromSession(profile.session))
-                                ).sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date)).map((ex, idx) => {
-                                    const examDateStr = new Date(ex.exam_date).toLocaleDateString('en-CA');
-                                    const isToday = examDateStr === todayStrCA;
-                                    const isPast = new Date(ex.exam_date) < new Date(todayStrCA);
-                                    
-                                    let bgCol = '#fff';
-                                    let borderCol = '#F2A900';
-                                    
-                                    if (isToday) {
-                                        bgCol = '#fff9e6';
-                                        borderCol = '#dc3545';
-                                    } else if (isPast) {
-                                        bgCol = '#f8f9fa';
-                                        borderCol = '#adb5bd';
-                                    }
-
-                                    return (
-                                        <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid #eee' }}>
-                                            <div style={{ ...cardBase, marginBottom: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}` }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            {SVGS.calendar} {new Date(ex.exam_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                                        </div>
-                                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '6px 0', color: isPast ? '#6c757d' : '#111827' }}>{ex.course}</div>
-                                                        <div style={{ color: '#555', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(ex.start_time)} - {convertTo12Hour(ex.end_time)}</span>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {ex.room}</span>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {ex.teacher}</span>
-                                                        </div>
-                                                    </div>
-                                                    {isToday && (
-                                                        <div style={{ background: '#fef2f2', color: '#dc3545', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #fecaca' }}>
-                                                            TODAY
-                                                        </div>
-                                                    )}
-                                                    {isPast && (
-                                                        <div style={{ background: '#e9ecef', color: '#6c757d', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #ced4da' }}>
-                                                            FINISHED
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {examSchedules.filter(e => e.target_group.includes(profile.section) && e.target_group.includes(getSemesterFromSession(profile.session))).length === 0 && (
-                                    <div style={{ ...whiteCard, textAlign: 'center', padding: '20px 10px' }}>
-                                        <div style={{ marginBottom: '10px', color: '#999', fontSize: '0.85rem', fontWeight: 'bold' }}>No exams scheduled for your section yet.</div>
-                                    </div>
-                                )}
-                            </div>
+                        {filteredWeeklySchedule.length === 0 ? (
+                            <div style={whiteCard}><div style={emptyState}>No classes scheduled for {selectedDay}.</div></div>
                         ) : (
-                            <div className="expand-anim">
-                                <div style={dayFilter}>
-                                    {days.map(day => (
-                                        <button key={day} onClick={() => setSelectedDay(day)}
-                                            style={dayBtnStyle(selectedDay === day)}>
-                                            {day}
-                                        </button>
-                                    ))}
-                                </div>
-                                
-                                {filteredWeeklySchedule.length === 0 ? (
-                                    <div style={whiteCard}><div style={emptyState}>No classes scheduled for {selectedDay}.</div></div>
-                                ) : (
-                                    filteredWeeklySchedule.map((cls) => (
-                                        <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
-                                             style={{ ...cardBase, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', border: '1px solid #eee',
-                                                borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid #F2A900', opacity: cls.isCancelled ? 0.6 : 1 
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: '900', color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                                        {SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}
-                                                    </div>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#111827', textDecoration: cls.isCancelled ? 'line-through' : 'none', marginBottom: '4px' }}>
-                                                        {cls.course}
-                                                    </div>
-                                                    <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room {cls.room}</span>
-                                                    </div>
-                                                    
-                                                    {cls.attendanceSession && (
-                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', 
-                                                            background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
-                                                            color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
-                                                            {cls.attendanceSession.status === 'approved' ? <>{SVGS.tickCircle} Attendance Approved</> : <>{SVGS.clock} Attendance Pending</>}
-                                                        </div>
-                                                    )}
-                                                </div>
+                            filteredWeeklySchedule.map((cls) => (
+                                <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
+                                     style={{ ...cardBase, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', border: '1px solid #eee',
+                                        borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid #F2A900', opacity: cls.isCancelled ? 0.6 : 1 
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
+                                        <div>
+                                            <div style={{ fontWeight: '900', color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                                {SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}
                                             </div>
-
-                                            {expandedLectureId === cls.id && (
-                                                <div className="expand-anim" style={{ marginTop: '15px' }}>
-                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                        {cls.isCancelled ? (
-                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Cancel</button>
-                                                        ) : cls.isConfirmed ? (
-                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Remove Confirm</button>
-                                                        ) : cls.isRescheduled ? (
-                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Reschedule</button>
-                                                        ) : (
-                                                            <>
-                                                                <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#28a745', color: '#fff'}}>{SVGS.tickCircle} Confirm</button>
-                                                                <button onClick={(e) => openEditModal(e, cls)} style={{...actionBtn, background: '#007bff', color: '#fff'}}>{SVGS.clock} Reschedule</button>
-                                                                <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#dc3545', color: '#fff'}}>{SVGS.cross} Cancel</button>
-                                                            </>
-                                                        )}
-                                                    </div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#111827', textDecoration: cls.isCancelled ? 'line-through' : 'none', marginBottom: '4px' }}>
+                                                {cls.course}
+                                            </div>
+                                            <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room {cls.room}</span>
+                                            </div>
+                                            
+                                            {cls.attendanceSession && (
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', 
+                                                    background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
+                                                    color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
+                                                    {cls.attendanceSession.status === 'approved' ? <>{SVGS.tickCircle} Attendance Approved</> : <>{SVGS.clock} Attendance Pending</>}
                                                 </div>
                                             )}
                                         </div>
-                                    ))
-                                )}
-                            </div>
+                                    </div>
+
+                                    {expandedLectureId === cls.id && (
+                                        <div className="expand-anim" style={{ marginTop: '15px' }}>
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                {cls.isCancelled ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Cancel</button>
+                                                ) : cls.isConfirmed ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Remove Confirm</button>
+                                                ) : cls.isRescheduled ? (
+                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Reschedule</button>
+                                                ) : (
+                                                    <>
+                                                        <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#28a745'}}>{SVGS.tickCircle} Confirm</button>
+                                                        <button onClick={(e) => openEditModal(e, cls)} style={{...actionBtn, background: '#007bff'}}>{SVGS.clock} Reschedule</button>
+                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#dc3545'}}>{SVGS.cross} Cancel</button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
                         )}
                     </div>
                 )}
@@ -1573,26 +1040,31 @@ export default function Dashboard() {
                         {attendanceView === 'mark' && (
                             <div className="expand-anim" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                                 {attendanceStats.map(stat => {
-                                    const todayClass = schedule.find(c => c.course === stat.subject && c.section === stat.section && c.session === stat.session && c.day === currentDayStr && !c.isCancelled);
-                                    if (!todayClass) return null;
-
-                                    const startMins = parseTime(todayClass.start_time);
-                                    const endMins = parseTime(todayClass.end_time);
-                                    const isOngoing = currentMins >= startMins && currentMins <= endMins;
-                                    const todaySession = todayClass.attendanceSession;
+                                    const todayClass = schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled);
+                                    let isOngoing = false;
                                     let canEdit = false;
+                                    let todaySession = null;
 
-                                    if (todaySession) {
-                                        const sessionTime = new Date(todaySession.created_at).getTime();
-                                        const now = new Date().getTime();
-                                        const diffMins = (now - sessionTime) / 60000;
-                                        if (diffMins <= 30 && todaySession.status === 'pending') {
-                                            canEdit = true;
+                                    if (todayClass) {
+                                        const startMins = parseTime(todayClass.start_time);
+                                        const endMins = parseTime(todayClass.end_time);
+                                        isOngoing = currentMins >= startMins && currentMins <= endMins;
+                                        todaySession = todayClass.attendanceSession;
+                                        
+                                        if (todaySession) {
+                                            const sessionTime = new Date(todaySession.created_at).getTime();
+                                            const now = new Date().getTime();
+                                            const diffMins = (now - sessionTime) / 60000;
+                                            if (diffMins <= 30 && todaySession.status === 'pending') {
+                                                canEdit = true;
+                                            }
                                         }
                                     }
 
+                                    if (!todayClass) return null; 
+
                                     return (
-                                        <div key={`mark-today-${stat.subject}-${stat.section}`} style={{...whiteCard, borderTop: '4px solid #28a745'}}>
+                                        <div key={`mark-${stat.subject}`} style={{...whiteCard, borderTop: '4px solid #28a745'}}>
                                             <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h3>
                                             <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 {SVGS.clock} {todayClass.start_time} - {todayClass.end_time} | {SVGS.location} Room {todayClass.room}
@@ -1603,20 +1075,25 @@ export default function Dashboard() {
                                                     {SVGS.note} Mark Attendance (Ongoing)
                                                 </button>
                                             )}
-                                            {(!isOngoing && !todaySession) && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#002147', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
-                                                    {SVGS.edit} Mark Attendance
+                                            {todaySession && canEdit && (
+                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#007bff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                                                    {SVGS.edit} Edit Attendance
                                                 </button>
                                             )}
-                                            {todaySession && (
-                                                <button onClick={() => setActiveAttendanceLecture(todayClass)} style={{...bigBtn, background: '#007bff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
-                                                    {SVGS.edit} Edit Today's Attendance
+                                            {todaySession && !canEdit && (
+                                                <button disabled style={{...bigBtn, background: '#6c757d', color: 'white', opacity: 0.8, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>
+                                                    {SVGS.lock} Locked ({todaySession.status === 'approved' ? 'Approved' : 'Pending'})
                                                 </button>
+                                            )}
+                                            {!isOngoing && !todaySession && (
+                                                <div style={{ textAlign: 'center', padding: '10px', color: '#856404', background: '#fff3cd', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                                    Not currently active.
+                                                </div>
                                             )}
                                         </div>
                                     );
                                 })}
-                                {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.section === stat.section && c.session === stat.session && c.day === currentDayStr && !c.isCancelled)).length === 0 && (
+                                {attendanceStats.filter(stat => schedule.find(c => c.course === stat.subject && c.day === currentDay && !c.isCancelled)).length === 0 && (
                                     <div style={whiteCard}><div style={emptyState}>No classes scheduled for today to mark attendance.</div></div>
                                 )}
                             </div>
@@ -1624,31 +1101,16 @@ export default function Dashboard() {
 
                         {attendanceView === 'download' && (
                             <div className="expand-anim" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                <div style={{ marginBottom: '10px', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
-                                    <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Filter by Semester</label>
-                                    <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{...selectStyle, marginBottom: 0}}>
-                                        <option value="ALL">All Semesters</option>
-                                        {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
-                                    </select>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                                    {attendanceStats.filter(stat => attendanceSemesterFilter === 'ALL' || stat.session === attendanceSemesterFilter).map(stat => (
-                                        <div key={`dl-${stat.subject}-${stat.section}-${stat.session}`} style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', borderTop: '4px solid #17a2b8', border: '1px solid #eee' }}>
-                                            <h3 style={{ margin: '0 0 6px 0', color: '#002147', fontSize: '1.05rem', fontWeight: '900' }}>{stat.subject}</h3>
-                                            <p style={{ margin: '0 0 6px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Session: {getSemesterFromSession(stat.session)} ({stat.session})</p>
-                                            <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', color: '#666', fontWeight: 'bold' }}>Section: {stat.section}</p>
-                                            <p style={{ margin: '0 0 16px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong style={{ color: '#000' }}>{stat.totalConducted}</strong></p>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button onClick={() => downloadCSV(stat, false)} style={{ flex: 1, padding: '10px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.75rem' }}>
-                                                    {SVGS.download} CSV
-                                                </button>
-                                                <button onClick={() => downloadCSV(stat, true)} style={{ flex: 1, padding: '10px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.75rem' }}>
-                                                    {SVGS.eye} Show
-                                                </button>
-                                            </div>
+                                {attendanceStats.map(stat => (
+                                    <div key={`dl-${stat.subject}`} style={{...whiteCard, borderLeft: '4px solid #17a2b8'}}>
+                                        <h4 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h4>
+                                        <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button onClick={() => downloadCSV(stat, false)} style={{...actionBtn, background: '#17a2b8'}}>{SVGS.download} Download CSV</button>
+                                            <button onClick={() => downloadCSV(stat, true)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.eye} View Table</button>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </div>
                         )}
 
@@ -1690,7 +1152,7 @@ export default function Dashboard() {
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); }} style={{...actionBtn, background: '#ccc', color: '#333'}}>Cancel</button>
-                                            <button onClick={executeCsvUpload} style={{...actionBtn, background: '#28a745', color: '#fff', flex: 2}}>{SVGS.upload} Confirm & Upload Data</button>
+                                            <button onClick={executeCsvUpload} style={{...actionBtn, background: '#28a745', flex: 2}}>{SVGS.upload} Confirm & Upload Data</button>
                                         </div>
                                     </div>
                                 )}
@@ -1753,56 +1215,46 @@ export default function Dashboard() {
                         )}
 
                         {attendanceView === 'stats' && (
-                            <div className="expand-anim" style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
-                                <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '16px', gap: '10px' }}>
-                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem', fontWeight: '900' }}>Attendance Overview</h3>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: isMobile ? '100%' : '300px' }}>
-                                        <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                                            <option value="ALL">All Semesters</option>
-                                            {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
-                                        </select>
-                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                                            <option value="ALL">All Sections</option>
-                                            {mySections.map(s => <option key={s} value={s}>Section {s}</option>)}
-                                        </select>
-                                    </div>
+                            <div className="expand-anim" style={whiteCard}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                                    <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.chart} Student Stats</h3>
+                                    <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                                        <option value="ALL">All Subjects (Overall)</option>
+                                        {availableCourses.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
                                 </div>
-
-                                {(attendanceSectionFilter !== 'ALL' || attendanceSemesterFilter !== 'ALL') ? (
-                                    <div style={{ overflowX: 'auto' }}>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
-                                            <thead>
-                                                <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                                                    <th style={{ padding: '12px' }}>Registration No.</th>
-                                                    <th style={{ padding: '12px' }}>Name</th>
-                                                    <th style={{ padding: '12px', textAlign: 'right' }}>Overall Att %</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {roster.filter(s => (attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter) && (attendanceSemesterFilter === 'ALL' || s.session === attendanceSemesterFilter)).map(student => {
-                                                    const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter, attendanceSemesterFilter);
-                                                    return (
-                                                        <tr key={student.registration_number} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                                                            <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{student.registration_number}</td>
-                                                            <td style={{ padding: '12px', color: '#333' }}>{student.student_name}</td>
-                                                            <td style={{ padding: '12px', textAlign: 'right', fontWeight: '900', color: pct > 75 ? '#28a745' : '#dc3545' }}>
-                                                                {pct}%
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                    <div style={emptyState}>Select a session or section filter to view statistics.</div>
-                                )}
+                                
+                                <div style={{ overflowX: 'auto' }} className="scroll-hide">
+                                    <table style={tableStyle}>
+                                        <thead>
+                                            <tr style={tableHeaderRow}>
+                                                <th style={tableHeaderCell}>Reg No</th>
+                                                <th style={tableHeaderCell}>Name</th>
+                                                <th style={{...tableHeaderCell, textAlign: 'right'}}>%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {roster.map(student => {
+                                                const pct = getStudentAttendance(student.registration_number, attendanceSubjectFilter);
+                                                return (
+                                                    <tr key={student.registration_number} style={tableDataRow}>
+                                                        <td style={{...tableDataCell, fontWeight: 'bold'}}>{student.registration_number}</td>
+                                                        <td style={tableDataCell}>{student.student_name}</td>
+                                                        <td style={{...tableDataCell, textAlign: 'right', fontWeight: 'bold', color: pct >= 75 ? '#28a745' : '#dc3545' }}>
+                                                            {pct}%
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* ================= UPDATES TAB ================= */}
+                {/* ================= ANNOUNCEMENTS TAB ================= */}
                 {activeTab === 'announcements' && (
                     <div className="expand-anim">
                         <div style={whiteCard}>
@@ -1954,17 +1406,8 @@ export default function Dashboard() {
                     <div className="expand-anim">
                         <button onClick={() => openBaseModal()} style={{...bigBtn, marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.plus} Add New Lecture</button>
                         
-                        <div style={dayFilter}>
-                            {filterDays.map(day => (
-                                <button key={`base-day-${day}`} onClick={() => setBasePlanDayFilter(day)} style={{ ...dayBtnStyle(basePlanDayFilter === day), background: basePlanDayFilter === day ? '#002147' : '#f8f9fa' }}>
-                                    {day}
-                                </button>
-                            ))}
-                        </div>
-
-                        <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Your Base Schedule</h3>
-                        {filteredBaseSchedule.length === 0 ? <div style={whiteCard}><div style={emptyState}>No base schedule found.</div></div> : (
-                            filteredBaseSchedule.map((cls) => (
+                        {baseSchedule.length === 0 ? <div style={whiteCard}><div style={emptyState}>No base schedule found.</div></div> : (
+                            baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
                                 <div key={`base-${cls.id}`} style={whiteCard}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
@@ -1973,7 +1416,7 @@ export default function Dashboard() {
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
                                             <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.85rem' }}>{cls.day}</div>
-                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
+                                            <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1985,95 +1428,156 @@ export default function Dashboard() {
                         )}
                     </div>
                 )}
-                
-                {/* ======================= AI TUTOR TAB ======================= */}
-                {activeTab === 'ai_bot' && (
-                    <div className="expand-anim">
-                        <AIBot />
+
+                {/* ================= MANAGE STUDENTS TAB ================= */}
+                {activeTab === 'students' && (
+                    <div className="expand-anim" style={whiteCard}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.plus} Add Student</h3>
+                            <div>
+                                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleCSVUpload} style={{ display: 'none' }} />
+                                <button onClick={() => fileInputRef.current.click()} style={{ padding: '6px 12px', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {SVGS.upload} Import CSV
+                                </button>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
+                            <input type="text" placeholder="Reg No (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...selectStyle, flex: 1, minWidth: '130px', marginBottom: 0}} />
+                            <input type="text" placeholder="Student Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...selectStyle, flex: 2, minWidth: '150px', marginBottom: 0}} />
+                            <button type="submit" style={{...actionBtn, background: '#28a745', flex: 'none', width: 'auto'}}>{SVGS.plus} Add</button>
+                        </form>
+
+                        <h3 style={{ color: '#002147', fontSize: '1rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.users} Class Roster ({roster.length})</h3>
+                        {roster.length === 0 ? <div style={emptyState}>No students added yet.</div> : (
+                            <div style={{ overflowX: 'auto' }} className="scroll-hide">
+                                <table style={tableStyle}>
+                                    <thead>
+                                        <tr style={tableHeaderRow}>
+                                            <th style={tableHeaderCell}>Reg Number</th>
+                                            <th style={tableHeaderCell}>Name</th>
+                                            <th style={{...tableHeaderCell, textAlign: 'center'}}>Att %</th>
+                                            <th style={{...tableHeaderCell, textAlign: 'right'}}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {roster.map(student => {
+                                            const pct = getStudentAttendance(student.registration_number, 'ALL');
+                                            return (
+                                                <tr key={student.registration_number} style={tableDataRow}>
+                                                    <td style={{...tableDataCell, fontWeight: 'bold', fontSize: '0.8rem'}}>{student.registration_number}</td>
+                                                    <td style={{...tableDataCell, fontSize: '0.8rem'}}>{student.student_name}</td>
+                                                    <td style={{...tableDataCell, textAlign: 'center', fontWeight: 'bold', color: pct >= 75 ? '#28a745' : '#dc3545', fontSize: '0.8rem' }}>{pct}%</td>
+                                                    <td style={{...tableDataCell, textAlign: 'right'}}>
+                                                        <button onClick={() => handleDeleteStudent(student.registration_number)} style={{ padding: '4px 8px', background: '#fef2f2', color: '#dc3545', border: '1px solid #fecaca', borderRadius: '4px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold' }}>Delete</button>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
-            <footer style={footerStyle}>
-                Made with love by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin | Muntaha | Waleeja | Nazakat — BSAI 3RD 3M</a>
-            </footer>
-
-            {/* ATTENDANCE SHEET MODAL */}
+            {/* MODALS */}
             {activeAttendanceLecture && (
-                <AttendanceSheet
-                    lecture={activeAttendanceLecture}
-                    profile={{ name: profile.name, isTeacher: true, section: activeAttendanceLecture.section, session: activeAttendanceLecture.session }}
+                <AttendanceSheet 
+                    lecture={activeAttendanceLecture} 
+                    profile={profile}
+                    roster={roster}
+                    students={roster}
                     existingSession={activeAttendanceLecture.attendanceSession}
-                    students={roster.filter(s => s.section === activeAttendanceLecture.section && s.session === activeAttendanceLecture.session)}
                     onClose={(didUpdate) => {
                         setActiveAttendanceLecture(null);
-                        if (didUpdate) fetchProfileAndSchedule(profile.name);
-                    }}
+                        if (didUpdate) fetchProfileAndSchedule(session.user.id);
+                    }} 
                 />
             )}
 
-            {/* TEMP EXCEPTION EDIT MODAL */}
             {isEditModalOpen && (
-                <div style={modalOverlayStyle}>
-                    <div style={modalContentStyle}>
-                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '1.1rem', marginBottom: '20px' }}>{SVGS.clock} Modify Lecture</h3>
-                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputStyle} />
-                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                <div style={sidebarOverlay}>
+                    <div className="expand-anim" style={{ background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '400px', margin: 'auto', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>{SVGS.clock} Reschedule Class (Temp)</h3>
+                        <form onSubmit={submitReschedule} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <input type="date" required value={newDate} onChange={(e) => setNewDate(e.target.value)} style={selectStyle} />
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <select value={newStartTime} onChange={(e) => setNewStartTime(e.target.value)} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={newEndTime} onChange={(e) => setNewEndTime(e.target.value)} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
-                            <select required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={inputStyle}>
-                                {availableRooms.length > 0 ? availableRooms.map(r => <option key={r} value={r}>{r}</option>) : <option value={newRoom}>{newRoom}</option>}
+                            <select required value={newRoom} onChange={(e) => {
+                                if (e.target.value === 'MANUAL') {
+                                    setIsManualRoom(true); setNewRoom('');
+                                } else {
+                                    setNewRoom(e.target.value);
+                                }
+                            }} style={selectStyle}>
+                                <option value="" disabled>-- Select Dept Room --</option>
+                                {allDepartmentRooms.map(r => <option key={`resch-${r}`} value={r}>{r}</option>)}
+                                <option value="MANUAL">+ Add Room Manually</option>
                             </select>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                                <button type="button" onClick={() => setIsEditModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
-                                <button type="submit" style={saveBtnStyle}>Save</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-            
-            {/* EXAM SCHEDULE EDIT MODAL */}
-            {isExamEditModalOpen && (
-                <div style={modalOverlayStyle}>
-                    <div style={modalContentStyle}>
-                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '1.1rem', marginBottom: '20px' }}>{SVGS.clock} Reschedule Exam</h3>
-                        <form onSubmit={submitExamEdit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <input type="date" required value={examEditForm.exam_date} onChange={(e) => setExamEditForm({...examEditForm, exam_date: e.target.value})} style={inputStyle} />
-                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                <select value={examEditForm.start_time} onChange={(e) => setExamEditForm({...examEditForm, start_time: e.target.value})} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={examEditForm.end_time} onChange={(e) => setExamEditForm({...examEditForm, end_time: e.target.value})} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                            </div>
-                            <input type="text" required value={examEditForm.room} placeholder="Exam Room" onChange={(e) => setExamEditForm({...examEditForm, room: e.target.value})} style={inputStyle} />
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                                <button type="button" onClick={() => setIsExamEditModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
-                                <button type="submit" style={saveBtnStyle}>Save</button>
+                            {isManualRoom && <input type="text" placeholder="Type Room Name Manually..." required value={newRoom} onChange={(e) => setNewRoom(e.target.value)} style={{...selectStyle, border: '1px solid #007bff'}} />}
+                            
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => { setIsEditModalOpen(false); setIsManualRoom(false); }} style={{...actionBtn, background: '#f0f2f5', color: '#333'}}>Cancel</button>
+                                <button type="submit" style={{...actionBtn, background: '#F2A900', color: '#002147'}}>{SVGS.save} Save</button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* BASE MODAL */}
             {isBaseModalOpen && (
-                <div style={modalOverlayStyle}>
-                    <div style={{ ...modalContentStyle, maxHeight: '90vh', overflowY: 'auto' }}>
-                        <h3 style={{ marginTop: 0, color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '900', fontSize: '1.1rem', marginBottom: '20px' }}>{SVGS.building} {baseForm.id ? 'Edit Base Lecture' : 'Add New Lecture'}</h3>
-                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {isManualSession ? <input type="text" placeholder="Session (e.g. Spring 2026)..." required value={baseForm.session} onChange={(e) => setBaseForm({ ...baseForm, session: e.target.value })} style={inputStyle} /> : <select required value={baseForm.session} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSession(true); setBaseForm({ ...baseForm, session: '' }); } else setBaseForm({ ...baseForm, session: e.target.value }); }} style={inputStyle}><option value="" disabled>-- Select Session --</option>{availableSessions.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            {isManualSection ? <input type="text" placeholder="Section (e.g. 1E)..." required value={baseForm.section} onChange={(e) => setBaseForm({ ...baseForm, section: e.target.value })} style={inputStyle} /> : <select required value={baseForm.section} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualSection(true); setBaseForm({ ...baseForm, section: '' }); } else setBaseForm({ ...baseForm, section: e.target.value }); }} style={inputStyle}><option value="" disabled>-- Select Section --</option>{availableSections.map(s => <option key={s} value={s}>{s}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({ ...baseForm, course: e.target.value })} style={inputStyle} /> : <select required value={baseForm.course} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({ ...baseForm, course: '' }); } else setBaseForm({ ...baseForm, course: e.target.value }); }} style={inputStyle}><option value="" disabled>-- Select Subject --</option>{availableCourses.map(c => <option key={c} value={c}>{c}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            {isManualRoom ? <input type="text" placeholder="Room Name (e.g. 101)..." required value={baseForm.room} onChange={(e) => setBaseForm({ ...baseForm, room: e.target.value })} style={inputStyle} /> : <select required value={baseForm.room} onChange={(e) => { if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({ ...baseForm, room: '' }); } else setBaseForm({ ...baseForm, room: e.target.value }); }} style={inputStyle}><option value="" disabled>-- Select Room --</option>{availableRooms.map(r => <option key={r} value={r}>{r}</option>)}<option value="MANUAL">+ Add Manually</option></select>}
-                            <select required value={baseForm.day} onChange={(e) => setBaseForm({ ...baseForm, day: e.target.value })} style={inputStyle}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
-                            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({ ...baseForm, start_time: e.target.value })} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
-                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({ ...baseForm, end_time: e.target.value })} style={{ ...inputStyle, flex: 1 }}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                <div style={sidebarOverlay}>
+                    <div className="expand-anim" style={{ background: 'white', padding: '25px', borderRadius: '15px', width: '90%', maxWidth: '400px', margin: 'auto', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' }}>
+                        <h3 style={{ marginTop: 0, color: '#002147', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '15px' }}>{baseForm.id ? <>{SVGS.edit} Edit Base Lecture</> : <>{SVGS.plus} Add New Lecture</>}</h3>
+                        <form onSubmit={submitBaseSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {isManualCourse ? <input type="text" placeholder="Subject Name..." required value={baseForm.course} onChange={(e) => setBaseForm({...baseForm, course: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
+                            <select required value={baseForm.course} onChange={(e) => { 
+                                if (e.target.value === 'MANUAL') { setIsManualCourse(true); setBaseForm({...baseForm, course: ''}); } 
+                                else setBaseForm({...baseForm, course: e.target.value}); 
+                            }} style={{...selectStyle, marginBottom: 0}}>
+                                <option value="" disabled>-- Select Subject --</option>
+                                {availableCourses.map(c => <option key={`bc-${c}`} value={c}>{c}</option>)}
+                                <option value="MANUAL">+ Add Manually</option>
+                            </select>}
+
+                            {isManualTeacher ? <input type="text" placeholder="Teacher Name..." required value={baseForm.teacher} onChange={(e) => setBaseForm({...baseForm, teacher: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
+                            <select required value={baseForm.teacher} onChange={(e) => { 
+                                if (e.target.value === 'MANUAL') { setIsManualTeacher(true); setBaseForm({...baseForm, teacher: ''}); } 
+                                else {
+                                    const selectedTeacher = e.target.value;
+                                    const autoCourse = teacherCourseMap[selectedTeacher];
+                                    setBaseForm({...baseForm, teacher: selectedTeacher, course: autoCourse || baseForm.course});
+                                }
+                            }} style={{...selectStyle, marginBottom: 0}}>
+                                <option value="" disabled>-- Select Teacher --</option>
+                                {availableTeachers.map(t => <option key={`bt-${t}`} value={t}>{t}</option>)}
+                                <option value="MANUAL">+ Add Manually</option>
+                            </select>}
+
+                            {isManualRoom ? <input type="text" placeholder="Room Name..." required value={baseForm.room} onChange={(e) => setBaseForm({...baseForm, room: e.target.value})} style={{...selectStyle, border: '1px solid #007bff', marginBottom: 0}} /> : 
+                            <select required value={baseForm.room} onChange={(e) => { 
+                                if (e.target.value === 'MANUAL') { setIsManualRoom(true); setBaseForm({...baseForm, room: ''}); } 
+                                else setBaseForm({...baseForm, room: e.target.value}); 
+                            }} style={{...selectStyle, marginBottom: 0}}>
+                                <option value="" disabled>-- Select Room --</option>
+                                {allDepartmentRooms.map(r => <option key={`br-${r}`} value={r}>{r}</option>)}
+                                <option value="MANUAL">+ Add Manually</option>
+                            </select>}
+
+                            <select required value={baseForm.day} onChange={(e) => setBaseForm({...baseForm, day: e.target.value})} style={{...selectStyle, marginBottom: 0}}>{days.map(d => <option key={d} value={d}>{d}</option>)}</select>
+                            
+                            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <select value={baseForm.start_time} onChange={(e) => setBaseForm({...baseForm, start_time: e.target.value})} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
+                                <select value={baseForm.end_time} onChange={(e) => setBaseForm({...baseForm, end_time: e.target.value})} style={{...selectStyle, flex: 1, marginBottom: 0}}>{timeSlots.map(t => <option key={t} value={t}>{t}</option>)}</select>
                             </div>
-                            <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
-                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={cancelBtnStyle}>Cancel</button>
-                                <button type="submit" style={saveBtnStyle}>Save</button>
+                            
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                                <button type="button" onClick={() => setIsBaseModalOpen(false)} style={{...actionBtn, background: '#f0f2f5', color: '#333'}}>Cancel</button>
+                                <button type="submit" style={{...actionBtn, background: '#002147', color: '#F2A900'}}>{SVGS.save} Save</button>
                             </div>
                         </form>
                     </div>
@@ -2082,3 +1586,33 @@ export default function Dashboard() {
         </div>
     );
 }
+
+// --- STYLES ---
+const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
+const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '48px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabBtn = (active) => ({ flex: 1, padding: '8px 12px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' });
+const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
+const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
+const cardBase = { padding: '15px', borderRadius: '12px', transition: 'all 0.3s ease' };
+const bigBtn = { width: '100%', padding: '12px', background: '#002147', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#fff', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
+const actionBtn = { flex: 1, minWidth: '80px', padding: '10px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.3s ease' };
+const selectStyle = { width: '100%', padding: '10px 12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#f8f9fa', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease', color: '#333' };
+const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem', background: '#f8f9fa', borderRadius: '8px', border: '1px dashed #dee2e6' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
+const centerStyle = { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', fontSize: '0.9rem', color: '#002147', fontWeight: 'bold' };
+
+// Sidebar
+const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
+const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
+
+// Tables
+const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
+const tableHeaderRow = { background: '#f8f9fa', borderBottom: '2px solid #dee2e6' };
+const tableHeaderCell = { padding: '10px 12px', fontSize: '0.75rem', color: '#495057', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const tableDataRow = { borderBottom: '1px solid #eee', transition: 'background 0.2s' };
+const tableDataCell = { padding: '12px', color: '#333' };
