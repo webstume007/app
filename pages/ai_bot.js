@@ -9,7 +9,6 @@ const ICONS = {
     send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>, 
     menu: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="14" y2="15"/></svg>,
     trash: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-    // NEW: Chevron Up for Model Selector
     chevronUp: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
 };
 
@@ -33,13 +32,13 @@ export default function AIBot({ groqApiKey }) {
     const [currentSessionId, setCurrentSessionId] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // --- NEW: Model Selector States ---
-    const [activeModel, setActiveModel] = useState('gpt-oss'); // Defaults to GPT OSS
+    // --- UPGRADED: Model Selector States ---
+    const [activeModel, setActiveModel] = useState('llama-3.1-70b-versatile'); // Defaults to Meta Llama 3.1
     const [showModelMenu, setShowModelMenu] = useState(false);
 
     const messagesEndRef = useRef(null);
 
-    // NEW: Close model menu if clicked outside
+    // Close model menu if clicked outside
     useEffect(() => {
         const handleClickOutside = () => setShowModelMenu(false);
         if (showModelMenu) {
@@ -165,7 +164,7 @@ export default function AIBot({ groqApiKey }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // --- Context Compilation Architecture (Upgraded Instructions) ---
+    // --- Context Compilation Architecture (Upgraded Instructions with Developer Info) ---
     const buildSystemContextInstruction = () => {
         const outlineContext = courseOutlines.map(o => 
             `Subject: ${o.subject}\nTeacher: ${o.teacher || 'N/A'}\nWeekly Outline Details: ${o.weekly_plan || 'N/A'}\nLearning Objectives: ${o.objectives || 'N/A'}`
@@ -184,6 +183,9 @@ export default function AIBot({ groqApiKey }) {
         ).join("\n");
 
         return `You are the highly advanced, official dynamic IUB Assistant AI, deployed to guide university students directly regarding their current semester tracking. 
+
+ABOUT YOUR DEVELOPER:
+You were created and engineered by Mohsin Akhtar (Phone: +923053296062). He is currently studying in the BSAI program, Spring 2025 session (Currently in his ${calculateSemester('Spring 2025')}), Section 3M. If anyone asks about your creator or developer, you must proudly share these details.
 
 Here is the immutable operational framework and dataset you must abide by:
 1. USER METADATA CONTEXT: The active user is registered in Session: ${userMeta.session || 'N/A'} which makes it their ${userMeta.semester}. Their Section is: ${userMeta.section || 'GUEST'}. User Name: ${userMeta.name}. Roll Number: ${userMeta.roll}. You must structure your conversations acknowledging their specific identity, current ${userMeta.semester}, and section.
@@ -226,8 +228,9 @@ CRITICAL RULES OF ENGAGEMENT:
 
         try {
             let aiGeneratedText = "";
+            const isGroqModel = ['llama-3.1-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'].includes(activeModel);
 
-            if (activeModel === 'gpt-oss') {
+            if (isGroqModel) {
                 const memoryHorizonArray = messages.slice(-10).map(m => ({
                     role: m.sender === 'user' ? 'user' : 'assistant',
                     content: m.text
@@ -251,7 +254,7 @@ CRITICAL RULES OF ENGAGEMENT:
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        model: "openai/gpt-oss-20b", // STRICT FIX: Implemented Groq's GPT OSS Model
+                        model: activeModel, // Now dynamically passes the selected Llama/Mixtral model
                         messages: targetPayloadMessages,
                         temperature: 0.3,
                         max_tokens: 1500
@@ -259,15 +262,14 @@ CRITICAL RULES OF ENGAGEMENT:
                 });
 
                 const responseData = await response.json();
-                
-                // STRICT FIX: Surfacing the actual Groq API Error Message (e.g., "Invalid API Key") if choices fail to map
                 const apiErrorCapture = responseData?.error?.message ? `Groq API Error: ${responseData.error.message}` : null;
                 aiGeneratedText = responseData?.choices?.[0]?.message?.content || apiErrorCapture || "I encountered an optimization block processing this prompt request pipeline. Please re-verify data endpoints transmission constraints.";
             } else {
-                // --- NEW: GEMINI PRO ROUTING ---
+                // --- DYNAMIC GEMINI ROUTING ---
                 const systemContextString = buildSystemContextInstruction();
                 const geminiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiKey}`;
+                // Safely handles the updated Gemini model IDs
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${geminiKey}`;
                 
                 const geminiHistory = messages.slice(-10).map(m => ({
                     role: m.sender === 'user' ? 'user' : 'model',
@@ -337,7 +339,6 @@ CRITICAL RULES OF ENGAGEMENT:
 
     const clearChatHistoryStateLog = () => {
         if (window.confirm("Are you sure you want to clear this current chat?")) {
-            // FIX: Removes completely from Sidebar state and LocalStorage permanently
             const updatedSessions = sessions.filter(s => s.id !== currentSessionId);
             setSessions(updatedSessions);
             localStorage.setItem(`iub_sessions_${userMeta.session}_${userMeta.section}`, JSON.stringify(updatedSessions));
@@ -408,7 +409,6 @@ CRITICAL RULES OF ENGAGEMENT:
                         <div style={chatDialogueDisplayBox}>
                             {isNewChat ? (
                                 <div style={heroEntranceCenter}>
-                                    {/* FIX: Animated Logo Glow Wrapper Appended */}
                                     <div className="logo-glow-wrapper">
                                         <div style={heroLogoWrap}><IubAvatar size={42} /></div>
                                     </div>
@@ -454,13 +454,12 @@ CRITICAL RULES OF ENGAGEMENT:
                                         value={inputValue}
                                         onChange={(e) => setInputValue(e.target.value)}
                                         placeholder="Message IUB AI..."
-                                        style={{...inputEntryFieldStyle, paddingRight: '96px'}} // OVERRIDE applied here inline to prevent touching your style consts
+                                        style={{...inputEntryFieldStyle, paddingRight: '96px'}} 
                                         disabled={isTyping}
                                     />
 
-                                    {/* --- NEW MODEL SELECTOR --- */}
+                                    {/* --- UPGRADED MODEL SELECTOR (GROQ & GEMINI) --- */}
                                     <div style={{ position: 'absolute', right: '46px', top: '50%', transform: 'translateY(-50%)' }}>
-                                        {/* FIX: Added e.stopPropagation() to prevent document level click from instantly closing menu */}
                                         <button 
                                             type="button" 
                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowModelMenu(!showModelMenu); }}
@@ -468,26 +467,52 @@ CRITICAL RULES OF ENGAGEMENT:
                                             title="Select AI Model"
                                         >
                                             <span style={{ fontSize: '11px', fontWeight: '700', marginRight: '4px' }}>
-                                                {activeModel === 'gpt-oss' ? 'GPT' : 'GEM'}
+                                                {activeModel.includes('llama') ? 'LLM' : activeModel.includes('mix') ? 'MIX' : 'GEM'}
                                             </span>
                                             {ICONS.chevronUp}
                                         </button>
 
                                         {showModelMenu && (
                                             <div style={modelMenuPopupStyle}>
+                                                {/* Groq Models */}
+                                                <div style={menuCategoryHeaderStyle}>Groq (Fast)</div>
                                                 <div 
-                                                    style={modelMenuItem(activeModel === 'gpt-oss')} 
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gpt-oss'); setShowModelMenu(false); }}
+                                                    style={modelMenuItem(activeModel === 'llama-3.1-70b-versatile')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('llama-3.1-70b-versatile'); setShowModelMenu(false); }}
                                                 >
-                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>GPT OSS</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Groq Engine (Fast)</div>
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Llama 3.1 (70B)</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Smart & Fast</div>
                                                 </div>
                                                 <div 
-                                                    style={modelMenuItem(activeModel === 'gemini-pro')} 
-                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gemini-pro'); setShowModelMenu(false); }}
+                                                    style={modelMenuItem(activeModel === 'llama-3.1-8b-instant')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('llama-3.1-8b-instant'); setShowModelMenu(false); }}
                                                 >
-                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 1.5 Pro</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Google AI (Smart)</div>
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Llama 3.1 (8B)</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Instant</div>
+                                                </div>
+                                                <div 
+                                                    style={modelMenuItem(activeModel === 'mixtral-8x7b-32768')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('mixtral-8x7b-32768'); setShowModelMenu(false); }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Mixtral 8x7B</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>High Context</div>
+                                                </div>
+
+                                                {/* Google Gemini Models */}
+                                                <div style={{...menuCategoryHeaderStyle, borderTop: '1px solid #f1f5f9', marginTop: '4px', paddingTop: '8px'}}>Google (Smart)</div>
+                                                <div 
+                                                    style={modelMenuItem(activeModel === 'gemini-2.5-flash')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gemini-2.5-flash'); setShowModelMenu(false); }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 2.5 Flash</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Fast & Multimodal</div>
+                                                </div>
+                                                <div 
+                                                    style={modelMenuItem(activeModel === 'gemini-2.5-pro')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gemini-2.5-pro'); setShowModelMenu(false); }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 2.5 Pro</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Deep Reasoning</div>
                                                 </div>
                                             </div>
                                         )}
@@ -534,11 +559,10 @@ CRITICAL RULES OF ENGAGEMENT:
                         100% { opacity: 1; transform: translateY(0); }
                     }
 
-                    /* FIX: Animated Neon Gradient Border + Glow Adjustments */
                     .animated-neon-border {
                         position: relative;
-                        padding: 2px; /* Increased border width slightly */
-                        border-radius: 20px; /* Slight decrease roundness */
+                        padding: 2px;
+                        border-radius: 20px;
                         background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
                         background-size: 300% 100%;
                         animation: aiGlow 4s linear infinite;
@@ -555,12 +579,11 @@ CRITICAL RULES OF ENGAGEMENT:
                         background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
                         background-size: 300% 100%;
                         animation: aiGlow 4s linear infinite;
-                        filter: blur(12px); /* Adding Google-like moving shadow */
+                        filter: blur(12px);
                         opacity: 0.5;
                         z-index: -1;
                     }
                     
-                    /* FIX: Re-using the exact gradient glow for the Logo Wrapper */
                     .logo-glow-wrapper {
                         position: relative;
                         width: 64px; height: 64px;
@@ -590,7 +613,6 @@ CRITICAL RULES OF ENGAGEMENT:
                         100% { background-position: 0 0; }
                     }
 
-                    /* Sidebar Responsive Styling */
                     .sidebar-container {
                         width: 260px;
                         background: #f8fafc;
@@ -609,7 +631,6 @@ CRITICAL RULES OF ENGAGEMENT:
                         100% { opacity: 1; transform: translateX(0); }
                     }
                     
-                    /* Mobile Sidebar specifically taking 85% width */
                     @media (max-width: 768px) {
                         .sidebar-container {
                             position: absolute;
@@ -622,7 +643,6 @@ CRITICAL RULES OF ENGAGEMENT:
                         }
                     }
 
-                    /* Markdown Overrides */
                     .modern-markdown-body p { margin-top: 0; margin-bottom: 0.75rem; }
                     .modern-markdown-body p:first-child { margin-top: 0; }
                     .modern-markdown-body p:last-child { margin-bottom: 0; }
@@ -663,9 +683,7 @@ const clearMemoryActionBtn = { background: 'transparent', color: '#64748b', bord
 
 const chatDialogueDisplayBox = { flex: 1, padding: '20px 20px', overflowY: 'auto', background: '#ffffff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' };
 
-// Center Entrance Styles
 const heroEntranceCenter = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: '10vh' };
-// FIX: Margin and shadows mapped out to Logo Glow wrapper. Native logo wrap just centers.
 const heroLogoWrap = { width: '100%', height: '100%', borderRadius: '50%', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 const heroTitle = { fontSize: '1.25rem', fontWeight: '600', color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.4px' };
 const heroSubtitle = { fontSize: '0.85rem', color: '#64748b', textAlign: 'center', maxWidth: '300px', lineHeight: '1.5' };
@@ -679,15 +697,15 @@ const userDialogueWrapperBubble = { maxWidth: '85%', background: '#f8fafc', colo
 const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', minWidth: 0, color: '#0f172a', borderRadius: '0', padding: '0' };
 
 const formInteractionPanelTray = { background: '#ffffff', padding: '10px 20px 16px', display: 'flex', justifyContent: 'center', position: 'sticky', bottom: 0, zIndex: 10, boxSizing: 'border-box' };
-// FIX: Applied 20px Border Radius
 const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '20px', boxSizing: 'border-box' };
 const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '20px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
 const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
 
-// --- NEW STYLES FOR DROPDOWN (UPGRADED BEAUTIFUL UI) ---
+// --- UPGRADED STYLES FOR DROPDOWN (Includes Max-Height for 5 options) ---
 const modelDropdownBtnStyle = { background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '16px', height: '26px', padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', zIndex: 11 };
-const modelMenuPopupStyle = { position: 'absolute', bottom: 'calc(100% + 12px)', right: '-10px', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', borderRadius: '14px', padding: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', minWidth: '160px', zIndex: 999, display: 'flex', flexDirection: 'column', gap: '4px' };
+const modelMenuPopupStyle = { position: 'absolute', bottom: 'calc(100% + 12px)', right: '-10px', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', borderRadius: '14px', padding: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', minWidth: '180px', zIndex: 999, display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '400px', overflowY: 'auto' };
 const modelMenuItem = (isActive) => ({ padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s', background: isActive ? '#f0f9ff' : 'transparent', border: isActive ? '1px solid #bae6fd' : '1px solid transparent' });
+const menuCategoryHeaderStyle = { fontSize: '10px', fontWeight: 'bold', color: '#94a3b8', padding: '4px 8px', textTransform: 'uppercase' };
 
 const contentBodyStyle = { fontSize: '0.9rem', lineHeight: '1.6', wordBreak: 'break-word' };
 const typingLoaderWrap = { display: 'flex', alignItems: 'center', gap: '3px', padding: '4px 0' };
