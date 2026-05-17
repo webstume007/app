@@ -65,6 +65,50 @@ const SVGS = {
     botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
 
+// --- STYLES (Moved up here to prevent ReferenceError during Next.js SSR) ---
+const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
+const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '48px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabBtn = (active) => ({ flex: 1, padding: '8px 12px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' });
+const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
+const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
+const cardBase = { padding: '15px', borderRadius: '12px', transition: 'all 0.3s ease' };
+const bigBtn = { width: '100%', padding: '12px', background: '#002147', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#fff', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
+const actionBtn = { flex: 1, minWidth: '80px', padding: '10px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.3s ease' };
+const selectStyle = { width: '100%', padding: '10px 12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#f8f9fa', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease', color: '#333' };
+const inputStyle = { width: '100%', padding: '12px 14px', border: '1px solid #dee2e6', borderRadius: '10px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box', background: '#f8f9fa', transition: 'border 0.3s ease' };
+const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem', background: '#f8f9fa', borderRadius: '8px', border: '1px dashed #dee2e6' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
+const centerStyle = { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', fontSize: '0.9rem', color: '#002147', fontWeight: 'bold' };
+
+const subTabStyle = (active) => ({ flex: 1, minWidth: '90px', padding: '10px 14px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' });
+const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.2s ease' });
+
+const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
+const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '6px', fontWeight: 'bold' };
+const newsRedDot = { position: 'absolute', top: '6px', right: '6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
+const footerStyle = { textAlign: 'center', padding: '16px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
+
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,21,47,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
+const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' };
+const cancelBtnStyle = { flex: 1, padding: '14px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s ease' };
+const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', transition: 'background 0.2s ease' };
+
+const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
+const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '14px 18px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #f8f9fa', transition: 'all 0.3s ease' });
+
+const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
+const tableHeaderRow = { background: '#f8f9fa', borderBottom: '2px solid #dee2e6' };
+const tableHeaderCell = { padding: '10px 12px', fontSize: '0.75rem', color: '#495057', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const tableDataRow = { borderBottom: '1px solid #eee', transition: 'background 0.2s' };
+const tableDataCell = { padding: '12px', color: '#333' };
+
+
 // --- Custom Realtime Dropdown Search Component ---
 const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
     const [search, setSearch] = useState(value || '');
@@ -116,50 +160,6 @@ const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
     );
 };
 
-// --- STYLES (Moved up here to prevent ReferenceError) ---
-const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
-const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
-const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '48px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
-const subTabBtn = (active) => ({ flex: 1, padding: '8px 12px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' });
-const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
-const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
-const cardBase = { padding: '15px', borderRadius: '12px', transition: 'all 0.3s ease' };
-const bigBtn = { width: '100%', padding: '12px', background: '#002147', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#fff', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
-const actionBtn = { flex: 1, minWidth: '80px', padding: '10px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.3s ease' };
-const selectStyle = { width: '100%', padding: '10px 12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#f8f9fa', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease', color: '#333' };
-const inputStyle = { width: '100%', padding: '12px 14px', border: '1px solid #dee2e6', borderRadius: '10px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box', background: '#f8f9fa', transition: 'border 0.3s ease' };
-const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem', background: '#f8f9fa', borderRadius: '8px', border: '1px dashed #dee2e6' };
-const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
-const centerStyle = { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', fontSize: '0.9rem', color: '#002147', fontWeight: 'bold' };
-
-const subTabStyle = (active) => ({ flex: 1, minWidth: '90px', padding: '10px 14px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' });
-const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.2s ease' });
-
-const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
-const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
-const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '6px', fontWeight: 'bold' };
-const newsRedDot = { position: 'absolute', top: '6px', right: '6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
-const footerStyle = { textAlign: 'center', padding: '16px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
-
-const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,21,47,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
-const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' };
-const cancelBtnStyle = { flex: 1, padding: '14px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s ease' };
-const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', transition: 'background 0.2s ease' };
-
-const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
-const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '14px 18px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #f8f9fa', transition: 'all 0.3s ease' });
-
-const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
-const tableHeaderRow = { background: '#f8f9fa', borderBottom: '2px solid #dee2e6' };
-const tableHeaderCell = { padding: '10px 12px', fontSize: '0.75rem', color: '#495057', textTransform: 'uppercase', letterSpacing: '0.5px' };
-const tableDataRow = { borderBottom: '1px solid #eee', transition: 'background 0.2s' };
-const tableDataCell = { padding: '12px', color: '#333' };
-
-
 export default function Dashboard() {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
@@ -170,6 +170,12 @@ export default function Dashboard() {
     
     // --- GATEKEEPER STATE ---
     const [isPendingApproval, setIsPendingApproval] = useState(false);
+
+    // --- PWA & NOTIFICATION STATES ---
+    const [isStandalone, setIsStandalone] = useState(true);
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [showNotifBanner, setShowNotifBanner] = useState(false);
 
     // --- RESPONSIVE & SIDEBAR STATES ---
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
@@ -185,12 +191,6 @@ export default function Dashboard() {
     const [milestones, setMilestones] = useState([]);
     const [examSchedules, setExamSchedules] = useState([]);
     const [pointsData, setPointsData] = useState([]);
-
-    // --- PWA & NOTIFICATION STATES ---
-    const [isStandalone, setIsStandalone] = useState(true);
-    const [showInstallBanner, setShowInstallBanner] = useState(false);
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [showNotifBanner, setShowNotifBanner] = useState(false);
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
@@ -215,6 +215,7 @@ export default function Dashboard() {
     const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); 
     const [attendanceSemesterFilter, setAttendanceSemesterFilter] = useState('');
     const [uploadCsvSubject, setUploadCsvSubject] = useState('');
+    const [pendingAttendances, setPendingAttendances] = useState([]); // FIX: ADDED
     
     // --- CSV UPLOAD & HISTORY STATES ---
     const [csvMeta, setCsvMeta] = useState(null); 
@@ -235,7 +236,7 @@ export default function Dashboard() {
     const [currentTime, setCurrentTime] = useState(new Date());
     const notifiedDeadlines = useRef(new Set()); 
 
-    // --- NEW: Added States to Fix Build Errors ---
+    // --- MISC STATES ---
     const [resendTimer, setResendTimer] = useState(0);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
@@ -250,21 +251,10 @@ export default function Dashboard() {
     const [isBaseModalOpen, setIsBaseModalOpen] = useState(false);
     const [baseForm, setBaseForm] = useState({ id: null, course: '', teacher: '', room: '', day: 'MON', start_time: '8:00 AM', end_time: '9:30 AM' });
 
-    // Exam Modal State
     const [isExamEditModalOpen, setIsExamEditModalOpen] = useState(false);
     const [examEditForm, setExamEditForm] = useState({ id: null, exam_date: '', start_time: '', end_time: '', room: '' });
 
-    const allTabs = [
-        { id: 'home', label: 'HOME', icon: SVGS.home },
-        { id: 'weekly', label: 'SCHEDULE', icon: SVGS.calendar },
-        { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
-        { id: 'updates', label: 'UPDATES', icon: SVGS.updates },
-        { id: 'permanent', label: 'BASE PLAN', icon: SVGS.building },
-        { id: 'ai_bot', label: 'AI TUTOR', icon: SVGS.bot }
-    ];
-
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-    const filterDays = ["ALL", ...days];
 
     const timeSlots = [];
     let ts = 8 * 60; 
@@ -352,8 +342,8 @@ export default function Dashboard() {
     };
 
     const showToast = (message, type = 'success') => {
-        setToast({ show: true, message, type });
-        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
+        // Fallback to alert to prevent issues if toast state breaks
+        alert(message);
     };
 
     useEffect(() => {
@@ -378,6 +368,21 @@ export default function Dashboard() {
     const isMobile = windowWidth < 768;
 
     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch((err) => console.error('SW Registration Failed', err));
+        }
+
+        const handleInstall = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setShowInstallBanner(true);
+        };
+        window.addEventListener('beforeinstallprompt', handleInstall);
+
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
         }
@@ -415,7 +420,10 @@ export default function Dashboard() {
             });
         }, 60000);
 
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            window.removeEventListener('beforeinstallprompt', handleInstall);
+        };
     }, [announcements]);
 
     useEffect(() => {
@@ -546,6 +554,13 @@ export default function Dashboard() {
             }));
             
             setAllSessionsData(sessionsWithRecords); 
+
+            // FIX: Populating pendingAttendances for CR to see which submitted sessions are pending
+            const pending = sessionsWithRecords.filter(s => s.status === 'pending').map(session => {
+                const presentCount = session.records.filter(r => r.status === 'Present' || r.status === 'Leave').length;
+                return { ...session, presentCount, totalCount: session.records.length };
+            });
+            setPendingAttendances(pending);
 
             const mergedSchedule = (scheduleData || []).filter(c => c.session === profileData.session).map(cls => {
                 const targetDate = getDateForCurrentWeekDay(cls.day);
@@ -1002,6 +1017,34 @@ export default function Dashboard() {
         setNewRoom(cls.room); setIsEditModalOpen(true);
     };
 
+    const openExamEditModal = (ex) => {
+        setExamEditForm({
+            id: ex.id,
+            exam_date: ex.exam_date,
+            start_time: convertTo12Hour(ex.start_time),
+            end_time: convertTo12Hour(ex.end_time),
+            room: ex.room
+        });
+        setIsExamEditModalOpen(true);
+    };
+
+    const submitExamEdit = async (e) => {
+        e.preventDefault();
+        const { error } = await supabase.from('exam_schedules').update({
+            exam_date: examEditForm.exam_date,
+            start_time: examEditForm.start_time,
+            end_time: examEditForm.end_time,
+            room: examEditForm.room
+        }).eq('id', examEditForm.id);
+
+        if (error) alert("Failed to update exam: " + error.message);
+        else {
+            alert("Exam schedule updated!");
+            setIsExamEditModalOpen(false);
+            fetchProfileAndSchedule(session.user.id);
+        }
+    };
+
     const submitReschedule = async (e) => {
         e.preventDefault();
         const targetDate = getDateForCurrentWeekDay(editingClass.day);
@@ -1036,6 +1079,32 @@ export default function Dashboard() {
         if (!window.confirm(`Permanently delete ${courseName}? This cannot be undone.`)) return;
         await supabase.from('base_schedule').delete().eq('id', id);
         fetchProfileAndSchedule(session.user.id);
+    };
+
+    const handleApproveAttendance = async (sessionId) => {
+        const { error } = await supabase.from('attendance_sessions').update({ status: 'approved' }).eq('id', sessionId);
+        if (error) {
+            alert("Failed to approve: " + error.message);
+        } else {
+            alert("Attendance approved successfully!");
+            fetchProfileAndSchedule(session.user.id);
+        }
+    };
+
+    const handleInstallClick = async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') setDeferredPrompt(null);
+        }
+    };
+
+    const forceNotificationPermission = async () => {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+            setShowNotifBanner(false);
+            new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
+        }
     };
 
     const activeMilestone = semesters.find(s => s.is_active);
@@ -1187,10 +1256,9 @@ export default function Dashboard() {
                     100% { background-position: 0% 50%; }
                 }
                 @keyframes aiShineLayer {
-                    0% { transform: translateX(-150%) skewX(-15deg); opacity: 0; }
-                    20% { opacity: 1; }
-                    40% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
-                    100% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
+                    0% { transform: translateX(-200%) skewX(-20deg); }
+                    30% { transform: translateX(300%) skewX(-20deg); }
+                    100% { transform: translateX(300%) skewX(-20deg); }
                 }
                 .ai-tutor-btn-active, .ai-tutor-btn-inactive {
                     position: relative;
@@ -1201,7 +1269,7 @@ export default function Dashboard() {
                     content: "";
                     position: absolute;
                     top: 0; left: 0; width: 100%; height: 100%;
-                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(139,92,246,0.15), rgba(79,172,254,0.1));
                     background-size: 300% 300%;
                     animation: aiBgPulse 5s ease infinite;
                     z-index: 0;
@@ -1210,8 +1278,8 @@ export default function Dashboard() {
                     content: "";
                     position: absolute;
                     top: 0; left: 0; width: 40%; height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
-                    animation: aiShineLayer 6s infinite ease-in-out;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+                    animation: aiShineLayer 6s infinite linear;
                     z-index: 1;
                     filter: blur(4px);
                 }
@@ -1226,11 +1294,12 @@ export default function Dashboard() {
                     z-index: 2;
                 }
                 .desktop-ai-btn {
-                    background: rgba(255,255,255,0.1) !important;
-                    border: 1px solid rgba(79,172,254,0.3) !important;
+                    background: rgba(255,255,255,0.05) !important;
+                    border: 1px solid rgba(79,172,254,0.4) !important;
+                    box-shadow: 0 0 10px rgba(139,92,246,0.2) inset !important;
                 }
                 .desktop-ai-btn:hover {
-                    background: rgba(255,255,255,0.2) !important;
+                    background: rgba(255,255,255,0.15) !important;
                 }
                 .ai-tutor-icon-svg {
                     position: relative;
@@ -1318,9 +1387,7 @@ export default function Dashboard() {
                             style={tabBtn(isActive)}
                             className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
                         >
-                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>
-                                {isAIBot ? SVGS.botGradient : tab.icon}
-                            </div>
+                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</div>
                             <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
                             {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={newsRedDot}></span>}
                         </button>
@@ -1439,6 +1506,10 @@ export default function Dashboard() {
                                                         </div>
                                                     )}
                                                 </div>
+                                            </div>
+                                            {/* Allow CR to optionally see Exam edits too, but not globally modify without caution. Leaving button for feature parity */}
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button onClick={() => openExamEditModal(ex)} style={btnStyle('#007bff', SVGS.edit)}>Edit Exam Schedule</button>
                                             </div>
                                         </div>
                                     );
@@ -1720,14 +1791,10 @@ export default function Dashboard() {
                                             <option value="ALL">All Semesters</option>
                                             {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
                                         </select>
-                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                                            <option value="ALL">All Sections</option>
-                                            {mySections.map(s => <option key={s} value={s}>Section {s}</option>)}
-                                        </select>
                                     </div>
                                 </div>
 
-                                {(attendanceSectionFilter !== 'ALL' || attendanceSemesterFilter !== 'ALL') ? (
+                                {attendanceSemesterFilter !== 'ALL' ? (
                                     <div style={{ overflowX: 'auto' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
                                             <thead>
@@ -1738,8 +1805,8 @@ export default function Dashboard() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {roster.filter(s => (attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter) && (attendanceSemesterFilter === 'ALL' || s.session === attendanceSemesterFilter)).map(student => {
-                                                    const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter, attendanceSemesterFilter);
+                                                {roster.filter(s => attendanceSemesterFilter === 'ALL' || s.session === attendanceSemesterFilter).map(student => {
+                                                    const pct = getStudentAttendance(student.registration_number, 'ALL');
                                                     return (
                                                         <tr key={student.registration_number} style={{ borderBottom: '1px solid #f0f0f0' }}>
                                                             <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{student.registration_number}</td>
@@ -1754,14 +1821,14 @@ export default function Dashboard() {
                                         </table>
                                     </div>
                                 ) : (
-                                    <div style={emptyState}>Select a session or section filter to view statistics.</div>
+                                    <div style={emptyState}>Select a session filter to view statistics.</div>
                                 )}
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* ================= ANNOUNCEMENTS TAB ================= */}
+                {/* ================= UPDATES TAB ================= */}
                 {activeTab === 'announcements' && (
                     <div className="expand-anim">
                         <div style={whiteCard}>
@@ -1922,24 +1989,22 @@ export default function Dashboard() {
                         </div>
 
                         <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Your Base Schedule</h3>
-                        {filteredBaseSchedule.length === 0 ? <div style={emptyState}>No base schedule found.</div> : (
+                        {filteredBaseSchedule.length === 0 ? <div style={whiteCard}><div style={emptyState}>No base schedule found.</div></div> : (
                             filteredBaseSchedule.map((cls) => (
-                                <div key={`base-${cls.id}`} style={{ background: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', border: '1px solid #eee' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+                                <div key={`base-${cls.id}`} style={whiteCard}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
-                                            <div style={{ fontWeight: '900', fontSize: '1rem', color: '#000' }}>{cls.course}</div>
-                                            <div style={{ color: '#666', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-                                                {SVGS.users} Sec {cls.section} ({getSemesterFromSession(cls.session)}) | {SVGS.location} Room {cls.room}
-                                            </div>
+                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#111827', marginBottom: '4px' }}>{cls.course}</div>
+                                            <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher} | {SVGS.location} Room {cls.room}</div>
                                         </div>
                                         <div style={{ textAlign: 'right' }}>
-                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.75rem' }}>{cls.day}</div>
+                                            <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.85rem' }}>{cls.day}</div>
                                             <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                                        <button onClick={() => openBaseModal(cls)} style={btnStyle('#17a2b8', SVGS.edit)}>Edit Lecture</button>
-                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course, cls.section)} style={btnStyle('#dc3545', SVGS.trash)}>Delete</button>
+                                        <button onClick={() => openBaseModal(cls)} style={{...actionBtn, background: '#f0f2f5', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.edit} Edit</button>
+                                        <button onClick={() => deleteBaseLecture(cls.id, cls.course)} style={{...actionBtn, background: '#fef2f2', color: '#dc3545', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'center'}}>{SVGS.trash} Delete</button>
                                     </div>
                                 </div>
                             ))
