@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet'; 
-import AIBot from './ai_bot'; // Imported AI Bot
+import AIBot from './ai_bot';
 
 // Helper function to dynamically calculate Semester
 const getSemesterFromSession = (session) => {
@@ -64,6 +64,101 @@ const SVGS = {
     bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
+
+// --- Custom Realtime Dropdown Search Component ---
+const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
+    const [search, setSearch] = useState(value || '');
+    const [isOpen, setIsOpen] = useState(false);
+    const wrapperRef = useRef(null);
+
+    useEffect(() => { setSearch(value || ''); }, [value]);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setIsOpen(false); };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const filtered = options.filter(o => {
+        const text = typeof o === 'string' ? o : o.label;
+        return text.toLowerCase().includes(search.toLowerCase());
+    });
+
+    return (
+        <div ref={wrapperRef} style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
+            <input 
+                type="text" 
+                placeholder={placeholder} 
+                value={search} 
+                onChange={e => { setSearch(e.target.value); setIsOpen(true); }}
+                onFocus={() => setIsOpen(true)}
+                style={inputStyle} 
+            />
+            {isOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', maxHeight: '200px', overflowY: 'auto', background: '#fff', border: '1px solid #dee2e6', borderRadius: '6px', zIndex: 50, boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                    {filtered.length > 0 ? filtered.map((opt, i) => {
+                        const val = typeof opt === 'string' ? opt : opt.value;
+                        const label = typeof opt === 'string' ? opt : opt.label;
+                        return (
+                            <div key={i} 
+                                onClick={() => { onChange(val); setSearch(label); setIsOpen(false); }}
+                                style={{ padding: '10px', fontSize: '0.8rem', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', color: '#333' }}
+                                onMouseEnter={(e) => e.target.style.background = '#f8f9fa'}
+                                onMouseLeave={(e) => e.target.style.background = '#fff'}
+                            >
+                                {label}
+                            </div>
+                        )
+                    }) : <div style={{ padding: '10px', fontSize: '0.8rem', color: '#999', textAlign: 'center' }}>No results found</div>}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- STYLES (Moved up here to prevent ReferenceError) ---
+const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
+const welcomeCard = { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '350px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
+const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
+const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '48px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
+const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
+const subTabBtn = (active) => ({ flex: 1, padding: '8px 12px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' });
+const dayFilter = { display: 'flex', gap: '6px', marginBottom: '15px', overflowX: 'auto', paddingBottom: '4px', WebkitOverflowScrolling: 'touch' };
+const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px', borderRadius: '8px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' });
+const whiteCard = { background: '#fff', padding: '15px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '15px', transition: 'all 0.3s ease' };
+const cardBase = { padding: '15px', borderRadius: '12px', transition: 'all 0.3s ease' };
+const bigBtn = { width: '100%', padding: '12px', background: '#002147', border: 'none', borderRadius: '8px', fontWeight: 900, color: '#fff', cursor: 'pointer', transition: 'all 0.3s ease', fontSize: '0.85rem' };
+const actionBtn = { flex: 1, minWidth: '80px', padding: '10px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.3s ease' };
+const selectStyle = { width: '100%', padding: '10px 12px', marginBottom: '12px', borderRadius: '8px', border: '1px solid #dee2e6', fontSize: '0.85rem', background: '#f8f9fa', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease', color: '#333' };
+const inputStyle = { width: '100%', padding: '12px 14px', border: '1px solid #dee2e6', borderRadius: '10px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box', background: '#f8f9fa', transition: 'border 0.3s ease' };
+const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.85rem', background: '#f8f9fa', borderRadius: '8px', border: '1px dashed #dee2e6' };
+const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
+const centerStyle = { textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', fontSize: '0.9rem', color: '#002147', fontWeight: 'bold' };
+
+const subTabStyle = (active) => ({ flex: 1, minWidth: '90px', padding: '10px 14px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' });
+const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.2s ease' });
+
+const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
+const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '6px', fontWeight: 'bold' };
+const newsRedDot = { position: 'absolute', top: '6px', right: '6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
+const footerStyle = { textAlign: 'center', padding: '16px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
+
+const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,21,47,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
+const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' };
+const cancelBtnStyle = { flex: 1, padding: '14px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s ease' };
+const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', transition: 'background 0.2s ease' };
+
+const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
+const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '14px 18px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #f8f9fa', transition: 'all 0.3s ease' });
+
+const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
+const tableHeaderRow = { background: '#f8f9fa', borderBottom: '2px solid #dee2e6' };
+const tableHeaderCell = { padding: '10px 12px', fontSize: '0.75rem', color: '#495057', textTransform: 'uppercase', letterSpacing: '0.5px' };
+const tableDataRow = { borderBottom: '1px solid #eee', transition: 'background 0.2s' };
+const tableDataCell = { padding: '12px', color: '#333' };
+
 
 export default function Dashboard() {
     const [session, setSession] = useState(null);
@@ -924,6 +1019,7 @@ export default function Dashboard() {
     };
 
     const activeMilestone = semesters.find(s => s.is_active);
+    const todayStrCA = new Date().toLocaleDateString('en-CA');
     const isExamMode = activeMilestone && (
         (todayStrCA >= (activeMilestone.mid_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.mid_term_end || '0000-01-01')) ||
         (todayStrCA >= (activeMilestone.final_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.final_term_end || '0000-01-01'))
@@ -997,35 +1093,33 @@ export default function Dashboard() {
         } else {
             todayEvents.push({ type: 'milestone', title: 'No Exams Today', desc: 'Enjoy your preparation time.', raw: activeMilestone });
         }
+    } else if (isVacation) {
+        todayEvents.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `Enjoy your holidays.`, raw: activeMilestone });
     } else {
-        if (activeMilestone && (activeMilestone.event_type === 'summer_vacation' || activeMilestone.event_type === 'holidays')) {
-            todayEvents.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `From: ${new Date(activeMilestone.planned_start).toLocaleDateString()} To: ${new Date(activeMilestone.planned_end).toLocaleDateString()}`, raw: activeMilestone });
-        } else {
-            const dynamicMyClasses = allBaseSchedule.filter(c => c.section === profile.section && c.session === profile.session);
-            const myTodayClasses = dynamicMyClasses.filter(c => {
-                if (c.day !== currentDayStr) return false;
-                const status = getStatusStyles(c);
-                if (status && status.label.toLowerCase().includes('cancelled')) return false;
-                return true;
-            }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+        const dynamicMyClasses = baseSchedule.filter(c => c.section === profile.section && c.session === profile.session);
+        const myTodayClasses = dynamicMyClasses.filter(c => {
+            if (c.day !== currentDayStr) return false;
+            const status = getStatusStyles(c);
+            if (status && status.label.toLowerCase().includes('cancelled')) return false;
+            return true;
+        }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
 
-            if (myTodayClasses.length > 0) {
-                const firstCls = myTodayClasses[0];
-                const lastCls = myTodayClasses[myTodayClasses.length - 1];
+        if (myTodayClasses.length > 0) {
+            const firstCls = myTodayClasses[0];
+            const lastCls = myTodayClasses[myTodayClasses.length - 1];
 
-                const ptsFirst = getNearestPoints(firstCls);
-                if (ptsFirst.up !== 'N/A') {
-                    todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
-                }
+            const ptsFirst = getNearestPoints(firstCls);
+            if (ptsFirst.up !== 'N/A') {
+                todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+            }
 
-                myTodayClasses.forEach(c => {
-                    todayEvents.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
-                });
+            myTodayClasses.forEach(c => {
+                todayEvents.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
+            });
 
-                const ptsLast = getNearestPoints(lastCls);
-                if (ptsLast.down !== 'N/A') {
-                    todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
-                }
+            const ptsLast = getNearestPoints(lastCls);
+            if (ptsLast.down !== 'N/A') {
+                todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
             }
         }
     }
@@ -1073,10 +1167,9 @@ export default function Dashboard() {
                     100% { background-position: 0% 50%; }
                 }
                 @keyframes aiShineLayer {
-                    0% { transform: translateX(-150%) skewX(-15deg); opacity: 0; }
-                    20% { opacity: 1; }
-                    40% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
-                    100% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
+                    0% { transform: translateX(-200%) skewX(-20deg); }
+                    30% { transform: translateX(300%) skewX(-20deg); }
+                    100% { transform: translateX(300%) skewX(-20deg); }
                 }
                 .ai-tutor-btn-active, .ai-tutor-btn-inactive {
                     position: relative;
@@ -1087,7 +1180,7 @@ export default function Dashboard() {
                     content: "";
                     position: absolute;
                     top: 0; left: 0; width: 100%; height: 100%;
-                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(139,92,246,0.15), rgba(79,172,254,0.1));
                     background-size: 300% 300%;
                     animation: aiBgPulse 5s ease infinite;
                     z-index: 0;
@@ -1095,9 +1188,9 @@ export default function Dashboard() {
                 .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
                     content: "";
                     position: absolute;
-                    top: 0; left: 0; width: 40%; height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
-                    animation: aiShineLayer 6s infinite ease-in-out;
+                    top: 0; left: 0; width: 50%; height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+                    animation: aiShineLayer 6s infinite linear;
                     z-index: 1;
                     filter: blur(4px);
                 }
@@ -1112,31 +1205,17 @@ export default function Dashboard() {
                     z-index: 2;
                 }
                 .desktop-ai-btn {
-                    background: rgba(255,255,255,0.1) !important;
-                    border: 1px solid rgba(79,172,254,0.3) !important;
+                    background: rgba(255,255,255,0.05) !important;
+                    border: 1px solid rgba(79,172,254,0.4) !important;
+                    box-shadow: 0 0 10px rgba(139,92,246,0.2) inset !important;
                 }
                 .desktop-ai-btn:hover {
-                    background: rgba(255,255,255,0.2) !important;
+                    background: rgba(255,255,255,0.15) !important;
                 }
                 .ai-tutor-icon-svg {
                     position: relative;
                     z-index: 2;
                 }
-
-                ${currentTab === 'ai_bot' ? `
-                    .ai-chat-wrapper {
-                        max-width: 100% !important;
-                        border-radius: 0 !important;
-                        border: none !important;
-                        box-shadow: none !important;
-                        height: calc(100vh - 45px) !important;
-                    }
-                    @media (min-width: 768px) {
-                        .ai-chat-wrapper {
-                            height: calc(100vh - 65px) !important;
-                        }
-                    }
-                ` : ''}
             `}</style>
 
             <header style={headerStyle}>
@@ -1155,12 +1234,12 @@ export default function Dashboard() {
                 <div className="desktop-nav">
                     {visibleTabs.map(tab => {
                         const isAIBot = tab.id === 'ai_bot';
-                        const isActive = currentTab === tab.id;
+                        const isActive = activeTab === tab.id;
                         return (
                             <div 
                                 key={tab.id} 
-                                onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
-                                className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={isAIBot ? (isActive ? 'ai-tutor-btn-active desktop-ai-btn' : 'ai-tutor-btn-inactive desktop-ai-btn') : ''}
                                 style={{
                                     cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
                                     background: isActive && !isAIBot ? '#F2A900' : 'transparent',
@@ -1190,13 +1269,13 @@ export default function Dashboard() {
                             <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
                             <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
-                        {[{id: 'weekly', label: 'Weekly Timetable', icon: SVGS.calendar}, {id: 'permanent', label: 'Base Schedule', icon: SVGS.home}, {id: 'students', label: 'Manage Students', icon: SVGS.users}, {id: 'attendance', label: 'Attendance', icon: SVGS.attendance}, {id: 'announcements', label: 'Announcements', icon: SVGS.updates}].map(tab => {
+                        {visibleTabs.map(tab => {
                             const isAIBot = tab.id === 'ai_bot';
                             return (
                                 <button 
                                     key={tab.id} 
-                                    onClick={() => { setCurrentTab(tab.id); setIsSidebarOpen(false); }} 
-                                    style={sidebarBtn(currentTab === tab.id)}
+                                    onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }} 
+                                    style={sidebarBtn(activeTab === tab.id)}
                                     className={isAIBot ? 'ai-tutor-btn-inactive' : ''}
                                 >
                                     <span style={{ opacity: 0.7 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
@@ -1211,76 +1290,260 @@ export default function Dashboard() {
             <div className="mobile-nav" style={tabBar}>
                 {visibleTabs.map(tab => {
                     const isAIBot = tab.id === 'ai_bot';
-                    const isActive = currentTab === tab.id;
+                    const isActive = activeTab === tab.id;
                     return (
                         <button 
                             key={tab.id} 
-                            onClick={() => { setCurrentTab(tab.id); }} 
+                            onClick={() => setActiveTab(tab.id)} 
                             style={tabBtn(isActive)}
                             className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
                         >
-                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>
-                                {isAIBot ? SVGS.botGradient : tab.icon}
-                            </div>
+                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</div>
                             <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
-                            {tab.id === 'attendance' && pendingAttendances.length > 0 && <span style={newsRedDot}></span>}
                         </button>
                     )
                 })}
             </div>
 
-            <div style={{ padding: '15px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
-                
-                <div className="expand-anim" style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
-                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        Welcome, {profile?.first_name} {profile?.last_name}
-                    </h2>
-                    <p style={{ margin: 0, color: '#e0e0e0', fontSize: '0.85rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
-                </div>
+            <div style={{ padding: '15px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box', paddingBottom: '30px' }}>
 
-                {!isExamMode && ongoingClasses.length > 0 && (
-                    <div style={{ marginBottom: '20px' }}>
-                        {ongoingClasses.map(ongoingClass => {
-                            const sessionToday = ongoingClass.attendanceSession;
-                            let canEdit = false;
-                            
-                            if (sessionToday) {
-                                const sessionTime = new Date(sessionToday.created_at).getTime();
-                                const now = new Date().getTime();
-                                const diffMins = (now - sessionTime) / 60000;
-                                if (diffMins <= 30 && sessionToday.status === 'pending') canEdit = true;
-                            }
+                {deferredPrompt && showInstallBanner && (
+                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
+                        <div style={{ flex: 1, paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div>
+                                <b style={{ display: 'block', marginBottom: '2px', fontSize: '0.8rem' }}>Install App</b>
+                                <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add Portal to your home screen for better performance.</span>
+                            </div>
+                        </div>
+                        <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
+                    </div>
+                )}
+                {showNotifBanner && (
+                    <div className="expand-anim" style={notifBannerStyle}>
+                        <div style={{ flex: 1, paddingRight: '10px' }}>
+                            <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>Stay Updated! {SVGS.bell}</b>
+                            <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Allow notifications to get instant lecture reminders.</span>
+                        </div>
+                        <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
+                    </div>
+                )}
 
-                            return (
-                                <div key={`global-ongoing-${ongoingClass.id}`} className="expand-anim" style={{ background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)', padding: '15px 20px', borderRadius: '12px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(21, 128, 61, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                                    <div style={{ color: 'white' }}>
-                                        <h3 style={{ margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
-                                            {SVGS.live} Ongoing: {ongoingClass.course}
-                                        </h3>
-                                        <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            {SVGS.clock} {convertTo12Hour(ongoingClass.start_time)} - {convertTo12Hour(ongoingClass.end_time)} | {SVGS.location} Room {ongoingClass.room}
-                                        </p>
+                {/* ================= HOME TAB ================= */}
+                {activeTab === 'home' && (
+                    <div className="expand-anim">
+                        <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '16px', padding: '20px', color: '#fff', marginBottom: '16px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1px', color: '#F2A900', marginBottom: '5px', textTransform: 'uppercase' }}>Teacher Portal</div>
+                            <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                Welcome, {profile?.name}
+                            </h2>
+                        </div>
+
+                        <div style={{ background: '#fff', borderRadius: '12px', padding: '16px', border: '1px solid #eee', marginBottom: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                            <div 
+                                onClick={() => setIsAttendanceExpanded(!isAttendanceExpanded)}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                            >
+                                <div style={{ flex: 1, paddingRight: '15px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 'bold', color: '#002147', marginBottom: '6px' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.attendance} Overall Students Attendance</span>
+                                        <span>{overallAttPct}%</span>
                                     </div>
-                                    <div>
-                                        {!sessionToday && (
-                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '8px 15px', background: 'white', color: '#15803d', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
-                                                {SVGS.note} Mark Attendance
-                                            </button>
-                                        )}
-                                        {sessionToday && canEdit && (
-                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '8px 15px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
-                                                {SVGS.edit} Edit Attendance
-                                            </button>
-                                        )}
-                                        {sessionToday && !canEdit && (
-                                            <button disabled style={{ padding: '8px 15px', background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
-                                                {SVGS.lock} Locked ({sessionToday.status === 'approved' ? 'Approved' : 'Pending'})
-                                            </button>
-                                        )}
+                                    <div style={{ height: '6px', background: '#f0f2f5', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div style={{ width: `${overallAttPct}%`, height: '100%', background: overallAttPct >= 75 ? '#28a745' : '#dc3545', transition: 'width 0.5s ease' }}></div>
                                     </div>
                                 </div>
-                            );
-                        })}
+                                <div style={{ color: '#999', transition: 'transform 0.3s ease', transform: isAttendanceExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                                    {SVGS.chevronDown}
+                                </div>
+                            </div>
+                            
+                            {isAttendanceExpanded && (
+                                <div className="expand-anim" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px dashed #eee', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {attendanceStats.map((stat, idx) => (
+                                        <div key={idx}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 'bold', color: '#555', marginBottom: '4px' }}>
+                                                <span>{stat.subject} (Sec {stat.section})</span>
+                                                <span>{stat.percentage}%</span>
+                                            </div>
+                                            <div style={{ height: '4px', background: '#f0f2f5', borderRadius: '2px', overflow: 'hidden' }}>
+                                                <div style={{ width: `${stat.percentage}%`, height: '100%', background: stat.percentage >= 75 ? '#28a745' : '#F2A900', transition: 'width 0.5s ease' }}></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {attendanceStats.length === 0 && <div style={{fontSize: '0.7rem', color: '#999'}}>No attendance records found yet.</div>}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
+                            <div style={{ background: '#f8f9fa', padding: '12px 16px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                                {SVGS.bell} Notice Board (Today's Schedule)
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px' }}>
+                                {todayEvents.length > 0 && (
+                                    <button onClick={prevNotice} style={{ background: '#f0f2f5', border: 'none', color: '#002147', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{SVGS.leftArrow}</button>
+                                )}
+
+                                <div style={{ flex: 1, textAlign: 'center', margin: '0 15px' }}>
+                                    {todayEvents.length === 0 ? (
+                                        <div>
+                                            {tomorrowEvents.length > 0 ? (
+                                                <>
+                                                    <h3 style={{ margin: '0 0 6px 0', color: '#007bff', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                        {SVGS.calendar} No Lectures Today
+                                                    </h3>
+                                                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#666', fontWeight: 'bold' }}>You have {tomorrowEvents.length} lecture(s) scheduled for tomorrow.</p>
+                                                </>
+                                            ) : (
+                                                <h3 style={{ margin: '0', color: '#28a745', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                    {SVGS.tickCircle} No Lectures Today or Tomorrow
+                                                </h3>
+                                            )}
+                                        </div>
+                                    ) : (() => {
+                                        const targetEvent = todayEvents[noticeIndex];
+
+                                        if (targetEvent.type === 'exam') {
+                                            const currentTotalSecs = currentMins * 60 + currentSecs;
+                                            const startSecs = targetEvent.startMins * 60;
+                                            const endSecs = targetEvent.endMins * 60;
+                                            let noticeState = "Finished";
+                                            let remainingSecs = 0;
+                                            
+                                            if (currentTotalSecs < startSecs) {
+                                                noticeState = "Starts In";
+                                                remainingSecs = startSecs - currentTotalSecs;
+                                            } else if (currentTotalSecs >= startSecs && currentTotalSecs < endSecs) {
+                                                noticeState = "Ongoing";
+                                                remainingSecs = endSecs - currentTotalSecs;
+                                            }
+
+                                            return (
+                                                <div className="expand-anim" key={`ex-${noticeIndex}`}>
+                                                    <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : '#155724', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Exam Concluded' : `${noticeState} Exam`}
+                                                    </div>
+                                                    <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
+                                                    <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        {SVGS.location} Room {targetEvent.room}
+                                                    </div>
+                                                    {noticeState !== 'Finished' && (
+                                                        <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
+                                                            {formatCountdown(remainingSecs)} <span style={{fontSize: '0.65rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        }
+                                        
+                                        if (targetEvent.type === 'vacation' || targetEvent.type === 'milestone') {
+                                            return (
+                                                <div className="expand-anim" key={`ms-${noticeIndex}`}>
+                                                    <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: '#155724', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                        {SVGS.sparkle} {targetEvent.title.includes('Holiday') || targetEvent.title.includes('Vacation') ? 'Holidays' : 'Notice'}
+                                                    </div>
+                                                    <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
+                                                    <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>{targetEvent.desc}</div>
+                                                </div>
+                                            );
+                                        }
+
+                                        let noticeState = "Finished";
+                                        let remainingSecs = 0;
+
+                                        if (targetEvent) {
+                                            const currentTotalSecs = currentMins * 60 + currentSecs;
+                                            if (targetEvent.type === 'lecture') {
+                                                const startSecs = targetEvent.startMins * 60;
+                                                const endSecs = targetEvent.endMins * 60;
+                                                if (currentTotalSecs < startSecs) {
+                                                    noticeState = "Upcoming";
+                                                    remainingSecs = startSecs - currentTotalSecs;
+                                                } else if (currentTotalSecs >= startSecs && currentTotalSecs < endSecs) {
+                                                    noticeState = "Ongoing";
+                                                    remainingSecs = endSecs - currentTotalSecs;
+                                                }
+                                            }
+                                            if (targetEvent.raw?.isCancelled) noticeState = "Cancelled";
+                                        }
+
+                                        const hasAssignment = announcements.some(a => a.type === 'assignment' && a.subject === targetEvent.title && new Date(a.deadline_date) >= new Date());
+
+                                        return (
+                                            <div className="expand-anim" key={`lec-${noticeIndex}`}>
+                                                <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: noticeState === 'Ongoing' ? '#dc3545' : noticeState === 'Cancelled' ? '#666' : '#007bff', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                    {noticeState === 'Ongoing' && SVGS.live} {noticeState === 'Finished' ? 'Lecture Concluded' : noticeState === 'Upcoming' ? 'Upcoming Lecture' : noticeState === 'Cancelled' ? 'Cancelled Lecture' : 'Lecture Time Started'}
+                                                </div>
+                                                <h3 style={{ margin: '0 0 6px 0', color: noticeState === 'Cancelled' ? '#999' : '#002147', fontSize: '1.05rem', fontWeight: '900', textDecoration: noticeState === 'Cancelled' ? 'line-through' : 'none' }}>{targetEvent.title}</h3>
+                                                <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                    {SVGS.location} Room {targetEvent.room} | Sec {targetEvent.section}
+                                                </div>
+                                                {hasAssignment && (
+                                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fff9e6', color: '#b27b00', padding: '4px 10px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', marginBottom: '10px', border: '1px solid #fde68a' }}>
+                                                        {SVGS.edit} Has Assignment
+                                                    </div>
+                                                )}
+                                                {noticeState !== 'Finished' && noticeState !== 'Cancelled' && (
+                                                    <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '6px 16px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem', marginTop: '5px' }}>
+                                                        {formatCountdown(remainingSecs)} <span style={{ fontSize: '0.7rem', opacity: 0.8, marginLeft: '4px' }}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+
+                                {todayEvents.length > 0 && (
+                                    <button onClick={nextNotice} style={{ background: '#f0f2f5', border: 'none', color: '#002147', cursor: 'pointer', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{SVGS.rightArrow}</button>
+                                )}
+                            </div>
+                        </div>
+
+                        {pendingAttendances.length > 0 && (
+                            <div className="expand-anim" style={{ marginBottom: '16px' }}>
+                                <h3 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#dc3545', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '900', textTransform: 'uppercase' }}>
+                                    {SVGS.alertCircle} Action Required: Pending Approvals
+                                </h3>
+                                {pendingAttendances.map(session => (
+                                    <div key={`hm-pend-${session.id}`} style={{ background: 'white', padding: '15px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '10px', borderLeft: '5px solid #f59e0b', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                        <div>
+                                            <div style={{ fontWeight: '900', fontSize: '0.95rem', color: '#000' }}>{session.course}</div>
+                                            <div style={{ color: '#666', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>Sec {session.section} ({getSemesterFromSession(session.session)}) | {session.session_date}</div>
+                                            <div style={{ color: '#059669', fontSize: '0.7rem', fontWeight: 'bold', marginTop: '6px' }}>{session.presentCount}/{session.totalCount} Present</div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button onClick={() => {
+                                                const formattedLecture = { ...session.baseLecture, attendanceSession: session };
+                                                setActiveAttendanceLecture(formattedLecture);
+                                            }} style={btnStyle('#f0f2f5', SVGS.edit)}>Verify</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                            {[
+                                { id: 'weekly', label: 'Schedule', icon: SVGS.calendar, bg: '#e0f2fe', col: '#0369a1' },
+                                { id: 'attendance', label: 'Attendance', icon: SVGS.attendance, bg: '#dcfce7', col: '#15803d' },
+                                { id: 'updates', label: 'Updates', icon: SVGS.updates, bg: '#fef3c7', col: '#a16207' }
+                            ].map(item => (
+                                <div key={item.id} onClick={() => setCurrentTab(item.id)} style={{ background: item.bg, color: item.col, padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s' }}>
+                                    <div style={{ marginBottom: '8px', opacity: 0.9, display: 'flex', justifyContent: 'center' }}>{item.icon}</div>
+                                    <div style={{ fontSize: '0.7rem', fontWeight: '900' }}>{item.label}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                            <div onClick={() => { setCurrentTab('attendance'); setAttendanceView('approve'); }} style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', color: '#065f46', padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s', border: '1px solid #a7f3d0' }}>
+                                <div style={{ marginBottom: '8px', opacity: 0.95, display: 'flex', justifyContent: 'center' }}>{SVGS.tickCircle}</div>
+                                <div style={{ fontSize: '0.72rem', fontWeight: '900' }}>Approve Attendance</div>
+                            </div>
+                            <div onClick={() => { setCurrentTab('attendance'); setAttendanceView('stats'); }} style={{ background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)', color: '#3730a3', padding: '16px 8px', borderRadius: '16px', textAlign: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', transition: 'transform 0.2s', border: '1px solid #c7d2fe' }}>
+                                <div style={{ marginBottom: '8px', opacity: 0.95, display: 'flex', justifyContent: 'center' }}>{SVGS.stats}</div>
+                                <div style={{ fontSize: '0.72rem', fontWeight: '900' }}>Stats</div>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -1295,126 +1558,68 @@ export default function Dashboard() {
                         
                         {isExamMode ? (
                             <div className="expand-anim">
-                                {examSchedules.filter(e => 
-                                    e.target_group.includes(profile.section) && 
-                                    e.target_group.includes(getSemesterFromSession(profile.session))
-                                ).sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date)).map((ex, idx) => {
-                                    const examDateStr = new Date(ex.exam_date).toLocaleDateString('en-CA');
-                                    const isToday = examDateStr === todayStrCA;
-                                    const isPast = new Date(ex.exam_date) < new Date(todayStrCA);
-                                    
-                                    let bgCol = '#fff';
-                                    let borderCol = '#F2A900';
-                                    
-                                    if (isToday) {
-                                        bgCol = '#fff9e6';
-                                        borderCol = '#dc3545';
-                                    } else if (isPast) {
-                                        bgCol = '#f8f9fa';
-                                        borderCol = '#adb5bd';
-                                    }
-
-                                    return (
-                                        <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid #eee' }}>
-                                            <div style={{ ...cardBase, marginBottom: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}` }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                            {SVGS.calendar} {new Date(ex.exam_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                                        </div>
-                                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '6px 0', color: isPast ? '#6c757d' : '#111827' }}>{ex.course}</div>
-                                                        <div style={{ color: '#555', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(ex.start_time)} - {convertTo12Hour(ex.end_time)}</span>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {ex.room}</span>
-                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {ex.teacher}</span>
-                                                        </div>
-                                                    </div>
-                                                    {isToday && (
-                                                        <div style={{ background: '#fef2f2', color: '#dc3545', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #fecaca' }}>
-                                                            TODAY
-                                                        </div>
-                                                    )}
-                                                    {isPast && (
-                                                        <div style={{ background: '#e9ecef', color: '#6c757d', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #ced4da' }}>
-                                                            FINISHED
-                                                        </div>
-                                                    )}
-                                                </div>
+                                {examSchedules.map((ex, idx) => (
+                                    <div key={`ex-${idx}`} style={whiteCard}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px' }}>
+                                            <div>
+                                                <div style={{ fontWeight: '900', fontSize: '1rem', color: '#000' }}>{ex.course}</div>
+                                                <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '6px' }}>{SVGS.users} Groups: {ex.target_group} | {SVGS.location} Room {ex.room}</div>
+                                                <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.75rem', marginTop: '6px' }}>{new Date(ex.exam_date).toLocaleDateString()}</div>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem' }}>{SVGS.clock} {convertTo12Hour(ex.start_time)} - {convertTo12Hour(ex.end_time)}</div>
                                             </div>
                                         </div>
-                                    );
-                                })}
-                                {examSchedules.filter(e => e.target_group.includes(profile.section) && e.target_group.includes(getSemesterFromSession(profile.session))).length === 0 && (
-                                    <div style={{ ...whiteCard, textAlign: 'center', padding: '20px 10px' }}>
-                                        <div style={{ marginBottom: '10px', color: '#999', fontSize: '0.85rem', fontWeight: 'bold' }}>No exams scheduled for your section yet.</div>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button onClick={() => openExamEditModal(ex)} style={btnStyle('#007bff', SVGS.edit)}>Edit Exam Schedule</button>
+                                        </div>
                                     </div>
-                                )}
+                                ))}
+                                {examSchedules.length === 0 && <div style={emptyState}>No exams scheduled for you.</div>}
                             </div>
                         ) : (
-                            <div className="expand-anim">
+                            <>
                                 <div style={dayFilter}>
                                     {days.map(day => (
-                                        <button key={day} onClick={() => setSelectedDay(day)}
-                                            style={dayBtnStyle(selectedDay === day)}>
+                                        <button key={`day-${day}`} onClick={() => setSelectedDay(day)} style={{ ...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa' }}>
                                             {day}
                                         </button>
                                     ))}
                                 </div>
-                                
-                                {filteredWeeklySchedule.length === 0 ? (
-                                    <div style={whiteCard}><div style={emptyState}>No classes scheduled for {selectedDay}.</div></div>
-                                ) : (
+
+                                <h3 style={{ color: '#333', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '1px', marginBottom: '16px', fontWeight: '900' }}>Classes for {selectedDay} (Temp Actions)</h3>
+                                {filteredWeeklySchedule.length === 0 ? <div style={emptyState}>No classes scheduled for {selectedDay}.</div> : (
                                     filteredWeeklySchedule.map((cls) => (
                                         <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
-                                             style={{ ...cardBase, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', border: '1px solid #eee',
-                                                borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid #F2A900', opacity: cls.isCancelled ? 0.6 : 1 
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
+                                             style={{ ...cardBase, background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '1px solid #eee', opacity: cls.isCancelled ? 0.6 : 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '12px', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                                                 <div>
-                                                    <div style={{ fontWeight: '900', color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                                        {SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}
+                                                    <div style={{ fontWeight: '900', fontSize: '1rem', color: cls.isCancelled ? '#dc3545' : '#000', textDecoration: cls.isCancelled ? 'line-through' : 'none' }}>{cls.course}</div>
+                                                    <div style={{ color: '#666', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                                                        {SVGS.users} Sec {cls.section} ({getSemesterFromSession(cls.session)}) | {SVGS.location} Room {cls.room}
                                                     </div>
-                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#111827', textDecoration: cls.isCancelled ? 'line-through' : 'none', marginBottom: '4px' }}>
-                                                        {cls.course}
-                                                    </div>
-                                                    <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>
-                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room {cls.room}</span>
-                                                    </div>
-                                                    
-                                                    {cls.attendanceSession && (
-                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', 
-                                                            background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
-                                                            color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
-                                                            {cls.attendanceSession.status === 'approved' ? <>{SVGS.tickCircle} Attendance Approved</> : <>{SVGS.clock} Attendance Pending</>}
-                                                        </div>
-                                                    )}
+                                                </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ color: '#002147', fontWeight: '900', fontSize: '0.75rem' }}>{cls.day}</div>
+                                                    <div style={{ color: '#F2A900', fontWeight: 'bold', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>{SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}</div>
                                                 </div>
                                             </div>
+                                            {cls.isRescheduled && <div style={{ background: '#e7f1ff', color: '#004085', padding: '10px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Moved to {cls.exceptionDetails.new_room} on {cls.exceptionDetails.exception_date} ({convertTo12Hour(cls.exceptionDetails.new_start_time)} - {convertTo12Hour(cls.exceptionDetails.new_end_time)})</div>}
+                                            {cls.isConfirmed && <div style={{ background: '#d4edda', color: '#155724', padding: '10px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>Confirmed to be Held on {cls.exceptionDetails?.exception_date}</div>}
 
-                                            {expandedLectureId === cls.id && (
-                                                <div className="expand-anim" style={{ marginTop: '15px' }}>
-                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                        {cls.isCancelled ? (
-                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Cancel</button>
-                                                        ) : cls.isConfirmed ? (
-                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Remove Confirm</button>
-                                                        ) : cls.isRescheduled ? (
-                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Reschedule</button>
-                                                        ) : (
-                                                            <>
-                                                                <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#28a745', color: '#fff'}}>{SVGS.tickCircle} Confirm</button>
-                                                                <button onClick={(e) => openEditModal(e, cls)} style={{...actionBtn, background: '#007bff', color: '#fff'}}>{SVGS.clock} Reschedule</button>
-                                                                <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#dc3545', color: '#fff'}}>{SVGS.cross} Cancel</button>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
+                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                {cls.isCancelled ? <button onClick={() => handleUndoException(cls.id, 'cancelled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Undo Cancellation</button> : cls.isConfirmed ? <button onClick={() => handleUndoException(cls.id, 'confirmed', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Mark Not Confirm</button> : cls.isRescheduled ? <button onClick={() => handleUndoException(cls.id, 'rescheduled', cls.course, cls.section, cls.day)} style={btnStyle('#6c757d', SVGS.undo)}>Undo Reschedule</button> : (
+                                                    <>
+                                                        <button onClick={() => handleConfirmClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#28a745', SVGS.tickCircle)}>Will Held</button>
+                                                        <button onClick={() => openEditModal(cls)} style={btnStyle('#007bff', SVGS.edit)}>Modify</button>
+                                                        <button onClick={() => handleCancelClass(cls.id, cls.course, cls.section, cls.day)} style={btnStyle('#dc3545', SVGS.cross)}>Cancel</button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     ))
                                 )}
-                            </div>
+                            </>
                         )}
                     </div>
                 )}
@@ -1510,6 +1715,106 @@ export default function Dashboard() {
                             </div>
                         )}
 
+                        {attendanceView === 'csv_management' && (
+                            <div className="expand-anim" style={whiteCard}>
+                                {uploadStatus === 'idle' && (
+                                    <>
+                                        <h3 style={{ color: '#002147', margin: '0 0 10px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.upload} Upload Attendance CSV</h3>
+                                        <p style={{fontSize: '0.8rem', color: '#666', marginBottom: '15px'}}>Select a subject and upload your CSV. If attendance for any dates inside the CSV already exists, it will be <strong>replaced entirely</strong> with the new file's data.</p>
+                                        
+                                        <select value={uploadCsvSubject} onChange={(e) => setUploadCsvSubject(e.target.value)} style={selectStyle}>
+                                            <option value="">-- Select Subject --</option>
+                                            {availableCourses.map(c => <option key={`up-${c}`} value={c}>{c}</option>)}
+                                        </select>
+
+                                        {uploadCsvSubject && (
+                                            <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '10px', border: '2px dashed #ccc', textAlign: 'center', cursor: 'pointer', transition: '0.3s ease' }} onClick={() => fileInputRef.current.click()}>
+                                                <div style={{ color: '#002147', marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>{SVGS.file}</div>
+                                                <p style={{ fontSize: '0.9rem', color: '#002147', fontWeight: 'bold', margin: '0 0 5px 0' }}>Click to select CSV File</p>
+                                                <p style={{ fontSize: '0.7rem', color: '#666', margin: 0 }}>Format: Name, Registration Number, YYYY-MM-DD...</p>
+                                                <input type="file" accept=".csv" ref={fileInputRef} onChange={handleFileSelect} style={{ display: 'none' }} />
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {uploadStatus === 'confirm' && csvMeta && (
+                                    <div className="expand-anim" style={{textAlign: 'center'}}>
+                                        <h3 style={{color: '#002147', margin: '0 0 15px 0'}}>Confirm Upload</h3>
+                                        <div style={{background: '#e7f1ff', padding: '15px', borderRadius: '10px', border: '1px solid #b8daff', marginBottom: '15px', textAlign: 'left', fontSize: '0.85rem'}}>
+                                            <p style={{margin: '0 0 8px 0'}}><strong>Subject:</strong> {uploadCsvSubject}</p>
+                                            <p style={{margin: '0 0 8px 0'}}><strong>Total Students/Rows:</strong> {csvMeta.totalRecords}</p>
+                                            <p style={{margin: '0 0 8px 0'}}><strong>Dates to Overwrite/Insert ({csvMeta.dateCols.length}):</strong></p>
+                                            <div style={{display: 'flex', gap: '5px', flexWrap: 'wrap'}}>
+                                                {csvMeta.dateCols.map(d => (
+                                                    <span key={d.dateStr} style={{background: '#fff', border: '1px solid #ccc', padding: '3px 8px', borderRadius: '15px', fontSize: '0.7rem', fontWeight: 'bold'}}>{d.dateStr}</span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); }} style={{...actionBtn, background: '#ccc', color: '#333'}}>Cancel</button>
+                                            <button onClick={executeCsvUpload} style={{...actionBtn, background: '#28a745', color: '#fff', flex: 2}}>{SVGS.upload} Confirm & Upload Data</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {uploadStatus === 'uploading' && (
+                                    <div className="expand-anim" style={{textAlign: 'center', padding: '30px 0'}}>
+                                        <h3 style={{color: '#002147', margin: '0 0 15px 0'}}>Processing Data...</h3>
+                                        <div style={{width: '100%', height: '12px', background: '#eee', borderRadius: '6px', overflow: 'hidden'}}>
+                                            <div style={{width: `${uploadProgress}%`, height: '100%', background: '#F2A900', transition: 'width 0.3s ease'}}></div>
+                                        </div>
+                                        <p style={{fontWeight: 'bold', marginTop: '8px', color: '#555', fontSize: '0.85rem'}}>{uploadProgress}%</p>
+                                    </div>
+                                )}
+
+                                {uploadStatus === 'success' && (
+                                    <div className="expand-anim" style={{textAlign: 'center', padding: '20px 0'}}>
+                                        <div style={{color: '#28a745', marginBottom: '10px', display: 'flex', justifyContent: 'center', transform: 'scale(2)'}}>{SVGS.tickCircle}</div>
+                                        <h3 style={{color: '#28a745', margin: '0 0 10px 0'}}>Upload Complete!</h3>
+                                        <p style={{color: '#666', marginBottom: '20px', fontSize: '0.85rem'}}>The attendance data has been successfully stored.</p>
+                                        <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); setUploadCsvSubject(''); }} style={bigBtn}>Upload Another File</button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {attendanceView === 'csv_history' && (
+                            <div className="expand-anim" style={whiteCard}>
+                                <h3 style={{ margin: '0 0 15px 0', color: '#002147', borderBottom: '1px solid #eee', paddingBottom: '10px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.history} Upload History & Undo</h3>
+                                {uploadLogs.length === 0 ? (
+                                    <div style={emptyState}>No upload history found.</div>
+                                ) : (
+                                    <div style={{ overflowX: 'auto' }} className="scroll-hide">
+                                        <table style={tableStyle}>
+                                            <thead>
+                                                <tr style={tableHeaderRow}>
+                                                    <th style={tableHeaderCell}>Date</th>
+                                                    <th style={tableHeaderCell}>Subject</th>
+                                                    <th style={tableHeaderCell}>Dates Processed</th>
+                                                    <th style={{...tableHeaderCell, textAlign: 'right'}}>Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {uploadLogs.map(log => (
+                                                    <tr key={log.id} style={tableDataRow}>
+                                                        <td style={tableDataCell}>{new Date(log.created_at).toLocaleDateString()}</td>
+                                                        <td style={{...tableDataCell, fontWeight: 'bold', color: '#002147'}}>{log.subject}</td>
+                                                        <td style={{...tableDataCell, maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>{log.dates_included}</td>
+                                                        <td style={{...tableDataCell, textAlign: 'right'}}>
+                                                            <button onClick={() => handleUndoUpload(log)} style={{ padding: '4px 8px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.7rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                                {SVGS.undo} Undo
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {attendanceView === 'stats' && (
                             <div className="expand-anim" style={{ background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid #eee' }}>
                                 <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', marginBottom: '16px', gap: '10px' }}>
@@ -1560,7 +1865,7 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* ================= ANNOUNCEMENTS TAB ================= */}
+                {/* ================= UPDATES TAB ================= */}
                 {currentTab === 'updates' && (
                     <div className="expand-anim">
                         <div style={whiteCard}>
@@ -1667,7 +1972,7 @@ export default function Dashboard() {
                                     </div>
                                 )}
 
-                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4 Exercises)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({ ...announcementForm, topics: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }} />
+                                <input type="text" placeholder={announcementForm.type === 'assignment' ? "Assignment Topic (e.g. Chapter 4)" : "Message Title"} required value={announcementForm.topics} onChange={(e) => setAnnouncementForm({ ...announcementForm, topics: e.target.value })} style={{ ...inputStyle, marginBottom: 0 }} />
                                 <textarea placeholder="Provide detailed instructions or message content here..." required value={announcementForm.details} onChange={(e) => setAnnouncementForm({ ...announcementForm, details: e.target.value })} style={{ ...inputStyle, minHeight: '80px', resize: 'vertical', marginBottom: 0 }} />
 
                                 <button type="submit" style={{ ...actionBtn, background: '#002147', color: '#F2A900', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', width: '100%', marginTop: '5px' }}>
@@ -1875,33 +2180,3 @@ export default function Dashboard() {
         </div>
     );
 }
-
-// STYLES
-const welcomeBg = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#002147', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 3000 };
-const welcomeCard = { background: '#fff', padding: '25px', borderRadius: '16px', width: '90%', maxWidth: '380px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', boxSizing: 'border-box' };
-const headerStyle = { background: '#002147', color: '#F2A900', padding: '12px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 10px rgba(0,0,0,0.2)', flexWrap: 'wrap' };
-const tabBar = { background: '#fff', padding: '6px 4px', gap: '4px', position: 'sticky', top: '45px', zIndex: 999, boxShadow: '0 2px 5px rgba(0,0,0,0.05)', overflowX: 'auto', WebkitOverflowScrolling: 'touch' };
-const tabBtn = (active) => ({ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '60px', padding: '8px 2px', border: 'none', background: active ? '#002147' : '#f0f2f5', color: active ? '#F2A900' : '#666', borderRadius: '8px', fontSize: '0.6rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', position: 'relative' });
-const subTabStyle = (active) => ({ flex: 1, minWidth: '90px', padding: '10px 14px', border: 'none', background: active ? '#F2A900' : 'transparent', color: active ? '#002147' : '#555', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' });
-const dayFilter = { display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '6px', WebkitOverflowScrolling: 'touch' };
-const dayBtnStyle = (active) => ({ flex: 1, minWidth: '40px', padding: '8px 6px', borderRadius: '10px', border: 'none', background: active ? '#002147' : '#fff', color: active ? '#F2A900' : '#555', fontWeight: 'bold', fontSize: '0.7rem', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.04)', transition: 'all 0.3s ease' });
-const btnStyle = (bg, icon) => ({ flex: 1, minWidth: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 14px', background: bg, color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: 'all 0.2s ease' });
-const inputStyle = { width: '100%', padding: '12px 14px', border: '1px solid #dee2e6', borderRadius: '10px', outline: 'none', fontSize: '0.85rem', boxSizing: 'border-box', background: '#f8f9fa', transition: 'border 0.3s ease' };
-const actionBtn = { flex: 1, minWidth: '80px', padding: '10px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', transition: 'all 0.3s ease' };
-const whiteCard = { background: '#fff', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.04)', marginBottom: '16px', transition: 'all 0.3s ease', border: '1px solid #eee' };
-const emptyState = { textAlign: 'center', padding: '25px 10px', color: '#999', fontSize: '0.8rem', background: '#fff', borderRadius: '12px', border: '1px dashed #ddd' };
-const toastStyle = { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', color: 'white', padding: '12px 24px', borderRadius: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.2)', transition: 'all 0.3s ease', zIndex: 9999, fontWeight: 'bold', fontSize: '0.85rem' };
-const notifBannerStyle = { background: '#002147', color: '#fff', padding: '10px 12px', borderRadius: '12px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
-const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.75rem' };
-const redBadgeStyle = { background: '#dc3545', color: 'white', borderRadius: '12px', padding: '2px 6px', fontSize: '0.65rem', marginLeft: '6px', fontWeight: 'bold' };
-const newsRedDot = { position: 'absolute', top: '6px', right: '6px', width: '6px', height: '6px', background: 'red', borderRadius: '50%' };
-const footerStyle = { textAlign: 'center', padding: '16px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.65rem', marginTop: 'auto' };
-const modalOverlayStyle = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,21,47,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, padding: '16px', boxSizing: 'border-box', backdropFilter: 'blur(3px)' };
-const modalContentStyle = { background: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' };
-const cancelBtnStyle = { flex: 1, padding: '14px', background: '#e9ecef', color: '#333', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s ease' };
-const saveBtnStyle = { flex: 1, padding: '14px', background: '#F2A900', color: '#002147', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer', transition: 'background 0.2s ease' };
-
-// Sidebar Styles
-const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
-const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 15px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '14px 18px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #f8f9fa', transition: 'all 0.3s ease' });
