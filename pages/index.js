@@ -57,7 +57,9 @@ const SVGS = {
     sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>,
     verified: <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2A900"><path d="M22.5 12.5c0 1.5-.7 2.8-1.8 3.5.2 1.3-.2 2.6-1.2 3.6-1 1-2.3 1.4-3.6 1.2-1.1 1.1-2.4 1.8-3.9 1.8s-2.8-.7-3.9-1.8c-1.3.2-2.6-.2-3.6-1.2-1-1-1.4-2.3-1.2-3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.2C9.2 3.7 10.5 3 12 3s2.8.7 3.9 1.8c1.3-.2 2.6.2 3.6 1.2 1 1 1.4 2.3 1.2 3.6 1.1.7 1.8 2 1.8 3.5zM10.5 16.5l6.5-6.5-1.5-1.5-5 5-2.5-2.5-1.5 1.5 4 4z"/></svg>,
-    bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>
+    bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+    botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+    edit: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
 };
 
 // --- Custom Realtime Dropdown Search Component ---
@@ -141,6 +143,7 @@ export default function Home() {
     const [announcements, setAnnouncements] = useState([]); 
     const [teachersData, setTeachersData] = useState([]); 
     const [contactsData, setContactsData] = useState([]); 
+    const [milestones, setMilestones] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const [studentsData, setStudentsData] = useState([]);
@@ -419,9 +422,11 @@ export default function Home() {
 
         const { data: allBaseData } = await fetchAllRows('base_schedule');
         const { data: allExcData } = await fetchAllRows('schedule_exceptions');
+        const { data: milestonesData } = await fetchAllRows('academic_milestones');
         
         setAllBaseSchedule(allBaseData || []);
         setExceptions(allExcData || []);
+        setMilestones(milestonesData || []);
 
         const uniqueSessions = [...new Set((allBaseData || []).map(x => x.session))].filter(Boolean);
         const uniqueRooms = [...new Set((allBaseData || []).map(x => x.room))].filter(Boolean).sort();
@@ -570,12 +575,10 @@ export default function Home() {
         depDate.setHours(h, m, 0, 0);
         const diffSecs = Math.floor((depDate - currentTime) / 1000);
         if (diffSecs < 0) return null;
-        const hrs = Math.floor(diffSecs / 3600);
-        const mins = Math.floor((diffSecs % 3600) / 60);
-        const secs = diffSecs % 60;
-        if (hrs > 0) return `${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')} Remaining`;
-        return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')} Remaining`;
+        return formatCountdown(diffSecs);
     };
+
+    const activeMilestone = milestones.find(m => m.status === 'active');
 
     const availableSessions = dropdownMeta.sessions.sort((a, b) => {
         const semA = parseInt(getSemesterFromSession(a)) || 99;
@@ -736,6 +739,18 @@ export default function Home() {
 
     const todayEvents = useMemo(() => {
         const events = [];
+
+        if (activeMilestone) {
+            let title = '';
+            let desc = '';
+            let typeVal = 'milestone';
+            if (activeMilestone.event_type === 'mid_term') { title = 'Mid-Term Exams Ongoing'; desc = 'Check date sheet for paper timings.'; typeVal = 'exam'; }
+            else if (activeMilestone.event_type === 'final_term') { title = 'Final Exams Ongoing'; desc = 'Check date sheet for paper timings.'; typeVal = 'exam'; }
+            else if (activeMilestone.event_type === 'summer_vacation' || activeMilestone.event_type === 'holidays') { title = 'Vacations / Holidays'; desc = `From: ${new Date(activeMilestone.planned_start).toLocaleDateString()} To: ${new Date(activeMilestone.planned_end).toLocaleDateString()}`; typeVal = 'vacation'; }
+            
+            if (title) events.push({ type: typeVal, title, desc, raw: activeMilestone });
+        }
+
         const dynamicMyClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         const myTodayClasses = dynamicMyClasses.filter(c => {
             if (c.day !== currentDayStr) return false;
@@ -763,12 +778,13 @@ export default function Home() {
             }
         }
         return events;
-    }, [allBaseSchedule, currentDayStr, exceptions, pointsData, userSection]);
+    }, [allBaseSchedule, currentDayStr, exceptions, pointsData, userSection, activeMilestone]);
     
     useEffect(() => {
         if (todayEvents.length > 0 && currentTab === 'home') {
             const currentTotalSecs = new Date().getHours() * 3600 + new Date().getMinutes() * 60 + new Date().getSeconds();
             let activeIdx = todayEvents.findIndex(e => {
+                if (e.type === 'exam' || e.type === 'vacation') return true; 
                 if (e.type === 'lecture') return (e.endMins * 60) > currentTotalSecs;
                 return (e.timeMins * 60) > currentTotalSecs;
             });
@@ -1094,19 +1110,22 @@ export default function Home() {
 
                     <select style={selectStyle} value={setupSession} onChange={(e) => setSetupSession(e.target.value)}>
                         <option value="">-- Select Semester --</option>
+                        <option value="GUEST">Guest Mode (Rooms/Teachers)</option>
                         {availableSessions.map(s => (
                             <option key={s} value={s}>{getSemesterFromSession(s)} Semester</option>
                         ))}
                     </select>
 
-                    <select style={selectStyle} value={setupSection} onChange={(e) => setSetupSection(e.target.value)} disabled={!setupSession}>
-                        <option value="">-- Select Section --</option>
-                        {setupSession && getSectionsForSession(setupSession).map(s => (
-                            <option key={s} value={s}>{s}</option>
-                        ))}
-                    </select>
+                    {setupSession !== 'GUEST' && (
+                        <select style={selectStyle} value={setupSection} onChange={(e) => setSetupSection(e.target.value)} disabled={!setupSession}>
+                            <option value="">-- Select Section --</option>
+                            {setupSession && getSectionsForSession(setupSession).map(s => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                    )}
 
-                    {setupSession && setupSection && !myRollNumber && (
+                    {setupSession && setupSession !== 'GUEST' && setupSection && !myRollNumber && (
                         <div className="expand-anim" style={{ marginTop: '5px' }}>
                             <p style={{ fontSize: '0.75rem', color: '#666', margin: '0 0 6px 0', textAlign: 'left' }}>Your Roll Number (For Attendance)</p>
                             <RealtimeSearchSelect 
@@ -1119,10 +1138,18 @@ export default function Home() {
                     )}
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                        <button onClick={handleInitialSelection} style={bigBtn}>Show My Schedule</button>
+                        {setupSession === 'GUEST' ? (
+                            <button onClick={handleGuestSelection} style={bigBtn}>Continue as Guest</button>
+                        ) : (
+                            <button onClick={handleInitialSelection} style={bigBtn}>Show My Schedule</button>
+                        )}
                         
-                        <div style={{color: '#999', fontSize: '0.7rem'}}>— OR —</div>
-                        <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
+                        {setupSession !== 'GUEST' && (
+                            <>
+                                <div style={{color: '#999', fontSize: '0.7rem'}}>— OR —</div>
+                                <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1137,10 +1164,10 @@ export default function Home() {
         if (t < firstPointTime) firstPointTime = t;
         if (t > lastPointTime) lastPointTime = t;
     });
-    const showPointsBar = todayPoints.length > 0 && currentMins >= (firstPointTime - 120) && currentMins <= lastPointTime;
+    const showPointsBar = todayPoints.length > 0 && currentMins >= (firstPointTime - 120) && currentMins <= lastPointTime && currentDayStr !== 'SUN';
 
-    let nextUpTimeStr = '--:--';
-    let nextDownTimeStr = '--:--';
+    let nextUpTimeStr = '--:--:--';
+    let nextDownTimeStr = '--:--:--';
     if (showPointsBar && currentTab === 'home') {
         const nextUp = todayPoints.filter(p => p.route === 'AC_to_BJC' && parseDbTime(p.departure_time) >= currentMins).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time))[0];
         const nextDown = todayPoints.filter(p => p.route === 'BJC_to_AC' && parseDbTime(p.departure_time) >= currentMins).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time))[0];
@@ -1149,13 +1176,13 @@ export default function Home() {
             const [h,m] = nextUp.departure_time.split(':').map(Number);
             const d = new Date(currentTime); d.setHours(h,m,0,0);
             const s = Math.floor((d - currentTime)/1000);
-            nextUpTimeStr = s > 0 ? `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}` : '00:00';
+            nextUpTimeStr = s > 0 ? formatCountdown(s) : '00:00:00';
         }
         if (nextDown) {
             const [h,m] = nextDown.departure_time.split(':').map(Number);
             const d = new Date(currentTime); d.setHours(h,m,0,0);
             const s = Math.floor((d - currentTime)/1000);
-            nextDownTimeStr = s > 0 ? `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}` : '00:00';
+            nextDownTimeStr = s > 0 ? formatCountdown(s) : '00:00:00';
         }
     }
 
@@ -1173,6 +1200,19 @@ export default function Home() {
                 <link rel="shortcut icon" href="/favicon.ico" />
                 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
             </Head>
+
+            <svg width="0" height="0" style={{ position: 'absolute' }}>
+                <defs>
+                    <linearGradient id="aiGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#ff007f">
+                            <animate attributeName="stop-color" values="#ff007f;#7928ca;#0070f3;#00dfd8;#ff007f" dur="4s" repeatCount="indefinite" />
+                        </stop>
+                        <stop offset="100%" stopColor="#7928ca">
+                            <animate attributeName="stop-color" values="#7928ca;#0070f3;#00dfd8;#ff007f;#7928ca" dur="4s" repeatCount="indefinite" />
+                        </stop>
+                    </linearGradient>
+                </defs>
+            </svg>
 
             <style>{`
                 /* Add global reset to remove the white border caused by default body margin */
@@ -1253,6 +1293,53 @@ export default function Home() {
                 }
                 .expand-anim { animation: fadeInSlide 0.3s ease forwards; }
 
+                /* AI Tutor Moving Gradient CSS */
+                @keyframes aiBgPulse {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                @keyframes aiShineLayer {
+                    0% { transform: translateX(-150%) skewX(-15deg); }
+                    50% { transform: translateX(150%) skewX(-15deg); }
+                    100% { transform: translateX(150%) skewX(-15deg); }
+                }
+                .ai-tutor-btn-active, .ai-tutor-btn-inactive {
+                    position: relative;
+                    overflow: hidden;
+                }
+                .ai-tutor-btn-active::before, .ai-tutor-btn-inactive::before {
+                    content: "";
+                    position: absolute;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    background: linear-gradient(90deg, rgba(255,0,128,0.1), rgba(121,40,202,0.15), rgba(0,112,243,0.1), rgba(255,0,128,0.1));
+                    background-size: 300% 300%;
+                    animation: aiBgPulse 4s ease infinite;
+                    z-index: 0;
+                }
+                .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
+                    content: "";
+                    position: absolute;
+                    top: 0; left: 0; width: 30%; height: 100%;
+                    background: rgba(255,255,255,0.4);
+                    animation: aiShineLayer 5s infinite ease-in-out;
+                    z-index: 1;
+                }
+                .ai-tutor-text-gradient {
+                    background: linear-gradient(90deg, #ff0080, #7928ca, #0070f3, #ff0080);
+                    background-size: 300% 300%;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    animation: aiBgPulse 4s ease infinite;
+                    font-weight: 900 !important;
+                    position: relative;
+                    z-index: 2;
+                }
+                .ai-tutor-icon-svg {
+                    position: relative;
+                    z-index: 2;
+                }
+
                 ${currentTab === 'ai_bot' ? `
                     .ai-chat-wrapper {
                         max-width: 100% !important;
@@ -1269,7 +1356,7 @@ export default function Home() {
                 ` : ''}
             `}</style>
 
-            <header className={`main-header ${!isHome ? 'mobile-collapsed' : ''}`} style={headerStyle}>
+            <header className={`main-header ${(!isHome && !isGuestUser) ? 'mobile-collapsed' : ''}`} style={headerStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
@@ -1283,26 +1370,37 @@ export default function Home() {
                 </div>
 
                 <div className="desktop-nav">
-                    {availableTabs.map(tab => (
-                        <div 
-                            key={tab.id} 
-                            onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
-                            style={{
-                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
-                                background: currentTab === tab.id ? '#F2A900' : 'transparent',
-                                color: currentTab === tab.id ? '#002147' : '#fff',
-                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
-                            }}
-                        >
-                            {tab.icon} {tab.label}
-                        </div>
-                    ))}
+                    {availableTabs.map(tab => {
+                        const isAIBot = tab.id === 'ai_bot';
+                        const isActive = currentTab === tab.id;
+                        return (
+                            <div 
+                                key={tab.id} 
+                                onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }}
+                                className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
+                                style={{
+                                    cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
+                                    background: isActive && !isAIBot ? '#F2A900' : 'transparent',
+                                    color: isActive && !isAIBot ? '#002147' : '#fff',
+                                    transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
+                                }}
+                            >
+                                <span className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
+                                <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                            </div>
+                        )
+                    })}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} className="mobile-hide">
-                        <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span 
+                            onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); }}
+                            style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', border: '1px solid #ccc' }}
+                            title="Edit Section"
+                        >
                             {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
+                            <span style={{opacity: 0.7}}>{SVGS.edit}</span>
                         </span>
                         <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             {SVGS.clock} Update: {lastUpdated}
@@ -1318,7 +1416,7 @@ export default function Home() {
                 </div>
             </header>
 
-            <div className={`desktop-hide mobile-sub-bar ${!isHome ? 'mobile-collapsed' : ''}`} style={{ background: '#002147', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className={`desktop-hide mobile-sub-bar ${(!isHome && !isGuestUser) ? 'mobile-collapsed' : ''}`} style={{ background: '#002147', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                 <span style={{ background: '#fff', color: '#002147', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
                 </span>
@@ -1334,15 +1432,20 @@ export default function Home() {
                             <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
                             <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
-                        {availableTabs.map(tab => (
-                            <button 
-                                key={tab.id} 
-                                onClick={() => { setCurrentTab(tab.id); setIsSidebarOpen(false); setShowAlerts(false); }} 
-                                style={sidebarBtn(currentTab === tab.id)}
-                            >
-                                <span style={{ opacity: 0.7 }}>{tab.icon}</span> <span style={{ marginLeft: '10px' }}>{tab.label}</span>
-                            </button>
-                        ))}
+                        {availableTabs.map(tab => {
+                            const isAIBot = tab.id === 'ai_bot';
+                            return (
+                                <button 
+                                    key={tab.id} 
+                                    onClick={() => { setCurrentTab(tab.id); setIsSidebarOpen(false); setShowAlerts(false); }} 
+                                    style={sidebarBtn(currentTab === tab.id)}
+                                    className={isAIBot ? 'ai-tutor-btn-inactive' : ''}
+                                >
+                                    <span style={{ opacity: 0.7 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
+                                    <span style={{ marginLeft: '10px' }} className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                                </button>
+                            )
+                        })}
                         
                         <div style={{ marginTop: 'auto', padding: '15px', borderTop: '1px solid #eee' }}>
                             <button onClick={() => { localStorage.removeItem('iub_user_selection'); setIsFirstVisit(true); setIsSidebarOpen(false); }} style={{...changeBtn, width: '100%', background: '#dc3545', color: '#fff', border: 'none', padding: '10px', fontSize: '0.8rem' }}>
@@ -1354,18 +1457,29 @@ export default function Home() {
             )}
 
             <div className={`mobile-nav ${!isHome ? 'nav-shifted' : ''}`} style={tabBar}>
-                {availableTabs.filter(tab => isGuestUser ? true : (tab.id !== 'room' && tab.id !== 'teacher' && tab.id !== 'transport' && tab.id !== 'attendance')).map(tab => (
-                    <button key={tab.id} onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} style={tabBtn(currentTab === tab.id)}>
-                        <div style={{ marginBottom: '2px', opacity: currentTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
-                        {tab.label}
-                        {tab.id === 'announcements' && activeAssignments.some(a => !completedAssignments.includes(a.id)) && <span style={newsRedDot}></span>}
-                    </button>
-                ))}
+                {availableTabs.filter(tab => isGuestUser ? true : (tab.id !== 'room' && tab.id !== 'teacher' && tab.id !== 'transport' && tab.id !== 'attendance')).map(tab => {
+                    const isAIBot = tab.id === 'ai_bot';
+                    const isActive = currentTab === tab.id;
+                    return (
+                        <button 
+                            key={tab.id} 
+                            onClick={() => { setCurrentTab(tab.id); setShowAlerts(false); }} 
+                            style={tabBtn(isActive)}
+                            className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
+                        >
+                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>
+                                {isAIBot ? SVGS.botGradient : tab.icon}
+                            </div>
+                            <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                            {tab.id === 'announcements' && activeAssignments.some(a => !completedAssignments.includes(a.id)) && <span style={newsRedDot}></span>}
+                        </button>
+                    )
+                })}
             </div>
 
             <div className="main-content-area" style={{ 
                 padding: currentTab === 'ai_bot' ? '0' : '10px 12px', 
-                maxWidth: currentTab === 'ai_bot' ? '100%' : '600px', 
+                maxWidth: '600px', 
                 margin: '0 auto', 
                 flex: 1, 
                 width: '100%', 
@@ -1455,6 +1569,19 @@ export default function Home() {
                                                 </div>
                                             ) : (() => {
                                                 const targetEvent = todayEvents[noticeIndex];
+
+                                                if (targetEvent.type === 'exam' || targetEvent.type === 'vacation') {
+                                                    return (
+                                                        <div className="expand-anim" key={`ms-${noticeIndex}`}>
+                                                            <div style={{ fontSize: '0.65rem', fontWeight: 'bold', color: targetEvent.type === 'exam' ? '#dc3545' : '#155724', textTransform: 'uppercase', marginBottom: '5px', letterSpacing: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                                                                {targetEvent.type === 'exam' ? SVGS.alertCircle : SVGS.sparkle} {targetEvent.type === 'exam' ? 'Examinations' : 'Holidays'}
+                                                            </div>
+                                                            <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
+                                                            <div style={{ fontSize: '0.85rem', color: '#666', fontWeight: 'bold' }}>{targetEvent.desc}</div>
+                                                        </div>
+                                                    );
+                                                }
+
                                                 let noticeState = "Finished";
                                                 let remainingSecs = 0;
                                                 
@@ -1583,27 +1710,21 @@ export default function Home() {
                                     ))}
                                 </div>
 
-                                {/* Dynamic Points to Departure Bar */}
+                                {/* Dynamic Compact Points to Departure Bar */}
                                 {showPointsBar && (
-                                    <div className="expand-anim" style={{ background: 'linear-gradient(to right, #fffbea, #fef9c3)', padding: '10px 15px', borderRadius: '12px', marginTop: '15px', border: '1px solid #fde047', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#856404', fontWeight: '900', marginBottom: '8px', fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                                                {SVGS.bus} Next Departures
+                                    <div className="expand-anim" style={{ position: 'relative', border: '1px solid #fde047', borderRadius: '12px', padding: '12px 15px 8px 15px', marginTop: '20px', background: 'linear-gradient(to right, #fffbea, #fef9c3)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                                        <div style={{ position: 'absolute', top: '-10px', left: '50%', transform: 'translateX(-50%)', background: '#fffbea', padding: '2px 12px', borderRadius: '20px', border: '1px solid #fde047', fontSize: '0.65rem', fontWeight: '900', color: '#856404', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                                            {SVGS.bus} Next Departures
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', fontSize: '0.8rem', fontWeight: '900', color: '#002147', flexWrap: 'wrap' }}>
+                                            <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
+                                                <span style={{color: '#b27b00', fontSize: '0.7rem'}}>AC {SVGS.rightArrow} BJC:</span> 
+                                                <span style={{color: '#dc3545', letterSpacing: '1px'}}>{nextUpTimeStr}</span>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', width: '100%' }}>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '0.65rem', fontWeight: '900', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', letterSpacing: '0.5px' }}>
-                                                        AC {SVGS.rightArrow} BJC
-                                                    </div>
-                                                    <div style={{ fontSize: '1.05rem', fontWeight: '900', color: '#856404', marginTop: '2px' }}>{nextUpTimeStr}</div>
-                                                </div>
-                                                <div style={{ borderLeft: '2px dashed #fde047', height: '25px', opacity: 0.5 }}></div>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <div style={{ fontSize: '0.65rem', fontWeight: '900', color: '#b27b00', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', letterSpacing: '0.5px' }}>
-                                                        BJC {SVGS.rightArrow} AC
-                                                    </div>
-                                                    <div style={{ fontSize: '1.05rem', fontWeight: '900', color: '#856404', marginTop: '2px' }}>{nextDownTimeStr}</div>
-                                                </div>
+                                            <div style={{width: '2px', height: '12px', background: '#eab308', opacity: 0.5}}></div>
+                                            <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
+                                                <span style={{color: '#b27b00', fontSize: '0.7rem'}}>BJC {SVGS.rightArrow} AC:</span> 
+                                                <span style={{color: '#dc3545', letterSpacing: '1px'}}>{nextDownTimeStr}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -1614,6 +1735,11 @@ export default function Home() {
                         {/* ======================= SCHEDULE TAB ======================= */}
                         {currentTab === 'class' && !isGuestUser && (
                             <>
+                                {activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type) && (
+                                    <div style={{background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center'}}>
+                                        {SVGS.alertCircle} Examination Period Active. Regular classes may be suspended. Please follow official date sheets.
+                                    </div>
+                                )}
                                 <div style={dayFilter}>
                                     {filterDays.map(day => {
                                         const isActive = activeSchedDays.includes(day);
@@ -2031,76 +2157,86 @@ export default function Home() {
                         {/* ======================= TRANSPORT TAB ======================= */}
                         {currentTab === 'transport' && (
                             <div className="expand-anim" style={whiteCard}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                    <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>University Transport Timings</h4>
-                                </div>
-                                
-                                <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', background: '#f8f9fa', padding: '5px', borderRadius: '10px' }}>
-                                    <button onClick={() => setIsSatTransport(false)} style={{ flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: !isSatTransport ? '#002147' : '#fff', color: !isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Mon - Fri</button>
-                                    <button onClick={() => setIsSatTransport(true)} style={{ flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: isSatTransport ? '#002147' : '#fff', color: isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Saturday</button>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                                    {/* AC to BJC */}
-                                    <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
-                                        <h5 style={{ margin: '0 0 10px 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            {SVGS.bus} AC ➔ BJC
-                                        </h5>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            {(() => {
-                                                const sortedPoints = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
-                                                const nextIndex = (isSatTransport === (currentDayStr === 'SAT')) ? sortedPoints.findIndex(p => parseDbTime(p.departure_time) >= currentMins) : -1;
-
-                                                return sortedPoints.map((p, i) => {
-                                                    const remainingStr = getRemainingDepartureTime(p.departure_time);
-                                                    const isNext = i === nextIndex;
-                                                    
-                                                    return (
-                                                        <div key={i} style={{ background: '#fff', borderRadius: '6px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
-                                                            <div style={{ padding: '8px 4px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
-                                                            {isNext && remainingStr && (
-                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                                    {SVGS.clock} {remainingStr}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                });
-                                            })()}
-                                            {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
-                                        </div>
+                                {currentDayStr === 'SUN' ? (
+                                    <div style={{...emptyState, padding: '40px 10px'}}>
+                                        <div style={{transform: 'scale(2)', marginBottom: '15px', color: '#dc3545', display: 'flex', justifyContent: 'center'}}>{SVGS.bus}</div>
+                                        <h3 style={{color: '#dc3545', margin: '0 0 10px 0'}}>Sunday Off</h3>
+                                        <p style={{margin: 0}}>University transport is not operational today.</p>
                                     </div>
-                                    
-                                    {/* BJC to AC */}
-                                    <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
-                                        <h5 style={{ margin: '0 0 10px 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '5px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            {SVGS.bus} BJC ➔ AC
-                                        </h5>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                            {(() => {
-                                                const sortedPoints = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
-                                                const nextIndex = (isSatTransport === (currentDayStr === 'SAT')) ? sortedPoints.findIndex(p => parseDbTime(p.departure_time) >= currentMins) : -1;
-
-                                                return sortedPoints.map((p, i) => {
-                                                    const remainingStr = getRemainingDepartureTime(p.departure_time);
-                                                    const isNext = i === nextIndex;
-                                                    
-                                                    return (
-                                                        <div key={i} style={{ background: '#fff', borderRadius: '6px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
-                                                            <div style={{ padding: '8px 4px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
-                                                            {isNext && remainingStr && (
-                                                                <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                                    {SVGS.clock} {remainingStr}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                });
-                                            })()}
-                                            {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
+                                ) : (
+                                    <>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                                            <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>University Transport Timings</h4>
                                         </div>
-                                    </div>
-                                </div>
+                                        
+                                        <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', background: '#f8f9fa', padding: '5px', borderRadius: '10px' }}>
+                                            <button onClick={() => setIsSatTransport(false)} style={{ flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: !isSatTransport ? '#002147' : '#fff', color: !isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Mon - Fri</button>
+                                            <button onClick={() => setIsSatTransport(true)} style={{ flex: 1, padding: '8px', fontSize: '0.7rem', fontWeight: 'bold', borderRadius: '6px', border: 'none', background: isSatTransport ? '#002147' : '#fff', color: isSatTransport ? '#F2A900' : '#555', transition: '0.3s', cursor: 'pointer' }}>Saturday</button>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                                            {/* AC to BJC */}
+                                            <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
+                                                <h5 style={{ margin: '0 0 10px 0', color: '#28a745', borderBottom: '2px solid #28a745', paddingBottom: '5px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {SVGS.bus} AC ➔ BJC
+                                                </h5>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    {(() => {
+                                                        const sortedPoints = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
+                                                        const nextIndex = (isSatTransport === (currentDayStr === 'SAT')) ? sortedPoints.findIndex(p => parseDbTime(p.departure_time) >= currentMins) : -1;
+
+                                                        return sortedPoints.map((p, i) => {
+                                                            const remainingStr = getRemainingDepartureTime(p.departure_time);
+                                                            const isNext = i === nextIndex;
+                                                            
+                                                            return (
+                                                                <div key={i} style={{ background: '#fff', borderRadius: '6px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
+                                                                    <div style={{ padding: '8px 4px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                                    {isNext && remainingStr && (
+                                                                        <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                            {SVGS.clock} {remainingStr}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        });
+                                                    })()}
+                                                    {pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* BJC to AC */}
+                                            <div style={{ background: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
+                                                <h5 style={{ margin: '0 0 10px 0', color: '#007bff', borderBottom: '2px solid #007bff', paddingBottom: '5px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                                    {SVGS.bus} BJC ➔ AC
+                                                </h5>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    {(() => {
+                                                        const sortedPoints = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
+                                                        const nextIndex = (isSatTransport === (currentDayStr === 'SAT')) ? sortedPoints.findIndex(p => parseDbTime(p.departure_time) >= currentMins) : -1;
+
+                                                        return sortedPoints.map((p, i) => {
+                                                            const remainingStr = getRemainingDepartureTime(p.departure_time);
+                                                            const isNext = i === nextIndex;
+                                                            
+                                                            return (
+                                                                <div key={i} style={{ background: '#fff', borderRadius: '6px', border: isNext ? '1px solid #F2A900' : '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 'bold', color: '#333', textAlign: 'center', boxShadow: isNext ? '0 4px 10px rgba(242, 169, 0, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)', overflow: 'hidden', transition: 'all 0.3s' }}>
+                                                                    <div style={{ padding: '8px 4px' }}>{convertTo12Hour(p.departure_time.slice(0,5))}</div>
+                                                                    {isNext && remainingStr && (
+                                                                        <div className="expand-anim" style={{ background: '#002147', color: '#F2A900', padding: '6px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                                            {SVGS.clock} {remainingStr}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        });
+                                                    })()}
+                                                    {pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSatTransport).length === 0 && <div style={emptyState}>No buses.</div>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                         
