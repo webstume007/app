@@ -229,7 +229,7 @@ export default function AdminDashboard() {
 
     // NEW: Modals for Semesters and Milestones
     const [isSemesterModalOpen, setIsSemesterModalOpen] = useState(false);
-    const [semesterForm, setSemesterForm] = useState({ id: null, name: '', start_date: '', end_date: '', is_active: false });
+    const [semesterForm, setSemesterForm] = useState({ id: null, name: '', mid_term_start: '', mid_term_end: '', final_term_start: '', final_term_end: '', summer_vacation_start: '', summer_vacation_end: '', is_active: false });
 
     const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
     const [milestoneForm, setMilestoneForm] = useState({ id: null, semester_id: '', event_type: 'regular_classes', planned_start: '', planned_end: '', actual_start: '', actual_end: '', status: 'upcoming' });
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
                 fetchAllRows('point_schedules'),
                 fetchAllRows('students'),
                 fetchAllRows('notifications'),
-                fetchAllRows('semesters'),
+                fetchAllRows('sem_status'), // Changed to sem_status to align with DB changes
                 fetchAllRows('academic_milestones')
             ]);
             
@@ -881,14 +881,46 @@ export default function AdminDashboard() {
     const handleSaveSemester = async (e) => {
         e.preventDefault();
         setActionProcessing(true);
-        const payload = { name: semesterForm.name, start_date: semesterForm.start_date, end_date: semesterForm.end_date, is_active: semesterForm.is_active };
+        const payload = { 
+            semester_name: semesterForm.name, 
+            mid_term_start: semesterForm.mid_term_start || null, 
+            mid_term_end: semesterForm.mid_term_end || null, 
+            final_term_start: semesterForm.final_term_start || null, 
+            final_term_end: semesterForm.final_term_end || null, 
+            summer_vacation_start: semesterForm.summer_vacation_start || null, 
+            summer_vacation_end: semesterForm.summer_vacation_end || null, 
+            is_active: semesterForm.is_active 
+        };
         
         if (payload.is_active) {
-            await supabase.from('semesters').update({ is_active: false }).neq('id', semesterForm.id || 0);
-        }
+            // Need to update using RPC or manual logic here depending on the DB function
+            // If using the RPC function directly:
+            const { error } = await supabase.rpc('rollover_to_new_semester', {
+                new_sem_name: payload.semester_name,
+                new_mid_start: payload.mid_term_start,
+                new_mid_end: payload.mid_term_end,
+                new_final_start: payload.final_term_start,
+                new_final_end: payload.final_term_end,
+                new_summer_start: payload.summer_vacation_start,
+                new_summer_end: payload.summer_vacation_end
+            });
 
-        if (semesterForm.id) await supabase.from('semesters').update(payload).eq('id', semesterForm.id);
-        else await supabase.from('semesters').insert([payload]);
+            if(error) {
+                alert("Error during semester rollover: " + error.message);
+                console.error(error);
+            } else {
+                 setUploadStatus({ type: 'success', text: `Successfully rolled over to new active semester: ${payload.semester_name}` });
+            }
+            
+        } else {
+            // Update existing or insert non-active
+            if (semesterForm.id) {
+                await supabase.from('sem_status').update(payload).eq('id', semesterForm.id);
+            } else {
+                 await supabase.from('sem_status').insert([payload]);
+            }
+            setUploadStatus({ type: 'success', text: `Semester ${semesterForm.id ? 'updated' : 'added'} successfully.` });
+        }
 
         setIsSemesterModalOpen(false);
         await fetchDeepDatabase();
@@ -1080,7 +1112,7 @@ export default function AdminDashboard() {
                                 <button onClick={() => academicSubTab === 'semesters' ? openCreateUserModal('NA') /* Using existing modal logic replaced below */ : setIsMilestoneModalOpen(true)} 
                                         onClickCapture={() => {
                                             if (academicSubTab === 'semesters') {
-                                                setSemesterForm({ id: null, name: '', start_date: '', end_date: '', is_active: false });
+                                                setSemesterForm({ id: null, name: '', mid_term_start: '', mid_term_end: '', final_term_start: '', final_term_end: '', summer_vacation_start: '', summer_vacation_end: '', is_active: false });
                                                 setIsSemesterModalOpen(true);
                                             } else {
                                                 setMilestoneForm({ id: null, semester_id: '', event_type: 'regular_classes', planned_start: '', planned_end: '', actual_start: '', actual_end: '', status: 'upcoming' });
@@ -1094,14 +1126,30 @@ export default function AdminDashboard() {
                         {academicSubTab === 'semesters' && (
                             <div className="expand-anim">
                                 <p style={styles.subText}>Govern macro academic periods. Only one semester operates in LIVE mode to prevent spatial tearing.</p>
-                                <div style={styles.grid3}>
+                                <div style={styles.grid2}>
                                     {semesters.map(sem => (
                                         <div key={sem.id} style={{ background: sem.is_active ? 'linear-gradient(135deg, #002147, #003366)' : '#f8f9fa', color: sem.is_active ? '#fff' : '#333', padding: '20px', borderRadius: '15px', border: sem.is_active ? 'none' : '1px solid #eee', position: 'relative', overflow: 'hidden', transition: 'all 0.3s ease' }}>
                                             {sem.is_active && <div style={{position: 'absolute', top: 0, right: 0, background: '#28a745', padding: '4px 12px', fontSize: '0.65rem', fontWeight: 900, borderBottomLeftRadius: '10px'}}>LIVE NOW</div>}
-                                            <h4 style={{margin: '0 0 10px 0', fontSize: '1.2rem', color: sem.is_active ? '#F2A900' : '#002147'}}>{sem.name}</h4>
-                                            <div style={{fontSize: '0.8rem', opacity: 0.8, marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px'}}>{SVGS.calendar} Start: {new Date(sem.start_date).toLocaleDateString()}</div>
-                                            <div style={{fontSize: '0.8rem', opacity: 0.8, marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '5px'}}>{SVGS.calendar} End: {new Date(sem.end_date).toLocaleDateString()}</div>
-                                            <button onClick={() => { setSemesterForm(sem); setIsSemesterModalOpen(true); }} style={sem.is_active ? styles.btnNeutralSm : styles.btnPrimarySm}>{SVGS.edit} Edit Vector</button>
+                                            <h4 style={{margin: '0 0 15px 0', fontSize: '1.2rem', color: sem.is_active ? '#F2A900' : '#002147'}}>{sem.semester_name}</h4>
+                                            
+                                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px'}}>
+                                                <div>
+                                                    <div style={{fontSize: '0.75rem', fontWeight: 'bold', color: sem.is_active ? '#93c5fd' : '#0369a1'}}>Mid Terms</div>
+                                                    <div style={{fontSize: '0.8rem', opacity: 0.9}}>{sem.mid_term_start ? new Date(sem.mid_term_start).toLocaleDateString() : 'N/A'} - {sem.mid_term_end ? new Date(sem.mid_term_end).toLocaleDateString() : 'N/A'}</div>
+                                                </div>
+                                                <div>
+                                                    <div style={{fontSize: '0.75rem', fontWeight: 'bold', color: sem.is_active ? '#fca5a5' : '#b91c1c'}}>Final Terms</div>
+                                                    <div style={{fontSize: '0.8rem', opacity: 0.9}}>{sem.final_term_start ? new Date(sem.final_term_start).toLocaleDateString() : 'N/A'} - {sem.final_term_end ? new Date(sem.final_term_end).toLocaleDateString() : 'N/A'}</div>
+                                                </div>
+                                                <div style={{gridColumn: '1 / -1'}}>
+                                                    <div style={{fontSize: '0.75rem', fontWeight: 'bold', color: sem.is_active ? '#fde047' : '#a16207'}}>Summer Vacations</div>
+                                                    <div style={{fontSize: '0.8rem', opacity: 0.9}}>{sem.summer_vacation_start ? new Date(sem.summer_vacation_start).toLocaleDateString() : 'N/A'} - {sem.summer_vacation_end ? new Date(sem.summer_vacation_end).toLocaleDateString() : 'N/A'}</div>
+                                                </div>
+                                            </div>
+                                            
+                                            <button onClick={() => { setSemesterForm({
+                                                id: sem.id, name: sem.semester_name, mid_term_start: sem.mid_term_start || '', mid_term_end: sem.mid_term_end || '', final_term_start: sem.final_term_start || '', final_term_end: sem.final_term_end || '', summer_vacation_start: sem.summer_vacation_start || '', summer_vacation_end: sem.summer_vacation_end || '', is_active: sem.is_active
+                                            }); setIsSemesterModalOpen(true); }} style={sem.is_active ? styles.btnNeutralSm : styles.btnPrimarySm}>{SVGS.edit} Edit Vector</button>
                                         </div>
                                     ))}
                                     {semesters.length === 0 && <div style={styles.emptyBox}>No macro timelines declared.</div>}
@@ -1117,7 +1165,7 @@ export default function AdminDashboard() {
                                         <label style={styles.label}>Isolate Target Semester</label>
                                         <select value={milestoneFilterSem} onChange={e=>setMilestoneFilterSem(e.target.value)} style={{...styles.inputBox, marginBottom: 0}}>
                                             <option value="">-- Required Select --</option>
-                                            {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            {semesters.map(s => <option key={s.id} value={s.id}>{s.semester_name}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -1811,16 +1859,40 @@ export default function AdminDashboard() {
                                 <label style={styles.label}>Semester Target Identity (Name)</label>
                                 <input type="text" required placeholder="e.g. Spring 2026" value={semesterForm.name} onChange={e=>setSemesterForm({...semesterForm, name:e.target.value})} style={styles.inputBox} />
                             </div>
+                            
                             <div style={{display: 'flex', gap: '10px'}}>
                                 <div style={{flex: 1}}>
-                                    <label style={styles.label}>Epoch Start Date</label>
-                                    <input type="date" required value={semesterForm.start_date} onChange={e=>setSemesterForm({...semesterForm, start_date:e.target.value})} style={styles.inputBox} />
+                                    <label style={styles.label}>Mid-Term Start Date</label>
+                                    <input type="date" value={semesterForm.mid_term_start} onChange={e=>setSemesterForm({...semesterForm, mid_term_start:e.target.value})} style={styles.inputBox} />
                                 </div>
                                 <div style={{flex: 1}}>
-                                    <label style={styles.label}>Epoch End Date</label>
-                                    <input type="date" required value={semesterForm.end_date} onChange={e=>setSemesterForm({...semesterForm, end_date:e.target.value})} style={styles.inputBox} />
+                                    <label style={styles.label}>Mid-Term End Date</label>
+                                    <input type="date" value={semesterForm.mid_term_end} onChange={e=>setSemesterForm({...semesterForm, mid_term_end:e.target.value})} style={styles.inputBox} />
                                 </div>
                             </div>
+
+                            <div style={{display: 'flex', gap: '10px'}}>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Final-Term Start Date</label>
+                                    <input type="date" value={semesterForm.final_term_start} onChange={e=>setSemesterForm({...semesterForm, final_term_start:e.target.value})} style={styles.inputBox} />
+                                </div>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Final-Term End Date</label>
+                                    <input type="date" value={semesterForm.final_term_end} onChange={e=>setSemesterForm({...semesterForm, final_term_end:e.target.value})} style={styles.inputBox} />
+                                </div>
+                            </div>
+
+                            <div style={{display: 'flex', gap: '10px'}}>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Summer Vacation Start</label>
+                                    <input type="date" value={semesterForm.summer_vacation_start} onChange={e=>setSemesterForm({...semesterForm, summer_vacation_start:e.target.value})} style={styles.inputBox} />
+                                </div>
+                                <div style={{flex: 1}}>
+                                    <label style={styles.label}>Summer Vacation End</label>
+                                    <input type="date" value={semesterForm.summer_vacation_end} onChange={e=>setSemesterForm({...semesterForm, summer_vacation_end:e.target.value})} style={styles.inputBox} />
+                                </div>
+                            </div>
+
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #eee' }}>
                                 <input type="checkbox" id="semActive" checked={semesterForm.is_active} onChange={e=>setSemesterForm({...semesterForm, is_active:e.target.checked})} style={{width: '20px', height: '20px', accentColor: '#28a745'}} />
                                 <label htmlFor="semActive" style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#002147', cursor: 'pointer' }}>Set LIVE as Active Default Semester</label>
@@ -1845,7 +1917,7 @@ export default function AdminDashboard() {
                                     <label style={styles.label}>Bind to Semester Matrix</label>
                                     <select required value={milestoneForm.semester_id} onChange={e=>setMilestoneForm({...milestoneForm, semester_id:e.target.value})} style={styles.inputBox}>
                                         <option value="">-- Target DB PK --</option>
-                                        {semesters.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                                        {semesters.map(s=><option key={s.id} value={s.id}>{s.semester_name}</option>)}
                                     </select>
                                 </div>
                                 <div style={{flex: 1}}>
