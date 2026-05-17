@@ -9,7 +9,6 @@ const ICONS = {
     send: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>, 
     menu: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="14" y2="15"/></svg>,
     trash: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-    // NEW: Chevron Up for Model Selector
     chevronUp: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
 };
 
@@ -33,8 +32,8 @@ export default function AIBot({ groqApiKey }) {
     const [currentSessionId, setCurrentSessionId] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // --- UPGRADED: Model Selector States (Defaults to currently supported Llama 8B) ---
-    const [activeModel, setActiveModel] = useState('llama-3.1-8b-instant'); 
+    // --- UPGRADED: Model Selector States (Now Defaults to Auto) ---
+    const [activeModel, setActiveModel] = useState('auto'); 
     const [showModelMenu, setShowModelMenu] = useState(false);
 
     const messagesEndRef = useRef(null);
@@ -69,11 +68,17 @@ export default function AIBot({ groqApiKey }) {
         return 'Unknown Semester';
     };
 
+    // --- UPGRADED: Force PKT (UTC+5) Timezone ---
     const getCurrentTime12Hour = () => {
-        return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        return new Date().toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: true, 
+            timeZone: 'Asia/Karachi' 
+        });
     };
 
-    // --- Core Lifecycle Optimization (Unchanged Logic) ---
+    // --- Core Lifecycle Optimization (Upgraded to always start new chat on load) ---
     useEffect(() => {
         const savedSelection = localStorage.getItem('iub_user_selection');
         const savedRoll = localStorage.getItem('iub_my_roll');
@@ -105,19 +110,12 @@ export default function AIBot({ groqApiKey }) {
             }
         }
 
-        // Load Multiple Chat Sessions
+        // Load Multiple Chat Sessions into Sidebar
         const loadedSessions = JSON.parse(localStorage.getItem(`iub_sessions_${session}_${section}`)) || [];
         setSessions(loadedSessions);
 
-        const key = `iub_chat_history_${session}_${section}`;
-        const savedChat = localStorage.getItem(key);
-        
-        if (savedChat) {
-            setMessages(JSON.parse(savedChat));
-            setCurrentSessionId(loadedSessions.length > 0 ? loadedSessions[0].id : Date.now().toString());
-        } else {
-            handleNewChat();
-        }
+        // ALWAYS START A NEW CHAT ON FRESH LOAD
+        handleNewChat();
 
         if (session && section && section !== 'GUEST') {
             const fetchOutlines = async () => {
@@ -165,7 +163,7 @@ export default function AIBot({ groqApiKey }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // --- Context Compilation Architecture (Upgraded Instructions with Developer Info) ---
+    // --- Context Compilation Architecture (Upgraded Table Rule) ---
     const buildSystemContextInstruction = () => {
         const outlineContext = courseOutlines.map(o => 
             `Subject: ${o.subject}\nTeacher: ${o.teacher || 'N/A'}\nWeekly Outline Details: ${o.weekly_plan || 'N/A'}\nLearning Objectives: ${o.objectives || 'N/A'}`
@@ -202,7 +200,7 @@ ${transportContext || "No active operational transit parameters logged."}
 CRITICAL RULES OF ENGAGEMENT:
 - CONCISENESS IS REQUIRED: If the user says "Hi", "Hello", or gives a basic greeting, ONLY reply with a short, polite greeting (e.g. "Hi ${userMeta.name}, how can I help you today?"). DO NOT output schedule or transport data unless explicitly asked.
 - DATA PRESENTATION: When asked about data (transport points, schedule, etc.), DO NOT output the raw database text. Summarize and organize it beautifully into natural conversational language or bullet points.
-- ABSOLUTELY NO TABLES: You are STRICTLY FORBIDDEN from using markdown tables in your responses. You MUST format all data, schedules, and information using simple, easy-to-read bullet points.
+- DEFAULT NO TABLES: By default, you MUST format all data, schedules, and information using simple, easy-to-read bullet points. DO NOT use markdown tables UNLESS the user explicitly asks for a table (e.g., "give in table format", "make a table"). If explicitly requested by the user, you MUST comply and provide a markdown table.
 - TIME FORMAT CONVERSION: You MUST convert any time fetched from the database in 24-hour format into 12-hour format (e.g., convert 14:00 to 2:00 PM) before displaying it to the user.
 - Format your output strictly using Markdown (use ### for headings, ** for bold). 
 - Maintain a highly sophisticated, adaptive, supportive yet peer-like academic posture. Provide actionable answers concisely without fluff.`;
@@ -229,7 +227,21 @@ CRITICAL RULES OF ENGAGEMENT:
 
         try {
             let aiGeneratedText = "";
-            const isGroqModel = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b'].includes(activeModel);
+            let resolveModelToUse = activeModel;
+
+            // --- AUTO MODEL SELECTION LOGIC ---
+            if (activeModel === 'auto') {
+                const lowerText = studentMessageText.toLowerCase();
+                // If the prompt is complex, long, or asks for tables/analysis, use Gemini Flash
+                if (studentMessageText.length > 150 || lowerText.includes('table') || lowerText.includes('outline') || lowerText.includes('detailed')) {
+                    resolveModelToUse = 'gemini-2.5-flash';
+                } else {
+                    // Quick, conversational, short questions get the fast Llama model
+                    resolveModelToUse = 'llama-3.1-8b-instant';
+                }
+            }
+
+            const isGroqModel = ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b'].includes(resolveModelToUse);
 
             if (isGroqModel) {
                 const memoryHorizonArray = messages.slice(-10).map(m => ({
@@ -255,7 +267,7 @@ CRITICAL RULES OF ENGAGEMENT:
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        model: activeModel, 
+                        model: resolveModelToUse, 
                         messages: targetPayloadMessages,
                         temperature: 0.3,
                         max_tokens: 1500
@@ -269,8 +281,8 @@ CRITICAL RULES OF ENGAGEMENT:
                 // --- DYNAMIC GEMINI ROUTING ---
                 const systemContextString = buildSystemContextInstruction();
                 const geminiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-                // Safely handles the updated Gemini 2.5 models
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${geminiKey}`;
+                
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${resolveModelToUse}:generateContent?key=${geminiKey}`;
                 
                 const geminiHistory = messages.slice(-10).map(m => ({
                     role: m.sender === 'user' ? 'user' : 'model',
@@ -321,7 +333,7 @@ CRITICAL RULES OF ENGAGEMENT:
             {
                 id: `welcome-${Date.now()}`,
                 sender: 'bot',
-                text: `Hi, I am IUB AI Assitant, How I can help you in Schedule, Course outline, Points timings and your section's Info?`,
+                text: `Hi, I am IUB AI Assitant, How Can I help you in Schedule, Course Outline, Points Timing and Your Section's Teachers Info?`,
                 timestamp: getCurrentTime12Hour()
             }
         ]);
@@ -459,7 +471,7 @@ CRITICAL RULES OF ENGAGEMENT:
                                         disabled={isTyping}
                                     />
 
-                                    {/* --- UPGRADED MODEL SELECTOR (GROQ & GEMINI) --- */}
+                                    {/* --- UPGRADED MODEL SELECTOR (GROQ, GEMINI & AUTO) --- */}
                                     <div style={{ position: 'absolute', right: '46px', top: '50%', transform: 'translateY(-50%)' }}>
                                         <button 
                                             type="button" 
@@ -468,21 +480,31 @@ CRITICAL RULES OF ENGAGEMENT:
                                             title="Select AI Model"
                                         >
                                             <span style={{ fontSize: '11px', fontWeight: '700', marginRight: '4px' }}>
-                                                {activeModel.includes('llama') ? 'LLM' : activeModel.includes('gpt') ? 'GPT' : 'GEM'}
+                                                {activeModel === 'auto' ? 'AUTO' : activeModel.includes('llama') ? 'LLM' : activeModel.includes('gpt') ? 'GPT' : 'GEM'}
                                             </span>
                                             {ICONS.chevronUp}
                                         </button>
 
                                         {showModelMenu && (
                                             <div style={modelMenuPopupStyle}>
+                                                {/* Smart Auto Routing Option */}
+                                                <div style={menuCategoryHeaderStyle}>Smart Routing</div>
+                                                <div 
+                                                    style={modelMenuItem(activeModel === 'auto')} 
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('auto'); setShowModelMenu(false); }}
+                                                >
+                                                    <div style={{ fontSize: '13px', fontWeight: '600' }}>Auto (Recommended)</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Chooses best model dynamically</div>
+                                                </div>
+
                                                 {/* Groq Models */}
-                                                <div style={menuCategoryHeaderStyle}>Groq (Fast)</div>
+                                                <div style={{...menuCategoryHeaderStyle, borderTop: '1px solid #f1f5f9', marginTop: '4px', paddingTop: '8px'}}>Groq (Fast)</div>
                                                 <div 
                                                     style={modelMenuItem(activeModel === 'llama-3.1-8b-instant')} 
                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('llama-3.1-8b-instant'); setShowModelMenu(false); }}
                                                 >
                                                     <div style={{ fontSize: '13px', fontWeight: '600' }}>Llama 3.1 (8B)</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Instant / Default</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Instant / Fast</div>
                                                 </div>
                                                 <div 
                                                     style={modelMenuItem(activeModel === 'llama-3.3-70b-versatile')} 
@@ -506,7 +528,7 @@ CRITICAL RULES OF ENGAGEMENT:
                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gemini-2.5-flash-lite'); setShowModelMenu(false); }}
                                                 >
                                                     <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 2.5 Flash-Lite</div>
-                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Fastest</div>
+                                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Fastest Gemini</div>
                                                 </div>
                                                 <div 
                                                     style={modelMenuItem(activeModel === 'gemini-2.5-flash')} 
@@ -702,7 +724,7 @@ const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems
 const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '20px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
 const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
 
-// --- UPGRADED STYLES FOR DROPDOWN (Includes Max-Height for 5 options) ---
+// --- UPGRADED STYLES FOR DROPDOWN (Includes Max-Height for options) ---
 const modelDropdownBtnStyle = { background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '16px', height: '26px', padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', zIndex: 11 };
 const modelMenuPopupStyle = { position: 'absolute', bottom: 'calc(100% + 12px)', right: '-10px', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', borderRadius: '14px', padding: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', minWidth: '180px', zIndex: 999, display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '400px', overflowY: 'auto' };
 const modelMenuItem = (isActive) => ({ padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s', background: isActive ? '#f0f9ff' : 'transparent', border: isActive ? '1px solid #bae6fd' : '1px solid transparent' });
