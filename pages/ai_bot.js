@@ -150,7 +150,7 @@ export default function AIBot({ groqApiKey }) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // --- Context Compilation Architecture (Unchanged) ---
+    // --- Context Compilation Architecture (Upgraded Instructions) ---
     const buildSystemContextInstruction = () => {
         const outlineContext = courseOutlines.map(o => 
             `Subject: ${o.subject}\nTeacher: ${o.teacher || 'N/A'}\nWeekly Outline Details: ${o.weekly_plan || 'N/A'}\nLearning Objectives: ${o.objectives || 'N/A'}`
@@ -183,8 +183,10 @@ ${transportContext || "No active operational transit parameters logged."}
 
 CRITICAL RULES OF ENGAGEMENT:
 - CONCISENESS IS REQUIRED: If the user says "Hi", "Hello", or gives a basic greeting, ONLY reply with a short, polite greeting (e.g. "Hi ${userMeta.name}, how can I help you today?"). DO NOT output schedule or transport data unless explicitly asked.
-- DATA PRESENTATION: When asked about data (transport points, schedule, etc.), DO NOT output the raw database text. Summarize and organize it beautifully into natural conversational language, bullet points, or clean Markdown tables.
-- Format your output strictly using Markdown (use ### for headings, ** for bold, and | tables |). 
+- DATA PRESENTATION: When asked about data (transport points, schedule, etc.), DO NOT output the raw database text. Summarize and organize it beautifully into natural conversational language or bullet points.
+- STRICT TABLE RULE: NEVER output your answers in a table format UNTIL the user explicitly asks you to "give me in table format".
+- TIME FORMAT CONVERSION: You MUST convert any time fetched from the database in 24-hour format into 12-hour format (e.g., convert 14:00 to 2:00 PM) before displaying it to the user.
+- Format your output strictly using Markdown (use ### for headings, ** for bold). 
 - Maintain a highly sophisticated, adaptive, supportive yet peer-like academic posture. Provide actionable answers concisely without fluff.`;
     };
 
@@ -291,6 +293,12 @@ CRITICAL RULES OF ENGAGEMENT:
 
     const clearChatHistoryStateLog = () => {
         if (window.confirm("Are you sure you want to clear this current chat?")) {
+            // FIX: Removes completely from Sidebar state and LocalStorage permanently
+            const updatedSessions = sessions.filter(s => s.id !== currentSessionId);
+            setSessions(updatedSessions);
+            localStorage.setItem(`iub_sessions_${userMeta.session}_${userMeta.section}`, JSON.stringify(updatedSessions));
+            localStorage.removeItem(`iub_chat_history_${userMeta.session}_${userMeta.section}`);
+            
             handleNewChat();
         }
     };
@@ -300,14 +308,14 @@ CRITICAL RULES OF ENGAGEMENT:
     // --- Sub-Component Parser Upgraded for Real Markdown & Safe Tables ---
     const StructuralMessageBlock = ({ text }) => {
         return (
-            <div className="modern-markdown-body" style={contentBodyStyle}>
+            <div className="modern-markdown-body" style={{...contentBodyStyle, maxWidth: '100%', overflowX: 'hidden'}}>
                 <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
-                        // CRITICAL FIX: maxWidth: '100%' and display: 'block' strictly isolates the table
+                        // FIX: Removed display block to prevent mobile snap-back, simplified styles to allow native scroll
                         table: ({node, ...props}) => (
-                            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', maxWidth: '100%', margin: '0.75rem 0', borderRadius: '6px', border: '1px solid #f1f5f9', display: 'block' }}>
-                                <table {...props} style={{ width: '100%', minWidth: 'max-content', borderCollapse: 'collapse', margin: 0, fontSize: '0.8rem' }} />
+                            <div style={{ overflowX: 'auto', width: '100%', maxWidth: '100%', margin: '0.75rem 0', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
+                                <table {...props} style={{ width: '100%', minWidth: '100%', borderCollapse: 'collapse', margin: 0, fontSize: '0.8rem' }} />
                             </div>
                         ),
                         th: ({node, ...props}) => <th {...props} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: '600', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#334155', whiteSpace: 'nowrap' }} />,
@@ -356,7 +364,10 @@ CRITICAL RULES OF ENGAGEMENT:
                         <div style={chatDialogueDisplayBox}>
                             {isNewChat ? (
                                 <div style={heroEntranceCenter}>
-                                    <div style={heroLogoWrap}><IubAvatar size={42} /></div>
+                                    {/* FIX: Animated Logo Glow Wrapper Appended */}
+                                    <div className="logo-glow-wrapper">
+                                        <div style={heroLogoWrap}><IubAvatar size={42} /></div>
+                                    </div>
                                     <h2 style={heroTitle}>IUB AI Assistant</h2>
                                     <p style={heroSubtitle}>{messages[0]?.text}</p>
                                 </div>
@@ -443,18 +454,57 @@ CRITICAL RULES OF ENGAGEMENT:
                         100% { opacity: 1; transform: translateY(0); }
                     }
 
-                    /* Animated Neon Gradient Border */
+                    /* FIX: Animated Neon Gradient Border + Glow Adjustments */
                     .animated-neon-border {
                         position: relative;
-                        padding: 1px;
-                        border-radius: 24px;
+                        padding: 2px; /* Increased border width slightly */
+                        border-radius: 20px; /* Slight decrease roundness */
                         background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
                         background-size: 300% 100%;
                         animation: aiGlow 4s linear infinite;
                         width: 100%;
                         max-width: 700px;
                         margin: 0 auto;
+                        z-index: 1;
                     }
+                    .animated-neon-border::before {
+                        content: "";
+                        position: absolute;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        border-radius: 20px;
+                        background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
+                        background-size: 300% 100%;
+                        animation: aiGlow 4s linear infinite;
+                        filter: blur(12px); /* Adding Google-like moving shadow */
+                        opacity: 0.5;
+                        z-index: -1;
+                    }
+                    
+                    /* FIX: Re-using the exact gradient glow for the Logo Wrapper */
+                    .logo-glow-wrapper {
+                        position: relative;
+                        width: 64px; height: 64px;
+                        border-radius: 50%;
+                        margin-bottom: 16px;
+                        background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
+                        background-size: 300% 100%;
+                        animation: aiGlow 4s linear infinite;
+                        padding: 2px;
+                        z-index: 1;
+                    }
+                    .logo-glow-wrapper::before {
+                        content: "";
+                        position: absolute;
+                        top: 0; left: 0; right: 0; bottom: 0;
+                        border-radius: 50%;
+                        background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
+                        background-size: 300% 100%;
+                        animation: aiGlow 4s linear infinite;
+                        filter: blur(12px);
+                        opacity: 0.5;
+                        z-index: -1;
+                    }
+
                     @keyframes aiGlow {
                         0% { background-position: 100% 0; }
                         100% { background-position: 0 0; }
@@ -492,7 +542,7 @@ CRITICAL RULES OF ENGAGEMENT:
                         }
                     }
 
-                    /* Markdown Overrides to Fix Empty Space & Margins */
+                    /* Markdown Overrides */
                     .modern-markdown-body p { margin-top: 0; margin-bottom: 0.75rem; }
                     .modern-markdown-body p:first-child { margin-top: 0; }
                     .modern-markdown-body p:last-child { margin-bottom: 0; }
@@ -523,7 +573,6 @@ CRITICAL RULES OF ENGAGEMENT:
 }
 
 // --- Structural Theme Styling Specs ---
-// Outer container is styled with boxSizing to fix padding/stretching.
 const botContainerWrapper = { display: 'flex', flexDirection: 'column', background: '#ffffff', width: '100%', maxWidth: '1000px', margin: '0 auto', height: 'calc(100vh - 80px)', minHeight: '500px', boxShadow: '0 0 20px rgba(0,0,0,0.03)', boxSizing: 'border-box' };
 const botHeaderRibbon = { background: '#ffffff', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f8fafc', zIndex: 10, boxSizing: 'border-box' };
 const flexAlignRow = { display: 'flex', alignItems: 'center', gap: '8px' };
@@ -532,30 +581,27 @@ const botTitleLabel = { color: '#0f172a', fontSize: '0.85rem', fontWeight: '600'
 const botSubStatus = { color: '#94a3b8', fontSize: '0.65rem', fontWeight: '400' };
 const clearMemoryActionBtn = { background: 'transparent', color: '#64748b', border: 'none', padding: '6px', cursor: 'pointer', transition: 'color 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 
-// Increased horizontal padding (20px left/right) for breathable spacing from screen edges
 const chatDialogueDisplayBox = { flex: 1, padding: '20px 20px', overflowY: 'auto', background: '#ffffff', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' };
 
-// Center Entrance Styles (Grok/ChatGPT vibe)
+// Center Entrance Styles
 const heroEntranceCenter = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: '10vh' };
-const heroLogoWrap = { width: '64px', height: '64px', borderRadius: '50%', background: '#ffffff', boxShadow: '0 4px 14px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' };
+// FIX: Margin and shadows mapped out to Logo Glow wrapper. Native logo wrap just centers.
+const heroLogoWrap = { width: '100%', height: '100%', borderRadius: '50%', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' };
 const heroTitle = { fontSize: '1.25rem', fontWeight: '600', color: '#0f172a', margin: '0 0 8px 0', letterSpacing: '-0.4px' };
 const heroSubtitle = { fontSize: '0.85rem', color: '#64748b', textAlign: 'center', maxWidth: '300px', lineHeight: '1.5' };
 
-// CRITICAL FIX: minWidth: 0 prevents flexbox children from stretching the layout
 const messagesConstraintBox = { width: '100%', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 };
 
 const dialogRowUserTrack = { display: 'flex', justifyContent: 'flex-end', width: '100%' };
 const dialogRowBotTrack = { display: 'flex', justifyContent: 'flex-start', width: '100%', gap: '10px', minWidth: 0 };
 
-// Re-styled slightly rounded bubbles without extra spacing
 const userDialogueWrapperBubble = { maxWidth: '85%', background: '#f8fafc', color: '#0f172a', borderRadius: '12px', padding: '10px 12px', fontSize: '0.85rem', lineHeight: '1.5', border: '1px solid #f1f5f9', boxSizing: 'border-box' };
-// CRITICAL FIX: minWidth: 0 stops the bubble container from stretching
 const botDialogueWrapperBubble = { flex: 1, maxWidth: '100%', minWidth: 0, color: '#0f172a', borderRadius: '0', padding: '0' };
 
 const formInteractionPanelTray = { background: '#ffffff', padding: '10px 20px 16px', display: 'flex', justifyContent: 'center', position: 'sticky', bottom: 0, zIndex: 10, boxSizing: 'border-box' };
-const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '24px', boxSizing: 'border-box' };
-const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '24px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
-// Send button made Absolute to float perfectly inside the input field
+// FIX: Applied 20px Border Radius
+const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems: 'center', width: '100%', background: '#ffffff', borderRadius: '20px', boxSizing: 'border-box' };
+const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '20px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
 const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
 
 const contentBodyStyle = { fontSize: '0.9rem', lineHeight: '1.6', wordBreak: 'break-word' };
