@@ -199,7 +199,7 @@ ${transportContext || "No active operational transit parameters logged."}
 CRITICAL RULES OF ENGAGEMENT:
 - CONCISENESS IS REQUIRED: If the user says "Hi", "Hello", or gives a basic greeting, ONLY reply with a short, polite greeting (e.g. "Hi ${userMeta.name}, how can I help you today?"). DO NOT output schedule or transport data unless explicitly asked.
 - DATA PRESENTATION: When asked about data (transport points, schedule, etc.), DO NOT output the raw database text. Summarize and organize it beautifully into natural conversational language or bullet points.
-- STRICT TABLE RULE: NEVER output your answers in a table format UNTIL the user explicitly asks you to "give me in table format".
+- ABSOLUTELY NO TABLES: You are STRICTLY FORBIDDEN from using markdown tables in your responses. You MUST format all data, schedules, and information using simple, easy-to-read bullet points.
 - TIME FORMAT CONVERSION: You MUST convert any time fetched from the database in 24-hour format into 12-hour format (e.g., convert 14:00 to 2:00 PM) before displaying it to the user.
 - Format your output strictly using Markdown (use ### for headings, ** for bold). 
 - Maintain a highly sophisticated, adaptive, supportive yet peer-like academic posture. Provide actionable answers concisely without fluff.`;
@@ -352,14 +352,14 @@ CRITICAL RULES OF ENGAGEMENT:
     // --- Sub-Component Parser Upgraded for Real Markdown & Safe Tables ---
     const StructuralMessageBlock = ({ text }) => {
         return (
-            <div className="modern-markdown-body" style={{...contentBodyStyle, maxWidth: '100%', overflowX: 'hidden'}}>
+            <div className="modern-markdown-body" style={{...contentBodyStyle, maxWidth: '100%', overflowX: 'auto'}}>
                 <ReactMarkdown 
                     remarkPlugins={[remarkGfm]}
                     components={{
-                        // FIX: Removed display block to prevent mobile snap-back, simplified styles to allow native scroll
+                        // FIX: Injected minWidth 'max-content' so the table triggers the parent overflowX scroll safely
                         table: ({node, ...props}) => (
                             <div style={{ overflowX: 'auto', width: '100%', maxWidth: '100%', margin: '0.75rem 0', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
-                                <table {...props} style={{ width: '100%', minWidth: '100%', borderCollapse: 'collapse', margin: 0, fontSize: '0.8rem' }} />
+                                <table {...props} style={{ width: '100%', minWidth: 'max-content', borderCollapse: 'collapse', margin: 0, fontSize: '0.8rem' }} />
                             </div>
                         ),
                         th: ({node, ...props}) => <th {...props} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: '600', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#334155', whiteSpace: 'nowrap' }} />,
@@ -460,9 +460,10 @@ CRITICAL RULES OF ENGAGEMENT:
 
                                     {/* --- NEW MODEL SELECTOR --- */}
                                     <div style={{ position: 'absolute', right: '46px', top: '50%', transform: 'translateY(-50%)' }}>
+                                        {/* FIX: Added e.stopPropagation() to prevent document level click from instantly closing menu */}
                                         <button 
                                             type="button" 
-                                            onClick={(e) => { e.preventDefault(); setShowModelMenu(!showModelMenu); }}
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowModelMenu(!showModelMenu); }}
                                             style={modelDropdownBtnStyle}
                                             title="Select AI Model"
                                         >
@@ -476,14 +477,14 @@ CRITICAL RULES OF ENGAGEMENT:
                                             <div style={modelMenuPopupStyle}>
                                                 <div 
                                                     style={modelMenuItem(activeModel === 'gpt-oss')} 
-                                                    onClick={(e) => { e.preventDefault(); setActiveModel('gpt-oss'); setShowModelMenu(false); }}
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gpt-oss'); setShowModelMenu(false); }}
                                                 >
                                                     <div style={{ fontSize: '13px', fontWeight: '600' }}>GPT OSS</div>
                                                     <div style={{ fontSize: '10px', color: '#94a3b8' }}>Groq Engine (Fast)</div>
                                                 </div>
                                                 <div 
                                                     style={modelMenuItem(activeModel === 'gemini-pro')} 
-                                                    onClick={(e) => { e.preventDefault(); setActiveModel('gemini-pro'); setShowModelMenu(false); }}
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveModel('gemini-pro'); setShowModelMenu(false); }}
                                                 >
                                                     <div style={{ fontSize: '13px', fontWeight: '600' }}>Gemini 1.5 Pro</div>
                                                     <div style={{ fontSize: '10px', color: '#94a3b8' }}>Google AI (Smart)</div>
@@ -683,9 +684,9 @@ const inputContainerBoxRel = { position: 'relative', display: 'flex', alignItems
 const inputEntryFieldStyle = { flex: 1, padding: '12px 48px 12px 16px', border: 'none', borderRadius: '20px', fontSize: '0.95rem', background: 'transparent', outline: 'none', color: '#0f172a' };
 const actionDispatchSubmissionBtn = (active) => ({ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', width: '32px', height: '32px', background: active ? '#0ea5e9' : '#f1f5f9', color: active ? '#ffffff' : '#94a3b8', border: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: active ? 'pointer' : 'default', transition: 'all 0.2s' });
 
-// --- NEW STYLES FOR DROPDOWN ---
+// --- NEW STYLES FOR DROPDOWN (UPGRADED BEAUTIFUL UI) ---
 const modelDropdownBtnStyle = { background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '16px', height: '26px', padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', zIndex: 11 };
-const modelMenuPopupStyle = { position: 'absolute', bottom: 'calc(100% + 12px)', right: '-20px', background: '#ffffff', borderRadius: '14px', padding: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', minWidth: '150px', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '4px' };
+const modelMenuPopupStyle = { position: 'absolute', bottom: 'calc(100% + 12px)', right: '-10px', background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(8px)', borderRadius: '14px', padding: '8px', boxShadow: '0 10px 40px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', minWidth: '160px', zIndex: 999, display: 'flex', flexDirection: 'column', gap: '4px' };
 const modelMenuItem = (isActive) => ({ padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.2s', background: isActive ? '#f0f9ff' : 'transparent', border: isActive ? '1px solid #bae6fd' : '1px solid transparent' });
 
 const contentBodyStyle = { fontSize: '0.9rem', lineHeight: '1.6', wordBreak: 'break-word' };
