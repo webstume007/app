@@ -215,7 +215,7 @@ export default function Dashboard() {
     const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); 
     const [attendanceSemesterFilter, setAttendanceSemesterFilter] = useState('');
     const [uploadCsvSubject, setUploadCsvSubject] = useState('');
-    const [pendingAttendances, setPendingAttendances] = useState([]); // FIX: ADDED
+    const [pendingAttendances, setPendingAttendances] = useState([]);
     
     // --- CSV UPLOAD & HISTORY STATES ---
     const [csvMeta, setCsvMeta] = useState(null); 
@@ -317,12 +317,18 @@ export default function Dashboard() {
         return formatCountdown(diffSecs);
     };
 
+    const currentDayStr = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const currentDay = currentDayStr;
+    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
+    const currentSecs = new Date().getSeconds();
+    const todayStrCA = new Date().toLocaleDateString('en-CA');
+
     const getDateForCurrentWeekDay = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
-        const currentDay = today.getDay(); 
+        const cDay = today.getDay(); 
         const targetDay = dayMap[dayName.toUpperCase()];
-        const diff = targetDay - currentDay;
+        const diff = targetDay - cDay;
         
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + diff);
@@ -332,9 +338,9 @@ export default function Dashboard() {
     const getNextLectureDate = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
-        const currentDay = today.getDay();
+        const cDay = today.getDay();
         const targetDay = dayMap[dayName.toUpperCase()];
-        let diff = targetDay - currentDay;
+        let diff = targetDay - cDay;
         if (diff <= 0) diff += 7;
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + diff);
@@ -1017,34 +1023,6 @@ export default function Dashboard() {
         setNewRoom(cls.room); setIsEditModalOpen(true);
     };
 
-    const openExamEditModal = (ex) => {
-        setExamEditForm({
-            id: ex.id,
-            exam_date: ex.exam_date,
-            start_time: convertTo12Hour(ex.start_time),
-            end_time: convertTo12Hour(ex.end_time),
-            room: ex.room
-        });
-        setIsExamEditModalOpen(true);
-    };
-
-    const submitExamEdit = async (e) => {
-        e.preventDefault();
-        const { error } = await supabase.from('exam_schedules').update({
-            exam_date: examEditForm.exam_date,
-            start_time: examEditForm.start_time,
-            end_time: examEditForm.end_time,
-            room: examEditForm.room
-        }).eq('id', examEditForm.id);
-
-        if (error) alert("Failed to update exam: " + error.message);
-        else {
-            alert("Exam schedule updated!");
-            setIsExamEditModalOpen(false);
-            fetchProfileAndSchedule(session.user.id);
-        }
-    };
-
     const submitReschedule = async (e) => {
         e.preventDefault();
         const targetDate = getDateForCurrentWeekDay(editingClass.day);
@@ -1108,7 +1086,6 @@ export default function Dashboard() {
     };
 
     const activeMilestone = semesters.find(s => s.is_active);
-    const todayStrCA = new Date().toLocaleDateString('en-CA');
     const isExamMode = activeMilestone && (
         (todayStrCA >= (activeMilestone.mid_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.mid_term_end || '0000-01-01')) ||
         (todayStrCA >= (activeMilestone.final_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.final_term_end || '0000-01-01'))
@@ -1139,9 +1116,6 @@ export default function Dashboard() {
     const filteredWeeklySchedule = schedule
         .filter(cls => cls.day === selectedDay && cls.session === profile.session)
         .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
-    
-    const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
     const visibleTabs = [
         { id: 'weekly', label: 'Weekly', icon: SVGS.calendar },
@@ -1214,7 +1188,7 @@ export default function Dashboard() {
     }
 
     const ongoingClasses = schedule.filter(cls => {
-        if (cls.day !== currentDay || cls.isCancelled || cls.session !== profile.session) return false;
+        if (cls.day !== currentDayStr || cls.isCancelled || cls.session !== profile.session) return false;
         const startMins = parseTime(cls.start_time);
         const endMins = parseTime(cls.end_time);
         return currentMins >= startMins && currentMins <= endMins;
@@ -1507,10 +1481,6 @@ export default function Dashboard() {
                                                     )}
                                                 </div>
                                             </div>
-                                            {/* Allow CR to optionally see Exam edits too, but not globally modify without caution. Leaving button for feature parity */}
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button onClick={() => openExamEditModal(ex)} style={btnStyle('#007bff', SVGS.edit)}>Edit Exam Schedule</button>
-                                            </div>
                                         </div>
                                     );
                                 })}
@@ -1791,10 +1761,14 @@ export default function Dashboard() {
                                             <option value="ALL">All Semesters</option>
                                             {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
                                         </select>
+                                        <select value={attendanceSectionFilter} onChange={(e) => setAttendanceSectionFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                                            <option value="ALL">All Sections</option>
+                                            {mySections.map(s => <option key={s} value={s}>Section {s}</option>)}
+                                        </select>
                                     </div>
                                 </div>
 
-                                {attendanceSemesterFilter !== 'ALL' ? (
+                                {(attendanceSectionFilter !== 'ALL' || attendanceSemesterFilter !== 'ALL') ? (
                                     <div style={{ overflowX: 'auto' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.75rem' }}>
                                             <thead>
@@ -1805,8 +1779,8 @@ export default function Dashboard() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {roster.filter(s => attendanceSemesterFilter === 'ALL' || s.session === attendanceSemesterFilter).map(student => {
-                                                    const pct = getStudentAttendance(student.registration_number, 'ALL');
+                                                {roster.filter(s => (attendanceSectionFilter === 'ALL' || s.section === attendanceSectionFilter) && (attendanceSemesterFilter === 'ALL' || s.session === attendanceSemesterFilter)).map(student => {
+                                                    const pct = getStudentAttendance(student.registration_number, 'ALL', attendanceSectionFilter, attendanceSemesterFilter);
                                                     return (
                                                         <tr key={student.registration_number} style={{ borderBottom: '1px solid #f0f0f0' }}>
                                                             <td style={{ padding: '12px', fontWeight: 'bold', color: '#002147' }}>{student.registration_number}</td>
@@ -1821,7 +1795,7 @@ export default function Dashboard() {
                                         </table>
                                     </div>
                                 ) : (
-                                    <div style={emptyState}>Select a session filter to view statistics.</div>
+                                    <div style={emptyState}>Select a session or section filter to view statistics.</div>
                                 )}
                             </div>
                         )}
