@@ -87,7 +87,6 @@ export default function Dashboard() {
     const [availableTeachers, setAvailableTeachers] = useState([]);
     const [teacherCourseMap, setTeacherCourseMap] = useState({}); 
     const [semesters, setSemesters] = useState([]);
-    const [milestones, setMilestones] = useState([]);
     const [examSchedules, setExamSchedules] = useState([]);
     const [pointsData, setPointsData] = useState([]);
 
@@ -226,13 +225,29 @@ export default function Dashboard() {
         const currentDay = today.getDay();
         const targetDay = dayMap[dayName.toUpperCase()];
         let diff = targetDay - currentDay;
-
         if (diff <= 0) diff += 7;
-
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + diff);
         return targetDate.toLocaleDateString('en-CA');
     };
+
+    const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 5000);
+    };
+
+    useEffect(() => {
+        let interval;
+        if (resendTimer > 0) {
+            interval = setInterval(() => setResendTimer((prev) => prev - 1), 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         const handleResize = () => setWindowWidth(window.innerWidth);
@@ -278,7 +293,7 @@ export default function Dashboard() {
                     }
                 }
             });
-        }, 1000);
+        }, 60000);
 
         return () => clearInterval(timer);
     }, [announcements]);
@@ -335,15 +350,13 @@ export default function Dashboard() {
                 return; 
             }
 
-            const [semRes, msRes, examRes, ptsRes] = await Promise.all([
-                fetchAllRows('semesters'),
-                fetchAllRows('academic_milestones'),
+            const [semRes, examRes, ptsRes] = await Promise.all([
+                fetchAllRows('sem_status'),
                 fetchAllRows('exam_schedules'),
                 fetchAllRows('point_schedules')
             ]);
             
             setSemesters(semRes.data || []);
-            setMilestones(msRes.data || []);
             setExamSchedules(examRes.data || []);
             setPointsData(ptsRes.data || []);
 
@@ -903,8 +916,13 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
-    const activeMilestone = milestones.find(m => m.status === 'active');
-    const isExamMode = activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type);
+    const activeMilestone = semesters.find(s => s.is_active);
+    const todayStrCA = new Date().toLocaleDateString('en-CA');
+    const isExamMode = activeMilestone && (
+        (todayStrCA >= (activeMilestone.mid_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.mid_term_end || '0000-01-01')) ||
+        (todayStrCA >= (activeMilestone.final_term_start || '9999-12-31') && todayStrCA <= (activeMilestone.final_term_end || '0000-01-01'))
+    );
+    const isVacation = activeMilestone && (todayStrCA >= (activeMilestone.summer_vacation_start || '9999-12-31') && todayStrCA <= (activeMilestone.summer_vacation_end || '0000-01-01'));
 
     if (loading) return <div style={centerStyle}><div className="custom-spinner"></div> Loading Dashboard...</div>;
     if (!session) return null;
@@ -928,11 +946,10 @@ export default function Dashboard() {
     }
 
     const filteredWeeklySchedule = schedule
-        .filter(cls => cls.day === selectedDay && cls.session === profile.session)
+        .filter(cls => cls.day === selectedDay)
         .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
     
     const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    const todayStrCA = new Date().toLocaleDateString('en-CA');
     const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
     const visibleTabs = [
@@ -940,7 +957,8 @@ export default function Dashboard() {
         ...(!isMobile ? [{ id: 'permanent', label: 'Base', icon: SVGS.home }] : []),
         ...(!isMobile ? [{ id: 'students', label: 'Students', icon: SVGS.users }] : []),
         { id: 'attendance', label: 'Attendance', icon: SVGS.attendance },
-        { id: 'announcements', label: 'Updates', icon: SVGS.updates }
+        { id: 'announcements', label: 'Updates', icon: SVGS.updates },
+        { id: 'ai_bot', label: 'AI TUTOR', icon: SVGS.bot }
     ];
 
     const todayEvents = [];
@@ -973,41 +991,39 @@ export default function Dashboard() {
         } else {
             todayEvents.push({ type: 'milestone', title: 'No Exams Today', desc: 'Enjoy your preparation time.', raw: activeMilestone });
         }
+    } else if (isVacation) {
+        todayEvents.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `Enjoy your holidays.`, raw: activeMilestone });
     } else {
-        if (activeMilestone && (activeMilestone.event_type === 'summer_vacation' || activeMilestone.event_type === 'holidays')) {
-            todayEvents.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `From: ${new Date(activeMilestone.planned_start).toLocaleDateString()} To: ${new Date(activeMilestone.planned_end).toLocaleDateString()}`, raw: activeMilestone });
-        } else {
-            const dynamicMyClasses = allBaseSchedule.filter(c => c.section === profile.section && c.session === profile.session);
-            const myTodayClasses = dynamicMyClasses.filter(c => {
-                if (c.day !== currentDayStr) return false;
-                const status = getStatusStyles(c);
-                if (status && status.label.toLowerCase().includes('cancelled')) return false;
-                return true;
-            }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+        const dynamicMyClasses = baseSchedule.filter(c => c.section === profile.section && c.session === profile.session);
+        const myTodayClasses = dynamicMyClasses.filter(c => {
+            if (c.day !== currentDayStr) return false;
+            const status = getStatusStyles(c);
+            if (status && status.label.toLowerCase().includes('cancelled')) return false;
+            return true;
+        }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
 
-            if (myTodayClasses.length > 0) {
-                const firstCls = myTodayClasses[0];
-                const lastCls = myTodayClasses[myTodayClasses.length - 1];
+        if (myTodayClasses.length > 0) {
+            const firstCls = myTodayClasses[0];
+            const lastCls = myTodayClasses[myTodayClasses.length - 1];
 
-                const ptsFirst = getNearestPoints(firstCls);
-                if (ptsFirst.up !== 'N/A') {
-                    todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
-                }
+            const ptsFirst = getNearestPoints(firstCls);
+            if (ptsFirst.up !== 'N/A') {
+                todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+            }
 
-                myTodayClasses.forEach(c => {
-                    todayEvents.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
-                });
+            myTodayClasses.forEach(c => {
+                todayEvents.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
+            });
 
-                const ptsLast = getNearestPoints(lastCls);
-                if (ptsLast.down !== 'N/A') {
-                    todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
-                }
+            const ptsLast = getNearestPoints(lastCls);
+            if (ptsLast.down !== 'N/A') {
+                todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
             }
         }
     }
 
     const ongoingClasses = schedule.filter(cls => {
-        if (cls.day !== currentDay || cls.isCancelled || cls.session !== profile.session) return false;
+        if (cls.day !== currentDay || cls.isCancelled) return false;
         const startMins = parseTime(cls.start_time);
         const endMins = parseTime(cls.end_time);
         return currentMins >= startMins && currentMins <= endMins;
@@ -1049,10 +1065,9 @@ export default function Dashboard() {
                     100% { background-position: 0% 50%; }
                 }
                 @keyframes aiShineLayer {
-                    0% { transform: translateX(-150%) skewX(-15deg); opacity: 0; }
-                    20% { opacity: 1; }
-                    40% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
-                    100% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
+                    0% { transform: translateX(-200%) skewX(-20deg); }
+                    30% { transform: translateX(300%) skewX(-20deg); }
+                    100% { transform: translateX(300%) skewX(-20deg); }
                 }
                 .ai-tutor-btn-active, .ai-tutor-btn-inactive {
                     position: relative;
@@ -1063,7 +1078,7 @@ export default function Dashboard() {
                     content: "";
                     position: absolute;
                     top: 0; left: 0; width: 100%; height: 100%;
-                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(139,92,246,0.15), rgba(79,172,254,0.1));
                     background-size: 300% 300%;
                     animation: aiBgPulse 5s ease infinite;
                     z-index: 0;
@@ -1071,9 +1086,9 @@ export default function Dashboard() {
                 .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
                     content: "";
                     position: absolute;
-                    top: 0; left: 0; width: 40%; height: 100%;
-                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
-                    animation: aiShineLayer 6s infinite ease-in-out;
+                    top: 0; left: 0; width: 50%; height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+                    animation: aiShineLayer 6s infinite linear;
                     z-index: 1;
                     filter: blur(4px);
                 }
@@ -1088,11 +1103,12 @@ export default function Dashboard() {
                     z-index: 2;
                 }
                 .desktop-ai-btn {
-                    background: rgba(255,255,255,0.1) !important;
-                    border: 1px solid rgba(79,172,254,0.3) !important;
+                    background: rgba(255,255,255,0.05) !important;
+                    border: 1px solid rgba(79,172,254,0.4) !important;
+                    box-shadow: 0 0 10px rgba(139,92,246,0.2) inset !important;
                 }
                 .desktop-ai-btn:hover {
-                    background: rgba(255,255,255,0.2) !important;
+                    background: rgba(255,255,255,0.15) !important;
                 }
                 .ai-tutor-icon-svg {
                     position: relative;
@@ -1114,20 +1130,26 @@ export default function Dashboard() {
                 </div>
 
                 <div className="desktop-nav">
-                    {visibleTabs.map(tab => (
-                        <div 
-                            key={tab.id} 
-                            onClick={() => setActiveTab(tab.id)}
-                            style={{
-                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
-                                background: activeTab === tab.id ? '#F2A900' : 'transparent',
-                                color: activeTab === tab.id ? '#002147' : '#fff',
-                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
-                            }}
-                        >
-                            {tab.icon} {tab.label}
-                        </div>
-                    ))}
+                    {visibleTabs.map(tab => {
+                        const isAIBot = tab.id === 'ai_bot';
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <div 
+                                key={tab.id} 
+                                onClick={() => setActiveTab(tab.id)}
+                                className={isAIBot ? (isActive ? 'ai-tutor-btn-active desktop-ai-btn' : 'ai-tutor-btn-inactive desktop-ai-btn') : ''}
+                                style={{
+                                    cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
+                                    background: isActive && !isAIBot ? '#F2A900' : 'transparent',
+                                    color: isActive && !isAIBot ? '#002147' : '#fff',
+                                    transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
+                                }}
+                            >
+                                <span className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
+                                <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                            </div>
+                        )
+                    })}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1145,26 +1167,40 @@ export default function Dashboard() {
                             <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
                             <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
                         </div>
-                        {[{id: 'weekly', label: 'Weekly Timetable', icon: SVGS.calendar}, {id: 'permanent', label: 'Base Schedule', icon: SVGS.home}, {id: 'students', label: 'Manage Students', icon: SVGS.users}, {id: 'attendance', label: 'Attendance', icon: SVGS.attendance}, {id: 'announcements', label: 'Announcements', icon: SVGS.updates}].map(tab => (
-                            <button 
-                                key={tab.id} 
-                                onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }} 
-                                style={sidebarBtn(activeTab === tab.id)}
-                            >
-                                <span style={{ opacity: 0.7 }}>{tab.icon}</span> <span style={{ marginLeft: '10px' }}>{tab.label}</span>
-                            </button>
-                        ))}
+                        {visibleTabs.map(tab => {
+                            const isAIBot = tab.id === 'ai_bot';
+                            return (
+                                <button 
+                                    key={tab.id} 
+                                    onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }} 
+                                    style={sidebarBtn(activeTab === tab.id)}
+                                    className={isAIBot ? 'ai-tutor-btn-inactive' : ''}
+                                >
+                                    <span style={{ opacity: 0.7 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</span> 
+                                    <span style={{ marginLeft: '10px' }} className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                                </button>
+                            )
+                        })}
                     </div>
                 </div>
             )}
 
             <div className="mobile-nav" style={tabBar}>
-                {visibleTabs.map(tab => (
-                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={tabBtn(activeTab === tab.id)}>
-                        <div style={{ marginBottom: '2px', opacity: activeTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
-                        {tab.label}
-                    </button>
-                ))}
+                {visibleTabs.map(tab => {
+                    const isAIBot = tab.id === 'ai_bot';
+                    const isActive = activeTab === tab.id;
+                    return (
+                        <button 
+                            key={tab.id} 
+                            onClick={() => setActiveTab(tab.id)} 
+                            style={tabBtn(isActive)}
+                            className={isAIBot ? (isActive ? 'ai-tutor-btn-active' : 'ai-tutor-btn-inactive') : ''}
+                        >
+                            <div style={{ marginBottom: '2px', opacity: isActive ? 1 : 0.6 }} className={isAIBot ? 'ai-tutor-icon-svg' : ''}>{isAIBot ? SVGS.botGradient : tab.icon}</div>
+                            <span className={isAIBot ? 'ai-tutor-text-gradient' : ''}>{tab.label}</span>
+                        </button>
+                    )
+                })}
             </div>
 
             <div style={{ padding: '15px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
@@ -1224,7 +1260,7 @@ export default function Dashboard() {
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
-                    <>
+                    <div className="expand-anim">
                         {activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type) && (
                             <div style={{background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center'}}>
                                 {SVGS.alertCircle} Examination Period Active.
@@ -1233,7 +1269,60 @@ export default function Dashboard() {
                         
                         {isExamMode ? (
                             <div className="expand-anim">
-                                {renderExamCards()}
+                                {examSchedules.filter(e => 
+                                    e.target_group.includes(profile.section) && 
+                                    e.target_group.includes(getSemesterFromSession(profile.session))
+                                ).sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date)).map((ex, idx) => {
+                                    const examDateStr = new Date(ex.exam_date).toLocaleDateString('en-CA');
+                                    const isToday = examDateStr === todayStrCA;
+                                    const isPast = new Date(ex.exam_date) < new Date(todayStrCA);
+                                    
+                                    let bgCol = '#fff';
+                                    let borderCol = '#F2A900';
+                                    
+                                    if (isToday) {
+                                        bgCol = '#fff9e6';
+                                        borderCol = '#dc3545';
+                                    } else if (isPast) {
+                                        bgCol = '#f8f9fa';
+                                        borderCol = '#adb5bd';
+                                    }
+
+                                    return (
+                                        <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid #eee' }}>
+                                            <div style={{ ...cardBase, marginBottom: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}` }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 900, color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            {SVGS.calendar} {new Date(ex.exam_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                        </div>
+                                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', margin: '6px 0', color: isPast ? '#6c757d' : '#111827' }}>{ex.course}</div>
+                                                        <div style={{ color: '#555', fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.clock} {convertTo12Hour(ex.start_time)} - {convertTo12Hour(ex.end_time)}</span>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room: {ex.room}</span>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {ex.teacher}</span>
+                                                        </div>
+                                                    </div>
+                                                    {isToday && (
+                                                        <div style={{ background: '#fef2f2', color: '#dc3545', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #fecaca' }}>
+                                                            TODAY
+                                                        </div>
+                                                    )}
+                                                    {isPast && (
+                                                        <div style={{ background: '#e9ecef', color: '#6c757d', padding: '4px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #ced4da' }}>
+                                                            FINISHED
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {examSchedules.filter(e => e.target_group.includes(profile.section) && e.target_group.includes(getSemesterFromSession(profile.session))).length === 0 && (
+                                    <div style={{ ...whiteCard, textAlign: 'center', padding: '20px 10px' }}>
+                                        <div style={{ marginBottom: '10px', color: '#999', fontSize: '0.85rem', fontWeight: 'bold' }}>No exams scheduled for your section yet.</div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="expand-anim">
@@ -1301,7 +1390,7 @@ export default function Dashboard() {
                                 )}
                             </div>
                         )}
-                    </>
+                    </div>
                 )}
 
                 {/* ================= SPLIT ATTENDANCE TAB ================= */}
@@ -1382,8 +1471,7 @@ export default function Dashboard() {
                                 <div style={{ marginBottom: '10px', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
                                     <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Filter by Semester</label>
                                     <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{...selectStyle, marginBottom: 0}}>
-                                        {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        {profile && !semesters.some(s => s.id === profile.session) && <option value={profile.session}>{profile.session} (Active)</option>}
+                                        {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
                                     </select>
                                 </div>
                                 {attendanceStats.map(stat => (
@@ -1504,8 +1592,8 @@ export default function Dashboard() {
                                 <div style={{ marginBottom: '10px', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
                                     <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Filter by Semester</label>
                                     <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{...selectStyle, marginBottom: 0}}>
-                                        {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        {profile && !semesters.some(s => s.id === profile.session) && <option value={profile.session}>{profile.session} (Active)</option>}
+                                        <option value="ALL">All Semesters</option>
+                                        {semesters.map(s => <option key={s.id} value={s.semester_name}>{s.semester_name}</option>)}
                                     </select>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
@@ -1772,6 +1860,13 @@ export default function Dashboard() {
                         )}
                     </div>
                 )}
+                
+                {/* ======================= AI TUTOR TAB ======================= */}
+                {activeTab === 'ai_bot' && (
+                    <div className="expand-anim">
+                        <AIBot />
+                    </div>
+                )}
             </div>
 
             {/* MODALS */}
@@ -1900,7 +1995,7 @@ const centerStyle = { textAlign: 'center', display: 'flex', flexDirection: 'colu
 // Sidebar
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
 const sidebarMenu = { width: '250px', height: '100%', backgroundColor: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' };
-const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
+const sidebarBtn = (active) => ({ display: 'flex', alignItems: 'center', width: '100%', textAlign: 'left', padding: '12px 20px', border: 'none', background: active ? '#f0f2f5' : '#fff', color: active ? '#002147' : '#555', borderLeft: active ? '4px solid #F2A900' : '4px solid transparent', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer', borderBottom: '1px solid #eee', transition: 'all 0.3s ease' });
 
 // Tables
 const tableStyle = { width: '100%', borderCollapse: 'collapse', textAlign: 'left' };
