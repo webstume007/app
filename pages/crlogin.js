@@ -1,7 +1,33 @@
-import { useEffect, useState, useRef } from 'react'; 
+import { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet';
+import AIBot from './ai_bot';
+
+// Helper function to dynamically calculate Semester
+const getSemesterFromSession = (session) => {
+    if (!session) return "";
+    const match = session.match(/20\d{2}/);
+    if (!match) return session; 
+
+    const startYear = parseInt(match[0], 10);
+    const isSpringStart = session.toLowerCase().includes('spring') || session.toLowerCase().includes('sp');
+    
+    const d = new Date();
+    const currYear = d.getFullYear();
+    const currMonth = d.getMonth(); 
+    
+    let semestersPassed = (currYear - startYear) * 2;
+    if (currMonth >= 7) semestersPassed += 1;
+    if (isSpringStart) semestersPassed += 1;
+    if (semestersPassed <= 0) return "1ST";
+    
+    const suffixes = ["TH", "ST", "ND", "RD"];
+    const v = semestersPassed % 100;
+    const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
+    
+    return `${semestersPassed}${suffix}`;
+};
 
 // --- Custom SVGs for UI ---
 const SVGS = {
@@ -35,6 +61,8 @@ const SVGS = {
     history: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
     rocket: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v8l9-11h-7z"/></svg>,
     sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+    bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+    botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
 
 export default function Dashboard() {
@@ -58,6 +86,10 @@ export default function Dashboard() {
     const [availableCourses, setAvailableCourses] = useState([]);
     const [availableTeachers, setAvailableTeachers] = useState([]);
     const [teacherCourseMap, setTeacherCourseMap] = useState({}); 
+    const [semesters, setSemesters] = useState([]);
+    const [milestones, setMilestones] = useState([]);
+    const [examSchedules, setExamSchedules] = useState([]);
+    const [pointsData, setPointsData] = useState([]);
 
     // --- TOGGLE STATES FOR MANUAL ENTRY ---
     const [isManualCourse, setIsManualCourse] = useState(false);
@@ -80,6 +112,7 @@ export default function Dashboard() {
     const [attendanceStats, setAttendanceStats] = useState([]); 
     const [allSessionsData, setAllSessionsData] = useState([]); 
     const [attendanceSubjectFilter, setAttendanceSubjectFilter] = useState('ALL'); 
+    const [attendanceSemesterFilter, setAttendanceSemesterFilter] = useState('');
     const [uploadCsvSubject, setUploadCsvSubject] = useState('');
     
     // --- CSV UPLOAD & HISTORY STATES ---
@@ -152,6 +185,29 @@ export default function Dashboard() {
         return 0;
     };
 
+    const parseDbTime = (t) => {
+        if (!t) return 0;
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+    };
+
+    const formatCountdown = (totalSeconds) => {
+        if (totalSeconds <= 0) return "00:00:00";
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    };
+
+    const getRemainingDepartureTime = (depTimeStr) => {
+        const [h, m] = depTimeStr.split(':').map(Number);
+        const depDate = new Date(currentTime);
+        depDate.setHours(h, m, 0, 0);
+        const diffSecs = Math.floor((depDate - currentTime) / 1000);
+        if (diffSecs < 0) return null;
+        return formatCountdown(diffSecs);
+    };
+
     const getDateForCurrentWeekDay = (dayName) => {
         const dayMap = { 'SUN': 0, 'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6 };
         const today = new Date();
@@ -222,7 +278,7 @@ export default function Dashboard() {
                     }
                 }
             });
-        }, 60000);
+        }, 1000);
 
         return () => clearInterval(timer);
     }, [announcements]);
@@ -266,10 +322,12 @@ export default function Dashboard() {
     };
 
     const fetchProfileAndSchedule = async (userId) => {
+        setLoading(true);
         const { data: profileData } = await supabase.from('cr_profiles').select('*').eq('id', userId).single();
         
         if (profileData) {
             setProfile(profileData);
+            setAttendanceSemesterFilter(profileData.session);
             
             if (profileData.is_approved === false) {
                 setIsPendingApproval(true);
@@ -277,11 +335,26 @@ export default function Dashboard() {
                 return; 
             }
 
+            const [semRes, msRes, examRes, ptsRes] = await Promise.all([
+                fetchAllRows('semesters'),
+                fetchAllRows('academic_milestones'),
+                fetchAllRows('exam_schedules'),
+                fetchAllRows('point_schedules')
+            ]);
+            
+            setSemesters(semRes.data || []);
+            setMilestones(msRes.data || []);
+            setExamSchedules(examRes.data || []);
+            setPointsData(ptsRes.data || []);
+
             const { data: rosterData } = await fetchAllRows('students', { session: profileData.session, section: profileData.section });
             const sortedRoster = rosterData.sort((a,b) => a.registration_number.localeCompare(b.registration_number));
             setRoster(sortedRoster);
 
-            const { data: scheduleData } = await fetchAllRows('base_schedule', { session: profileData.session, section: profileData.section });
+            const { data: liveScheduleData } = await fetchAllRows('base_schedule', { session: profileData.session, section: profileData.section });
+            const { data: archScheduleData } = await fetchAllRows('base_schedule_archive', { session: profileData.session, section: profileData.section });
+            
+            const scheduleData = [...(liveScheduleData || []), ...(archScheduleData || [])];
             setBaseSchedule(scheduleData);
             
             const { data: allBaseSchedules } = await supabase.from('base_schedule').select('room, teacher, course');
@@ -308,20 +381,24 @@ export default function Dashboard() {
 
             const baseIds = scheduleData ? scheduleData.map(s => s.id) : [];
             
-            const [exceptionsRes, sessionsRes, logsRes] = await Promise.all([
+            const [exceptionsRes, liveSessionsRes, archSessRes, logsRes] = await Promise.all([
                 fetchAllRows('schedule_exceptions'),
                 fetchAllRows('attendance_sessions', null, { column: 'base_schedule_id', values: baseIds }),
+                fetchAllRows('attendance_sessions_archive', null, { column: 'base_schedule_id', values: baseIds }),
                 fetchAllRows('attendance_upload_logs', { session: profileData.session, section: profileData.section })
             ]);
 
             const exceptionsData = exceptionsRes.data || [];
-            const allSessions = sessionsRes.data || [];
+            const allSessions = [...(liveSessionsRes.data || []), ...(archSessRes.data || [])];
             
             const sessionIds = allSessions.map(s => s.id);
             let allRecords = [];
             if (sessionIds.length > 0) {
-                const recRes = await fetchAllRows('attendance_records', null, { column: 'session_id', values: sessionIds });
-                allRecords = recRes.data || [];
+                const [liveRecRes, archRecRes] = await Promise.all([
+                    fetchAllRows('attendance_records', null, { column: 'session_id', values: sessionIds }),
+                    fetchAllRows('attendance_records_archive', null, { column: 'session_id', values: sessionIds })
+                ]);
+                allRecords = [...(liveRecRes.data || []), ...(archRecRes.data || [])];
             }
 
             const sortedLogs = (logsRes.data || []).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
@@ -335,7 +412,7 @@ export default function Dashboard() {
             
             setAllSessionsData(sessionsWithRecords); 
 
-            const mergedSchedule = (scheduleData || []).map(cls => {
+            const mergedSchedule = (scheduleData || []).filter(c => c.session === profileData.session).map(cls => {
                 const targetDate = getDateForCurrentWeekDay(cls.day);
                 const exception = exceptionsData.find(ex => ex.base_schedule_id === cls.id && ex.exception_date === targetDate);
                 const sessionToday = sessionsWithRecords.find(s => s.base_schedule_id === cls.id && s.session_date === targetDate);
@@ -351,7 +428,7 @@ export default function Dashboard() {
             });
             setSchedule(mergedSchedule);
 
-            const uniqueSubjects = [...new Set((scheduleData || []).map(s => s.course))];
+            const uniqueSubjects = [...new Set((scheduleData || []).filter(c => c.session === attendanceSemesterFilter || c.session === profileData.session).map(s => s.course))];
 
             const stats = uniqueSubjects.map(subject => {
                 const subjectBaseIds = scheduleData.filter(s => s.course === subject).map(s => s.id);
@@ -378,6 +455,38 @@ export default function Dashboard() {
         setLoading(false);
     };
 
+    // Recalculate stats if semester filter changes
+    useEffect(() => {
+        if (!profile || allSessionsData.length === 0) return;
+        const targetBases = baseSchedule.filter(b => b.session === attendanceSemesterFilter && b.section === profile.section);
+        const targetBaseIds = targetBases.map(b => b.id);
+        const targetSessions = allSessionsData.filter(s => targetBaseIds.includes(s.base_schedule_id));
+        
+        const uniqueSubjects = [...new Set(targetBases.map(s => s.course))];
+
+        const stats = uniqueSubjects.map(subject => {
+            const subjectBaseIds = targetBases.filter(s => s.course === subject).map(s => s.id);
+            const subjectSessions = targetSessions.filter(s => subjectBaseIds.includes(s.base_schedule_id));
+            
+            let totalRecords = 0;
+            let presentRecords = 0;
+            
+            subjectSessions.forEach(sess => {
+                sess.records.forEach(rec => {
+                    totalRecords++;
+                    if (rec.status === 'Present' || rec.status === 'Leave') {
+                        presentRecords++;
+                    }
+                });
+            });
+
+            const percentage = totalRecords === 0 ? 0 : Math.round((presentRecords / totalRecords) * 100);
+            return { subject, totalConducted: subjectSessions.length, percentage, sessions: subjectSessions };
+        });
+
+        setAttendanceStats(stats);
+    }, [attendanceSemesterFilter, allSessionsData, baseSchedule, profile]);
+
     const handleLogout = async () => {
         await supabase.auth.signOut();
         window.location.href = '/login';
@@ -385,7 +494,12 @@ export default function Dashboard() {
 
     const getStudentAttendance = (studentReg, subjectFilter) => {
         let present = 0, total = 0;
-        allSessionsData.forEach(session => {
+        const activeSessions = allSessionsData.filter(s => {
+            const b = baseSchedule.find(bs => bs.id === s.base_schedule_id);
+            return b && b.session === attendanceSemesterFilter;
+        });
+
+        activeSessions.forEach(session => {
             if (subjectFilter !== 'ALL' && session.course !== subjectFilter) return;
             const record = session.records.find(r => r.student_id === studentReg);
             if (record) {
@@ -394,6 +508,32 @@ export default function Dashboard() {
             }
         });
         return total === 0 ? 0 : Math.round((present / total) * 100);
+    };
+
+    const getNearestPoints = (cls) => {
+        if (!pointsData || pointsData.length === 0) return { up: '--:--', down: '--:--' };
+        const isSat = cls.day === 'SAT';
+        const clsStartMins = parseTime(cls.start_time);
+        const clsEndMins = parseTime(cls.end_time);
+
+        const targetUpMins = clsStartMins - 30;
+        const validUp = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins).sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
+        const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
+
+        const targetDownMins = clsEndMins;
+        const validDown = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
+        const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
+
+        return { up: bestUp, down: bestDown };
+    };
+
+    const getStatusStyles = (cls) => {
+        const todayStr = new Date().toLocaleDateString('en-CA');
+        const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
+        if (exc?.status === 'cancelled') return { label: `Cancelled on ${exc.exception_date}`, color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
+        if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
+        if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
+        return null; 
     };
 
     const handleEditAnnouncement = (ann) => {
@@ -763,6 +903,9 @@ export default function Dashboard() {
         fetchProfileAndSchedule(session.user.id);
     };
 
+    const activeMilestone = milestones.find(m => m.status === 'active');
+    const isExamMode = activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type);
+
     if (loading) return <div style={centerStyle}><div className="custom-spinner"></div> Loading Dashboard...</div>;
     if (!session) return null;
 
@@ -785,10 +928,11 @@ export default function Dashboard() {
     }
 
     const filteredWeeklySchedule = schedule
-        .filter(cls => cls.day === selectedDay)
+        .filter(cls => cls.day === selectedDay && cls.session === profile.session)
         .sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
     
     const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const todayStrCA = new Date().toLocaleDateString('en-CA');
     const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
 
     const visibleTabs = [
@@ -799,8 +943,71 @@ export default function Dashboard() {
         { id: 'announcements', label: 'Updates', icon: SVGS.updates }
     ];
 
+    const todayEvents = [];
+
+    if (isExamMode) {
+        const todayExams = examSchedules.filter(e => 
+            e.exam_date === todayStrCA && 
+            e.target_group.includes(profile.section) && 
+            e.target_group.includes(getSemesterFromSession(profile.session))
+        );
+
+        if (todayExams.length > 0) {
+            const sortedExams = todayExams.sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+            const firstExam = sortedExams[0];
+            const lastExam = sortedExams[sortedExams.length - 1];
+
+            const ptsFirst = getNearestPoints({ start_time: firstExam.start_time, end_time: firstExam.end_time, day: currentDayStr });
+            if (ptsFirst.up !== 'N/A') {
+                todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+            }
+
+            sortedExams.forEach(ex => {
+                todayEvents.push({ type: 'exam', title: ex.course, room: ex.room, startMins: parseTime(ex.start_time), endMins: parseTime(ex.end_time), raw: ex });
+            });
+
+            const ptsLast = getNearestPoints({ start_time: lastExam.start_time, end_time: lastExam.end_time, day: currentDayStr });
+            if (ptsLast.down !== 'N/A') {
+                todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+            }
+        } else {
+            todayEvents.push({ type: 'milestone', title: 'No Exams Today', desc: 'Enjoy your preparation time.', raw: activeMilestone });
+        }
+    } else {
+        if (activeMilestone && (activeMilestone.event_type === 'summer_vacation' || activeMilestone.event_type === 'holidays')) {
+            todayEvents.push({ type: 'vacation', title: 'Vacations / Holidays', desc: `From: ${new Date(activeMilestone.planned_start).toLocaleDateString()} To: ${new Date(activeMilestone.planned_end).toLocaleDateString()}`, raw: activeMilestone });
+        } else {
+            const dynamicMyClasses = allBaseSchedule.filter(c => c.section === profile.section && c.session === profile.session);
+            const myTodayClasses = dynamicMyClasses.filter(c => {
+                if (c.day !== currentDayStr) return false;
+                const status = getStatusStyles(c);
+                if (status && status.label.toLowerCase().includes('cancelled')) return false;
+                return true;
+            }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+
+            if (myTodayClasses.length > 0) {
+                const firstCls = myTodayClasses[0];
+                const lastCls = myTodayClasses[myTodayClasses.length - 1];
+
+                const ptsFirst = getNearestPoints(firstCls);
+                if (ptsFirst.up !== 'N/A') {
+                    todayEvents.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+                }
+
+                myTodayClasses.forEach(c => {
+                    todayEvents.push({ type: 'lecture', title: c.course, room: c.room, startMins: parseTime(c.start_time), endMins: parseTime(c.end_time), raw: c });
+                });
+
+                const ptsLast = getNearestPoints(lastCls);
+                if (ptsLast.down !== 'N/A') {
+                    todayEvents.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+                }
+            }
+        }
+    }
+
     const ongoingClasses = schedule.filter(cls => {
-        if (cls.day !== currentDay || cls.isCancelled) return false;
+        if (cls.day !== currentDay || cls.isCancelled || cls.session !== profile.session) return false;
         const startMins = parseTime(cls.start_time);
         const endMins = parseTime(cls.end_time);
         return currentMins >= startMins && currentMins <= endMins;
@@ -834,6 +1041,63 @@ export default function Dashboard() {
                 }
                 .custom-spinner { width: 45px; height: 45px; border: 4px solid rgba(0, 33, 71, 0.1); border-left-color: #F2A900; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px auto; }
                 @keyframes spin { to { transform: rotate(360deg); } }
+
+                /* AI Tutor Moving Gradient CSS */
+                @keyframes aiBgPulse {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+                @keyframes aiShineLayer {
+                    0% { transform: translateX(-150%) skewX(-15deg); opacity: 0; }
+                    20% { opacity: 1; }
+                    40% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
+                    100% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
+                }
+                .ai-tutor-btn-active, .ai-tutor-btn-inactive {
+                    position: relative;
+                    overflow: hidden;
+                    border-radius: 8px !important;
+                }
+                .ai-tutor-btn-active::before, .ai-tutor-btn-inactive::before {
+                    content: "";
+                    position: absolute;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    background: linear-gradient(90deg, rgba(79,172,254,0.1), rgba(0,242,254,0.15), rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+                    background-size: 300% 300%;
+                    animation: aiBgPulse 5s ease infinite;
+                    z-index: 0;
+                }
+                .ai-tutor-btn-active::after, .ai-tutor-btn-inactive::after {
+                    content: "";
+                    position: absolute;
+                    top: 0; left: 0; width: 40%; height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+                    animation: aiShineLayer 6s infinite ease-in-out;
+                    z-index: 1;
+                    filter: blur(4px);
+                }
+                .ai-tutor-text-gradient {
+                    background: linear-gradient(90deg, #4facfe, #00f2fe, #3b82f6, #8b5cf6);
+                    background-size: 300% 300%;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    animation: aiBgPulse 5s ease infinite;
+                    font-weight: 900 !important;
+                    position: relative;
+                    z-index: 2;
+                }
+                .desktop-ai-btn {
+                    background: rgba(255,255,255,0.1) !important;
+                    border: 1px solid rgba(79,172,254,0.3) !important;
+                }
+                .desktop-ai-btn:hover {
+                    background: rgba(255,255,255,0.2) !important;
+                }
+                .ai-tutor-icon-svg {
+                    position: relative;
+                    z-index: 2;
+                }
             `}</style>
 
             <header style={headerStyle}>
@@ -912,7 +1176,7 @@ export default function Dashboard() {
                     <p style={{ margin: 0, color: '#e0e0e0', fontSize: '0.85rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
                 </div>
 
-                {ongoingClasses.length > 0 && (
+                {!isExamMode && ongoingClasses.length > 0 && (
                     <div style={{ marginBottom: '20px' }}>
                         {ongoingClasses.map(ongoingClass => {
                             const sessionToday = ongoingClass.attendanceSession;
@@ -960,70 +1224,84 @@ export default function Dashboard() {
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
-                    <div className="expand-anim">
-                        <div style={dayFilter}>
-                            {days.map(day => (
-                                <button key={day} onClick={() => setSelectedDay(day)}
-                                    style={dayBtnStyle(selectedDay === day)}>
-                                    {day}
-                                </button>
-                            ))}
-                        </div>
+                    <>
+                        {activeMilestone && ['mid_term', 'final_term'].includes(activeMilestone.event_type) && (
+                            <div style={{background: '#f8d7da', color: '#721c24', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontWeight: 'bold', fontSize: '0.8rem', textAlign: 'center'}}>
+                                {SVGS.alertCircle} Examination Period Active.
+                            </div>
+                        )}
                         
-                        {filteredWeeklySchedule.length === 0 ? (
-                            <div style={whiteCard}><div style={emptyState}>No classes scheduled for {selectedDay}.</div></div>
+                        {isExamMode ? (
+                            <div className="expand-anim">
+                                {renderExamCards()}
+                            </div>
                         ) : (
-                            filteredWeeklySchedule.map((cls) => (
-                                <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
-                                     style={{ ...cardBase, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', border: '1px solid #eee',
-                                        borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid #F2A900', opacity: cls.isCancelled ? 0.6 : 1 
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
-                                        <div>
-                                            <div style={{ fontWeight: '900', color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
-                                                {SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}
+                            <div className="expand-anim">
+                                <div style={dayFilter}>
+                                    {days.map(day => (
+                                        <button key={day} onClick={() => setSelectedDay(day)}
+                                            style={dayBtnStyle(selectedDay === day)}>
+                                            {day}
+                                        </button>
+                                    ))}
+                                </div>
+                                
+                                {filteredWeeklySchedule.length === 0 ? (
+                                    <div style={whiteCard}><div style={emptyState}>No classes scheduled for {selectedDay}.</div></div>
+                                ) : (
+                                    filteredWeeklySchedule.map((cls) => (
+                                        <div key={cls.id} onClick={() => setExpandedLectureId(expandedLectureId === cls.id ? null : cls.id)}
+                                             style={{ ...cardBase, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '15px', cursor: 'pointer', border: '1px solid #eee',
+                                                borderLeft: cls.isRescheduled ? '5px solid #007bff' : cls.isConfirmed ? '5px solid #28a745' : '5px solid #F2A900', opacity: cls.isCancelled ? 0.6 : 1 
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: expandedLectureId === cls.id ? '1px solid #eee' : 'none', paddingBottom: expandedLectureId === cls.id ? '10px' : '0', marginBottom: expandedLectureId === cls.id ? '10px' : '0', flexWrap: 'wrap', gap: '10px' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: '900', color: '#002147', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                                                        {SVGS.clock} {convertTo12Hour(cls.start_time)} - {convertTo12Hour(cls.end_time)}
+                                                    </div>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#111827', textDecoration: cls.isCancelled ? 'line-through' : 'none', marginBottom: '4px' }}>
+                                                        {cls.course}
+                                                    </div>
+                                                    <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room {cls.room}</span>
+                                                    </div>
+                                                    
+                                                    {cls.attendanceSession && (
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', 
+                                                            background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
+                                                            color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
+                                                            {cls.attendanceSession.status === 'approved' ? <>{SVGS.tickCircle} Attendance Approved</> : <>{SVGS.clock} Attendance Pending</>}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: cls.isCancelled ? '#dc3545' : '#111827', textDecoration: cls.isCancelled ? 'line-through' : 'none', marginBottom: '4px' }}>
-                                                {cls.course}
-                                            </div>
-                                            <div style={{ color: '#555', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.userTie} {cls.teacher}</span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.location} Room {cls.room}</span>
-                                            </div>
-                                            
-                                            {cls.attendanceSession && (
-                                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px', padding: '3px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', 
-                                                    background: cls.attendanceSession.status === 'approved' ? '#d4edda' : '#fff3cd', 
-                                                    color: cls.attendanceSession.status === 'approved' ? '#155724' : '#856404' }}>
-                                                    {cls.attendanceSession.status === 'approved' ? <>{SVGS.tickCircle} Attendance Approved</> : <>{SVGS.clock} Attendance Pending</>}
+
+                                            {expandedLectureId === cls.id && (
+                                                <div className="expand-anim" style={{ marginTop: '15px' }}>
+                                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                                        {cls.isCancelled ? (
+                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Cancel</button>
+                                                        ) : cls.isConfirmed ? (
+                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Remove Confirm</button>
+                                                        ) : cls.isRescheduled ? (
+                                                            <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Reschedule</button>
+                                                        ) : (
+                                                            <>
+                                                                <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#28a745', color: '#fff'}}>{SVGS.tickCircle} Confirm</button>
+                                                                <button onClick={(e) => openEditModal(e, cls)} style={{...actionBtn, background: '#007bff', color: '#fff'}}>{SVGS.clock} Reschedule</button>
+                                                                <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#dc3545', color: '#fff'}}>{SVGS.cross} Cancel</button>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-
-                                    {expandedLectureId === cls.id && (
-                                        <div className="expand-anim" style={{ marginTop: '15px' }}>
-                                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                {cls.isCancelled ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'cancelled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Cancel</button>
-                                                ) : cls.isConfirmed ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'confirmed', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Remove Confirm</button>
-                                                ) : cls.isRescheduled ? (
-                                                    <button onClick={(e) => handleUndoException(e, cls.id, 'rescheduled', cls.course, cls.day)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.undo} Undo Reschedule</button>
-                                                ) : (
-                                                    <>
-                                                        <button onClick={(e) => handleConfirmClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#28a745'}}>{SVGS.tickCircle} Confirm</button>
-                                                        <button onClick={(e) => openEditModal(e, cls)} style={{...actionBtn, background: '#007bff'}}>{SVGS.clock} Reschedule</button>
-                                                        <button onClick={(e) => handleCancelClass(e, cls.id, cls.course, cls.day)} style={{...actionBtn, background: '#dc3545'}}>{SVGS.cross} Cancel</button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))
+                                    ))
+                                )}
+                            </div>
                         )}
-                    </div>
+                    </>
                 )}
 
                 {/* ================= SPLIT ATTENDANCE TAB ================= */}
@@ -1101,13 +1379,20 @@ export default function Dashboard() {
 
                         {attendanceView === 'download' && (
                             <div className="expand-anim" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ marginBottom: '10px', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
+                                    <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Filter by Semester</label>
+                                    <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{...selectStyle, marginBottom: 0}}>
+                                        {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        {profile && !semesters.some(s => s.id === profile.session) && <option value={profile.session}>{profile.session} (Active)</option>}
+                                    </select>
+                                </div>
                                 {attendanceStats.map(stat => (
                                     <div key={`dl-${stat.subject}`} style={{...whiteCard, borderLeft: '4px solid #17a2b8'}}>
                                         <h4 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.1rem' }}>{stat.subject}</h4>
                                         <p style={{ margin: '0 0 15px 0', fontSize: '0.8rem', color: '#666' }}>Lectures Conducted: <strong>{stat.totalConducted}</strong></p>
                                         <div style={{ display: 'flex', gap: '10px' }}>
-                                            <button onClick={() => downloadCSV(stat, false)} style={{...actionBtn, background: '#17a2b8'}}>{SVGS.download} Download CSV</button>
-                                            <button onClick={() => downloadCSV(stat, true)} style={{...actionBtn, background: '#6c757d'}}>{SVGS.eye} View Table</button>
+                                            <button onClick={() => downloadCSV(stat, false)} style={{...actionBtn, background: '#17a2b8', color: '#fff'}}>{SVGS.download} Download CSV</button>
+                                            <button onClick={() => downloadCSV(stat, true)} style={{...actionBtn, background: '#6c757d', color: '#fff'}}>{SVGS.eye} View Table</button>
                                         </div>
                                     </div>
                                 ))}
@@ -1152,7 +1437,7 @@ export default function Dashboard() {
                                         </div>
                                         <div style={{ display: 'flex', gap: '10px' }}>
                                             <button onClick={() => { setUploadStatus('idle'); setCsvMeta(null); }} style={{...actionBtn, background: '#ccc', color: '#333'}}>Cancel</button>
-                                            <button onClick={executeCsvUpload} style={{...actionBtn, background: '#28a745', flex: 2}}>{SVGS.upload} Confirm & Upload Data</button>
+                                            <button onClick={executeCsvUpload} style={{...actionBtn, background: '#28a745', color: '#fff', flex: 2}}>{SVGS.upload} Confirm & Upload Data</button>
                                         </div>
                                     </div>
                                 )}
@@ -1216,6 +1501,13 @@ export default function Dashboard() {
 
                         {attendanceView === 'stats' && (
                             <div className="expand-anim" style={whiteCard}>
+                                <div style={{ marginBottom: '10px', background: '#f8f9fa', padding: '15px', borderRadius: '10px', border: '1px solid #eee' }}>
+                                    <label style={{fontSize:'0.75rem', fontWeight:'bold', color:'#666', marginBottom:'4px', display:'block'}}>Filter by Semester</label>
+                                    <select value={attendanceSemesterFilter} onChange={(e) => setAttendanceSemesterFilter(e.target.value)} style={{...selectStyle, marginBottom: 0}}>
+                                        {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        {profile && !semesters.some(s => s.id === profile.session) && <option value={profile.session}>{profile.session} (Active)</option>}
+                                    </select>
+                                </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
                                     <h3 style={{ margin: 0, color: '#002147', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.chart} Student Stats</h3>
                                     <select value={attendanceSubjectFilter} onChange={(e) => setAttendanceSubjectFilter(e.target.value)} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #ddd', outline: 'none', fontWeight: 'bold', fontSize: '0.8rem' }}>
@@ -1406,8 +1698,8 @@ export default function Dashboard() {
                     <div className="expand-anim">
                         <button onClick={() => openBaseModal()} style={{...bigBtn, marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.plus} Add New Lecture</button>
                         
-                        {baseSchedule.length === 0 ? <div style={whiteCard}><div style={emptyState}>No base schedule found.</div></div> : (
-                            baseSchedule.sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
+                        {baseSchedule.filter(c => c.session === profile.session).length === 0 ? <div style={whiteCard}><div style={emptyState}>No base schedule found.</div></div> : (
+                            baseSchedule.filter(c => c.session === profile.session).sort((a, b) => a.day.localeCompare(b.day)).map((cls) => (
                                 <div key={`base-${cls.id}`} style={whiteCard}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
                                         <div>
@@ -1445,7 +1737,7 @@ export default function Dashboard() {
                         <form onSubmit={handleAddStudent} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>
                             <input type="text" placeholder="Reg No (e.g. FA23-BSE-001)" required value={newStudent.roll} onChange={(e) => setNewStudent({...newStudent, roll: e.target.value})} style={{...selectStyle, flex: 1, minWidth: '130px', marginBottom: 0}} />
                             <input type="text" placeholder="Student Name" required value={newStudent.name} onChange={(e) => setNewStudent({...newStudent, name: e.target.value})} style={{...selectStyle, flex: 2, minWidth: '150px', marginBottom: 0}} />
-                            <button type="submit" style={{...actionBtn, background: '#28a745', flex: 'none', width: 'auto'}}>{SVGS.plus} Add</button>
+                            <button type="submit" style={{...actionBtn, background: '#28a745', color: '#fff', flex: 'none', width: 'auto'}}>{SVGS.plus} Add</button>
                         </form>
 
                         <h3 style={{ color: '#002147', fontSize: '1rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>{SVGS.users} Class Roster ({roster.length})</h3>
