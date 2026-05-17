@@ -387,6 +387,7 @@ export default function Home() {
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
                 fetchLiveSchedule(); 
+                setShowAlerts(true);
             })
             .subscribe();
 
@@ -467,7 +468,23 @@ export default function Home() {
             setAttRecords(attRecData || []);
         }
 
-        setNotifications(notifRes.data || []);
+        let generatedNotifs = [];
+        if (activeSession && activeSection && activeSection !== 'GUEST') {
+            const today = new Date().toLocaleDateString('en-CA');
+            const relevantExc = (allExcData || []).filter(e => {
+                return e.exception_date >= today && myScheduleData.some(c => String(c.id) === String(e.base_schedule_id));
+            });
+            generatedNotifs = relevantExc.map(e => {
+                const cls = myScheduleData.find(c => String(c.id) === String(e.base_schedule_id));
+                return {
+                    id: `exc-${e.id}-${e.status}`,
+                    message: `Schedule Update: ${cls.course} is ${e.status.toUpperCase()} for ${e.exception_date}. ${e.new_room ? 'Room: ' + e.new_room : ''}`,
+                    created_at: e.created_at || new Date().toISOString()
+                };
+            });
+        }
+
+        setNotifications([...generatedNotifs, ...(notifRes.data || [])]);
         setPointsData(pointsRes.data || []); 
         setTeachersData(teachersRes.data || []);
         setContactsData(contactsRes.data || []);
@@ -479,7 +496,7 @@ export default function Home() {
         localStorage.setItem('iub_offline_data', JSON.stringify({
             rawData: myScheduleData,
             allBaseSchedule: allBaseData || [],
-            notifications: notifRes.data || [],
+            notifications: [...generatedNotifs, ...(notifRes.data || [])],
             announcements: annRes.data || [],
             pointsData: pointsRes.data || [],
             lastUpdated: nowTime
@@ -601,7 +618,10 @@ export default function Home() {
 
     const getStatusStyles = (cls) => {
         const todayStr = new Date().toLocaleDateString('en-CA');
-        const exc = exceptions.filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)[0];
+        const exc = exceptions
+            .filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)
+            .sort((a,b) => new Date(a.exception_date) - new Date(b.exception_date))[0];
+            
         if (exc?.status === 'cancelled') return { label: `Cancelled on ${exc.exception_date}`, color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
         if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
@@ -682,7 +702,7 @@ export default function Home() {
         const isGlobal = msg.includes('GLOBAL');
         const hasSection = msg.includes(userSection?.section);
         const hasSession = msg.includes(userSection?.session) || (sem && msg.includes(sem));
-        const isCRUpdate = (msg.includes('Confirmed:') || msg.includes('Cancelled:') || msg.includes('Rescheduled:')) && mySubjects.some(sub => msg.includes(sub)) && hasSection && hasSession;
+        const isCRUpdate = (msg.includes('Confirmed:') || msg.includes('Cancelled:') || msg.includes('Rescheduled:') || msg.includes('Schedule Update:')) && mySubjects.some(sub => msg.includes(sub)) && hasSection && hasSession;
 
         return (isGlobal || (hasSection && hasSession) || isCRUpdate) && !readNotifIds.includes(n.id) && !isPassedLectureNotification(msg);
     });
@@ -741,6 +761,50 @@ export default function Home() {
     }
     
     const ongoingAllLectures = allBaseSchedule.filter(c => c.day === currentDayStr && parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
+
+    const upcomingExams = examSchedules.filter(e => {
+        if(!userSection || userSection.section === 'GUEST') return false;
+        const isMySection = e.target_group.includes(userSection.section) && e.target_group.includes(getSemesterFromSession(userSection.session));
+        if(!isMySection) return false;
+        
+        const examDateTime = new Date(`${e.exam_date}T${e.start_time || '00:00:00'}`);
+        return examDateTime > currentTime;
+    }).sort((a, b) => new Date(`${a.exam_date}T${a.start_time || '00:00:00'}`) - new Date(`${b.exam_date}T${b.start_time || '00:00:00'}`));
+
+    let examCountdownElement = null;
+    if (upcomingExams.length > 0) {
+        const nextExam = upcomingExams[0];
+        const examDateTime = new Date(`${nextExam.exam_date}T${nextExam.start_time || '00:00:00'}`);
+        const diffMs = examDateTime - currentTime;
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+        
+        if (diffDays <= 20 && diffMs > 0) {
+            const d = Math.floor(diffDays);
+            const h = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+            const m = Math.floor((diffMs / 1000 / 60) % 60);
+            const s = Math.floor((diffMs / 1000) % 60);
+            
+            examCountdownElement = (
+                <div className="expand-anim" style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', color: '#fff', padding: '12px 15px', borderRadius: '12px', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 15px rgba(59,130,246,0.3)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex' }}>
+                            {SVGS.clock}
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', opacity: 0.9, marginBottom: '2px' }}>Next Exam: {nextExam.course}</div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: '900', fontVariantNumeric: 'tabular-nums' }}>
+                                {d}d {h}h {m}m {s}s
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '0.65rem', background: '#F2A900', color: '#002147', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', textAlign: 'center' }}>
+                        {new Date(nextExam.exam_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}<br/>
+                        {convertTo12Hour(nextExam.start_time)}
+                    </div>
+                </div>
+            );
+        }
+    }
 
     const todayEvents = useMemo(() => {
         const events = [];
@@ -1021,8 +1085,10 @@ export default function Home() {
                                 const m = Math.floor((diffMs / 1000 / 60) % 60);
                                 if (d > 0) {
                                     dueText = `Due ${d}d ${h}h`;
+                                } else if (h > 0) {
+                                    dueText = `Due ${h}h ${m}m`;
                                 } else {
-                                    dueText = `Due ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+                                    dueText = `Due ${m}m`;
                                 }
                             } else {
                                 dueText = 'Passed';
@@ -1200,7 +1266,6 @@ export default function Home() {
 
                     <select style={selectStyle} value={setupSession} onChange={(e) => setSetupSession(e.target.value)}>
                         <option value="">-- Select Semester --</option>
-                        <option value="GUEST">Guest Mode (Rooms/Teachers)</option>
                         {availableSessions.map(s => (
                             <option key={s} value={s}>{getSemesterFromSession(s)} Semester</option>
                         ))}
@@ -1590,7 +1655,7 @@ export default function Home() {
 
                 {/* Forced Install App Banner */}
                 {showInstallBanner && (
-                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b' }}>
+                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', margin: currentTab === 'ai_bot' ? '10px 12px 12px 12px' : '0 0 12px 0' }}>
                         <div style={{ flex: 1, paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div style={{ opacity: 0.9 }}>{SVGS.mobile}</div>
                             <div>
@@ -1603,7 +1668,7 @@ export default function Home() {
                 )}
 
                 {showNotifBanner && (
-                    <div className="expand-anim" style={notifBannerStyle}>
+                    <div className="expand-anim" style={{ ...notifBannerStyle, margin: currentTab === 'ai_bot' ? '10px 12px 12px 12px' : '0 0 12px 0' }}>
                         <div style={{ flex: 1, paddingRight: '10px' }}>
                             <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>Stay Updated! {SVGS.bell}</b>
                             <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Allow notifications for cancelled classes.</span>
@@ -1613,7 +1678,7 @@ export default function Home() {
                 )}
 
                 {showAlerts ? (
-                    <div className="expand-anim" style={whiteCard}>
+                    <div className="expand-anim" style={{ ...whiteCard, margin: currentTab === 'ai_bot' ? '10px 12px' : '0 0 10px 0' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                             <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>Alerts & Notifications</h4>
                             <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
@@ -1624,7 +1689,7 @@ export default function Home() {
                             relevantNotifs.map((n, i) => (
                                 <div key={i} style={notifCard}>
                                     <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem' }}>{n.message}</p>
-                                    <span style={{ fontSize: '0.65rem', color: '#999' }}>{new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span style={{ fontSize: '0.65rem', color: '#999' }}>{new Date(n.created_at).toLocaleDateString()} at {convertTo12Hour(new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</span>
                                 </div>
                             ))
                         )}
@@ -1648,6 +1713,8 @@ export default function Home() {
                                         </>
                                     )}
                                 </div>
+
+                                {examCountdownElement}
 
                                 <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
                                     <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
@@ -1798,7 +1865,7 @@ export default function Home() {
                                                         </div>
                                                         <h3 style={{ margin: '0 0 5px 0', color: '#002147', fontSize: '1.05rem' }}>{targetEvent.title}</h3>
                                                         <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                                                            {SVGS.clock} Departure at {targetEvent.time}
+                                                            {SVGS.clock} Departure at {convertTo12Hour(targetEvent.time)}
                                                         </div>
                                                         {noticeState !== 'Departed' && (
                                                             <div style={{ background: '#e7f1ff', border: `1px solid #b8daff`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
@@ -2203,7 +2270,13 @@ export default function Home() {
                                                 const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                                                 const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
                                                 const mins = Math.floor((diffMs / 1000 / 60) % 60);
-                                                timeRemainingDisplay = `${days > 0 ? days + 'd ' : ''}${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                                                if (days > 0) {
+                                                    timeRemainingDisplay = `${days}d ${hours}h`;
+                                                } else if (hours > 0) {
+                                                    timeRemainingDisplay = `${hours}h ${mins}m`;
+                                                } else {
+                                                    timeRemainingDisplay = `${mins}m`;
+                                                }
                                             } else {
                                                 isExpired = true;
                                             }
@@ -2424,7 +2497,7 @@ const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent:
 const emptyState = { textAlign: 'center', padding: '20px 10px', color: '#999', fontSize: '0.8rem' };
 const centerStyle = { textAlign: 'center', marginTop: '40px', fontFamily: 'sans-serif', fontSize: '0.85rem' };
 const footerStyle = { textAlign: 'center', padding: '10px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.6rem', marginTop: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'all 0.4s ease' };
-const notifBannerStyle = { background: '#002147', color: '#fff', padding: '8px 10px', borderRadius: '8px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
+const notifBannerStyle = { background: '#002147', color: '#fff', padding: '8px 10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.7rem' };
 const pointStripStyle = { background: '#3f3f3f', color: '#fff', padding: '4px 8px', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', display: 'flex', alignItems: 'center', fontSize: '0.65rem', fontWeight: 'bold', justifyContent: 'flex-start' };
 const sidebarOverlay = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, animation: 'fadeInSlide 0.2s ease' };
