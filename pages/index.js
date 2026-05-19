@@ -1783,55 +1783,79 @@ export default function Home() {
                                         </>
                                     )}
                                 </div>
-                                {/* DOWNLOAD ROLL NUMBER SLIPS CODE */}
                                 {examCountdownElement}
-                                {!isGuestUser && (
-                                    <div className="expand-anim" style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        background: 'linear-gradient(to right, #ffffff, #f8f9fa)',
-                                        padding: '12px 16px',
-                                        borderRadius: '12px',
-                                        marginBottom: '15px',
-                                        boxShadow: '0 4px 10px rgba(0,0,0,0.04)',
-                                        border: '1px solid #e9ecef',
-                                        borderLeft: '4px solid #F2A900'
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '8px', borderRadius: '50%', display: 'flex' }}>
-                                                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: '0.85rem', fontWeight: '900', color: '#002147' }}>Roll Number Slip</div>
-                                                <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Spring 2026 FInal Term Exams</div>
-                                            </div>
-                                        </div>
-                                        <a href="https://drive.google.com/drive/folders/1cD7lWVJEoB-sxOUUQOJKYPL4GRJqwYij?usp=sharing" target="_blank" rel="noreferrer" style={{
-                                            background: '#002147',
-                                            color: '#F2A900',
-                                            padding: '8px 16px',
-                                            borderRadius: '20px',
-                                            fontSize: '0.7rem',
-                                            fontWeight: 'bold',
-                                            textDecoration: 'none',
+                                {/* DOWNLOAD ROLL NUMBER SLIPS CODE */}
+                                {(() => {
+                                    // --- CONFIGURATION ---
+                                    // Put your main drive link here. If you leave it empty (""), the whole bar will hide.
+                                    const MAIN_DRIVE_LINK = "https://drive.google.com/drive/folders/1cD7lWVJEoB-sxOUUQOJKYPL4GRJqwYij?usp=sharing";
+                                
+                                    // Hide if no link is provided, or if the user is a guest / hasn't selected a section
+                                    if (!MAIN_DRIVE_LINK || isGuestUser || !userSection?.session || !userSection?.section) {
+                                        return null;
+                                    }
+                                
+                                    // 1. Calculate the semester (e.g., "3RD")
+                                    const currentSemester = getSemesterFromSession(userSection.session);
+                                    
+                                    // 2. Combine semester and section to create the search term (e.g., "3RD-3M")
+                                    const searchTerm = `${currentSemester}-${userSection.section}`;
+                                
+                                    // 3. Extract the folder ID from your link and build a strict Google Drive search URL
+                                    const folderIdMatch = MAIN_DRIVE_LINK.match(/folders\/([a-zA-Z0-9_-]+)/);
+                                    const searchUrl = folderIdMatch 
+                                        ? `https://drive.google.com/drive/search?q=${encodeURIComponent(`"${searchTerm}" parent:${folderIdMatch[1]}`)}`
+                                        : MAIN_DRIVE_LINK;
+                                
+                                    return (
+                                        <div className="expand-anim" style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '6px',
-                                            boxShadow: '0 2px 6px rgba(0,33,71,0.2)',
-                                            transition: 'all 0.2s ease',
-                                            whiteSpace: 'nowrap'
+                                            justifyContent: 'space-between',
+                                            background: 'linear-gradient(to right, #ffffff, #f8f9fa)',
+                                            padding: '12px 16px',
+                                            borderRadius: '12px',
+                                            marginBottom: '15px',
+                                            boxShadow: '0 4px 10px rgba(0,0,0,0.04)',
+                                            border: '1px solid #e9ecef',
+                                            borderLeft: '4px solid #F2A900'
                                         }}>
-                                            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-                                            </svg>
-                                            Download
-                                        </a>
-                                    </div>
-                                )}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                <div style={{ background: '#e0f2fe', color: '#0369a1', padding: '8px', borderRadius: '50%', display: 'flex' }}>
+                                                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: '0.85rem', fontWeight: '900', color: '#002147' }}>Roll Number Slip</div>
+                                                    <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Search: <b>{searchTerm}</b></div>
+                                                </div>
+                                            </div>
+                                            <a href={searchUrl} target="_blank" rel="noreferrer" style={{
+                                                background: '#002147',
+                                                color: '#F2A900',
+                                                padding: '8px 16px',
+                                                borderRadius: '20px',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 'bold',
+                                                textDecoration: 'none',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                boxShadow: '0 2px 6px rgba(0,33,71,0.2)',
+                                                transition: 'all 0.2s ease',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                                </svg>
+                                                Download
+                                            </a>
+                                        </div>
+                                    );
+                                })()}
                                 {/* ENDING DOWNLOAD ROLL NUMBER SLIPS CODE */}
+
                                 <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
                                     <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                                         {SVGS.bell} Notice Board
