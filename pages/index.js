@@ -119,6 +119,12 @@ export default function Home() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isStandalone, setIsStandalone] = useState(true);
     
+    // Swipe to Delete States
+    const [swipeOffsets, setSwipeOffsets] = useState({});
+    const [isSwiping, setIsSwiping] = useState(null);
+    const swipeStartX = useRef(null);
+    const currentSwipeX = useRef(0);
+
     // Core Data States
     const [userSection, setUserSection] = useState(null);
     const isGuestUser = userSection?.section === 'GUEST';
@@ -181,11 +187,11 @@ export default function Home() {
     });
     const [showAlerts, setShowAlerts] = useState(false);
     
-	    // Forced Banner States
-	    const [showInstallBanner, setShowInstallBanner] = useState(false);
-	    
-	    const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
-	    const [expandedContactId, setExpandedContactId] = useState(null); 
+    // Forced Banner States
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
+    
+    const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
+    const [expandedContactId, setExpandedContactId] = useState(null); 
 
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
@@ -226,6 +232,40 @@ export default function Home() {
         timeSlots.push(`${dh}:${m === 0 ? '00' : m} ${amp}`);
         ts += 30;
     }
+
+    // --- SWIPE GESTURE HANDLERS ---
+    const handleTouchStart = (e, id) => {
+        swipeStartX.current = e.touches[0].clientX;
+        setIsSwiping(id);
+        currentSwipeX.current = 0;
+    };
+
+    const handleTouchMove = (e, id) => {
+        if (isSwiping !== id) return;
+        const diff = e.touches[0].clientX - swipeStartX.current;
+        if (diff < 0) { // Only swipe left
+            currentSwipeX.current = diff;
+            setSwipeOffsets(prev => ({ ...prev, [id]: diff }));
+        }
+    };
+
+    const handleTouchEnd = (id) => {
+        if (currentSwipeX.current < -100) {
+            // Delete notification
+            const newReadIds = [...readNotifIds, id];
+            setReadNotifIds(newReadIds);
+            localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
+            setSwipeOffsets(prev => {
+                const newOffsets = {...prev};
+                delete newOffsets[id];
+                return newOffsets;
+            });
+        } else {
+            // Snap back
+            setSwipeOffsets(prev => ({ ...prev, [id]: 0 }));
+        }
+        setIsSwiping(null);
+    };
 
     useEffect(() => {
         setIsOffline(!navigator.onLine);
@@ -330,8 +370,8 @@ export default function Home() {
         const savedAssn = localStorage.getItem('iub_completed_assignments');
         if (savedAssn) setCompletedAssignments(JSON.parse(savedAssn));
 
-	        fetchLiveSchedule();
-	    }, []);
+        fetchLiveSchedule();
+    }, []);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -349,7 +389,7 @@ export default function Home() {
                         notifiedDeadlines.current.add(ann.id);
                         const msg = `⏰ DEADLINE ALERT: Only 2 hours left for ${ann.subject} Assignment (${ann.topics}).`;
                         setNotifications(prev => [{ id: `deadline-${ann.id}`, message: msg, created_at: new Date().toISOString() }, ...prev]);
-                        setShowAlerts(true); 
+                        
                         if (Notification.permission === "granted") {
                             new Notification("Assignment Due Soon!", { body: msg, icon: "/icon-192x192.png" });
                         }
@@ -411,7 +451,6 @@ export default function Home() {
                     if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
                         void showSystemNotification("IUB Update Alert", payload.new?.message || msg);
                     }
-                    setShowAlerts(true);
                     fetchLiveSchedule(); 
                 }
             })
@@ -421,13 +460,11 @@ export default function Home() {
                     if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
                         void showSystemNotification("New Class Update", `${pnew.subject}: ${pnew.topics}`);
                     }
-                    setShowAlerts(true);
                     fetchLiveSchedule(); 
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
                 fetchLiveSchedule(); 
-                setShowAlerts(true);
             })
             .subscribe();
 
@@ -792,10 +829,10 @@ export default function Home() {
         setSearchedFreeRooms([...new Set(strictlyCancelledClasses.map(c => c.room))]);
     };
 
-	    const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-	    const todayStrCA = currentTime.toLocaleDateString('en-CA');
-	    const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
-	    const currentSecs = currentTime.getSeconds();
+    const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const todayStrCA = currentTime.toLocaleDateString('en-CA');
+    const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const currentSecs = currentTime.getSeconds();
 
     const isPassedLectureNotification = (msg) => {
         const rawMyClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
@@ -1799,19 +1836,85 @@ export default function Home() {
                     </div>
                 )}
 
-	                {showAlerts ? (
-	                    <div className="expand-anim" style={{ ...whiteCard, margin: currentTab === 'ai_bot' ? '10px 12px' : '0 0 10px 0' }}>
-	                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-	                            <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>Alerts & Notifications</h4>
-	                            <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
+                {!showAlerts && relevantNotifs.length > 0 && currentTab !== 'ai_bot' && (
+                    <div
+                        className="expand-anim"
+                        onClick={() => setShowAlerts(true)}
+                        style={{
+                            background: '#fff',
+                            borderRadius: '16px',
+                            padding: '12px 16px',
+                            marginBottom: '15px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+                            border: '1px solid #e2e8f0',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ background: '#fef2f2', color: '#ef4444', padding: '10px', borderRadius: '50%', display: 'flex' }}>
+                                {SVGS.bell}
+                            </div>
+                            <div>
+                                <div style={{ fontWeight: '800', fontSize: '0.9rem', color: '#0f172a' }}>New Notifications</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>You have {relevantNotifs.length} unread alert{relevantNotifs.length > 1 ? 's' : ''}</div>
+                            </div>
                         </div>
+                        <div style={{ color: '#94a3b8' }}>{SVGS.rightArrow}</div>
+                    </div>
+                )}
+
+                {showAlerts ? (
+                    <div className="expand-anim" style={{ ...whiteCard, margin: currentTab === 'ai_bot' ? '10px 12px' : '0 0 10px 0', borderTop: 'none', background: 'transparent', boxShadow: 'none', padding: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', background: '#fff', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <button onClick={() => setShowAlerts(false)} style={{ background: '#f1f5f9', border: 'none', color: '#475569', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                                    {SVGS.leftArrow}
+                                </button>
+                                <h4 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: '800' }}>Alerts & Updates</h4>
+                            </div>
+                            <button onClick={() => { handleMarkAsRead(); setShowAlerts(false); }} style={{ background: '#fef2f2', color: '#ef4444', border: 'none', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Clear All</button>
+                        </div>
+                        
                         {relevantNotifs.length === 0 ? (
-                            <div style={emptyState}>No new notifications.</div>
+                            <div style={{ ...emptyState, background: '#fff', borderRadius: '16px' }}>No new notifications.</div>
                         ) : (
-                            relevantNotifs.map((n, i) => (
-                                <div key={i} style={notifCard}>
-                                    <p style={{ margin: '0 0 4px 0', fontSize: '0.75rem' }}>{n.message}</p>
-                                    <span style={{ fontSize: '0.65rem', color: '#999' }}>{new Date(n.created_at).toLocaleDateString()} at {convertTo12Hour(new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}</span>
+                            relevantNotifs.map((n) => (
+                                <div key={n.id} style={{ position: 'relative', marginBottom: '12px', borderRadius: '16px', overflow: 'hidden' }}>
+                                    <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '100%', background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '24px', color: '#fff', fontWeight: '800', fontSize: '0.85rem' }}>
+                                        Delete
+                                    </div>
+                                    <div
+                                        onTouchStart={(e) => handleTouchStart(e, n.id)}
+                                        onTouchMove={(e) => handleTouchMove(e, n.id)}
+                                        onTouchEnd={() => handleTouchEnd(n.id)}
+                                        style={{
+                                            background: '#fff',
+                                            padding: '16px',
+                                            borderRadius: '16px',
+                                            boxShadow: '0 4px 15px rgba(0,0,0,0.03)',
+                                            border: '1px solid #f1f5f9',
+                                            display: 'flex',
+                                            gap: '12px',
+                                            alignItems: 'flex-start',
+                                            position: 'relative',
+                                            transform: `translateX(${swipeOffsets[n.id] || 0}px)`,
+                                            transition: isSwiping === n.id ? 'none' : 'transform 0.3s ease',
+                                            zIndex: 1
+                                        }}
+                                    >
+                                        <div style={{ background: '#eff6ff', color: '#3b82f6', padding: '10px', borderRadius: '50%', flexShrink: 0 }}>
+                                            {SVGS.bell}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <p style={{ margin: '0 0 6px 0', fontSize: '0.85rem', color: '#1e293b', fontWeight: '700', lineHeight: '1.4' }}>{n.message}</p>
+                                            <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: '600' }}>
+                                                {new Date(n.created_at).toLocaleDateString()} at {convertTo12Hour(new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -1900,7 +2003,7 @@ export default function Home() {
                                     <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                                         {SVGS.bell} Notice Board
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justify-content: 'space-between', padding: '15px' }}>
                                         {todayEvents.length > 0 && (
                                             <button onClick={prevNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.leftArrow}</button>
                                         )}
@@ -1908,7 +2011,7 @@ export default function Home() {
                                         <div style={{ flex: 1, textAlign: 'center', margin: '0 10px' }}>
                                             {todayEvents.length === 0 ? (
                                                 <div>
-                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.05rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.05rem', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '6px' }}>
                                                         {SVGS.sparkle} Today is Off
                                                     </h3>
                                                     <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
@@ -2410,7 +2513,8 @@ export default function Home() {
                                 
                                 <div style={{...dayFilter, marginTop: '8px', marginBottom: '15px'}}>
                                     {filterDays.map(day => {
-                                        const isActive = teacherSchedule.some(c => c.day === day);
+                                        const unfilteredTeacherSchedule = allBaseSchedule.filter(c => c.teacher === selectedTeacher);
+                                        const isActive = unfilteredTeacherSchedule.some(c => c.day === day);
                                         const isSelected = selectedDay === day;
                                         let bg = '#f1f5f9';
                                         let col = '#94a3b8';
@@ -2696,14 +2800,11 @@ const dayHeaderStrip = { background: '#002147', color: '#F2A900', padding: '4px 
 const selectStyle = { width: '100%', padding: '8px', marginBottom: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.75rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
 const searchInput = { width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #dee2e6', fontSize: '0.75rem', background: '#fff', outline: 'none', boxSizing: 'border-box', transition: 'all 0.3s ease' };
 const cardBase = { padding: '10px', borderRadius: '8px', transition: 'all 0.3s ease' };
-const notifCard = { background: '#fff', padding: '8px', borderRadius: '6px', marginBottom: '8px', borderLeft: '3px solid #dc3545', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' };
 const whiteCard = { background: '#fff', padding: '10px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: '10px', borderTop: '3px solid #F2A900', transition: 'all 0.3s ease' };
 const searchBtn = { width: '100%', padding: '10px', background: '#002147', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '4px', boxSizing: 'border-box', transition: 'all 0.3s ease', fontSize: '0.75rem' };
-const markReadBtn = { background: '#e9ecef', border: 'none', padding: '3px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', color: '#555', transition: 'all 0.3s ease' };
 const freeRoomItem = { padding: '8px', borderBottom: '1px solid #eee', color: '#28a745', fontWeight: 'bold', fontSize: '0.7rem', background: '#f0fff4', borderRadius: '4px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' };
 const contactBtnStyle = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', background: '#25D366', color: '#fff', padding: '6px 10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.7rem', width: '100%', boxSizing: 'border-box', boxShadow: '0 1px 3px rgba(37, 211, 102, 0.2)', transition: 'all 0.3s ease' };
 const emptyState = { textAlign: 'center', padding: '20px 10px', color: '#999', fontSize: '0.8rem' };
-const centerStyle = { textAlign: 'center', marginTop: '40px', fontFamily: 'sans-serif', fontSize: '0.85rem' };
 const footerStyle = { textAlign: 'center', padding: '10px', background: '#fff', color: '#666', borderTop: '1px solid #dee2e6', fontSize: '0.6rem', marginTop: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', transition: 'all 0.4s ease' };
 const notifBannerStyle = { background: '#002147', color: '#fff', padding: '8px 10px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '2px solid #F2A900', gap: '8px', transition: 'all 0.3s ease' };
 const enableBtnStyle = { background: '#F2A900', color: '#002147', border: 'none', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.3s ease', fontSize: '0.7rem' };
