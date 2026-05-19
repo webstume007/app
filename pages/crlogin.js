@@ -187,6 +187,12 @@ export default function Dashboard() {
     const isMobile = windowWidth < 768;
 
     useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch((err) => console.error('SW Registration Failed', err));
+        }
+    }, []);
+
+    useEffect(() => {
         if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
             Notification.requestPermission();
         }
@@ -217,7 +223,7 @@ export default function Dashboard() {
                         supabase.from('notifications').insert([{ message: msg }]).then();
                         
                         if (Notification.permission === "granted") {
-                            new Notification("Assignment Deadline Approaching!", { body: msg, icon: "/icon.png" });
+                            new Notification("Assignment Deadline Approaching!", { body: msg, icon: "/icon-192x192.png" });
                         }
                     }
                 }
@@ -234,7 +240,7 @@ export default function Dashboard() {
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
                 const newMsg = payload.new.message;
                 if (newMsg.includes(profile.section) && Notification.permission === "granted") {
-                    new Notification("IUB Update Alert", { body: newMsg, icon: "/icon.png" });
+                    new Notification("IUB Update Alert", { body: newMsg, icon: "/icon-192x192.png" });
                 }
             }).subscribe();
         return () => { supabase.removeChannel(channel); };
@@ -696,7 +702,8 @@ export default function Dashboard() {
         e.stopPropagation(); 
         const targetDate = getDateForCurrentWeekDay(clsDay);
         await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: targetDate, status: 'confirmed', cancelled_by: session.user.id }]);
-        await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${profile.section} will be held on ${targetDate}.` }]);
+        const sessTag = profile?.session ? ` | ${profile.session}` : '';
+        await supabase.from('notifications').insert([{ message: `✅ Confirmed: ${courseName} for Section ${profile.section}${sessTag} will be held on ${targetDate}.` }]);
         fetchProfileAndSchedule(session.user.id); 
     };
 
@@ -705,17 +712,19 @@ export default function Dashboard() {
         if (!window.confirm(`Are you sure you want to CANCEL ${courseName}?`)) return;
         const targetDate = getDateForCurrentWeekDay(clsDay);
         await supabase.from('schedule_exceptions').insert([{ base_schedule_id: classId, exception_date: targetDate, status: 'cancelled', cancelled_by: session.user.id }]);
-        await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section} on ${targetDate} is cancelled.` }]);
+        const sessTag = profile?.session ? ` | ${profile.session}` : '';
+        await supabase.from('notifications').insert([{ message: `🚨 Cancelled: ${courseName} for Section ${profile.section}${sessTag} on ${targetDate} is cancelled.` }]);
         fetchProfileAndSchedule(session.user.id);
     };
 
     const handleUndoException = async (e, classId, actionType, courseName, clsDay) => {
         e.stopPropagation();
         const targetDate = getDateForCurrentWeekDay(clsDay);
+        const sessTag = profile?.session ? ` | ${profile.session}` : '';
         await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: targetDate });
 
-        if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section} on ${targetDate} is cancelled.`);
-        else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${profile.section} will be held on ${targetDate}.`);
+        if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `🚨 Cancelled: ${courseName} for Section ${profile.section}${sessTag} on ${targetDate} is cancelled.`);
+        else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `✅ Confirmed: ${courseName} for Section ${profile.section}${sessTag} will be held on ${targetDate}.`);
         else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `🕒 Rescheduled: ${courseName} for Section ${profile.section}%`);
 
         fetchProfileAndSchedule(session.user.id);
@@ -730,11 +739,12 @@ export default function Dashboard() {
     const submitReschedule = async (e) => {
         e.preventDefault();
         const targetDate = getDateForCurrentWeekDay(editingClass.day);
+        const sessTag = profile?.session ? ` | ${profile.session}` : '';
         await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: editingClass.id, exception_date: targetDate, status: 'rescheduled',
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
         }]);
-        await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}) on ${targetDate}.` }]);
+        await supabase.from('notifications').insert([{ message: `🕒 Rescheduled: ${editingClass.course} for Section ${profile.section}${sessTag} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}) on ${targetDate}.` }]);
         alert(`Class rescheduled!`); setIsEditModalOpen(false); fetchProfileAndSchedule(session.user.id);
     };
 
