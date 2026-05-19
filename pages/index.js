@@ -181,12 +181,11 @@ export default function Home() {
     });
     const [showAlerts, setShowAlerts] = useState(false);
     
-    // Forced Banner States
-    const [showInstallBanner, setShowInstallBanner] = useState(false);
-    const [showNotifBanner, setShowNotifBanner] = useState(false);
-    
-    const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
-    const [expandedContactId, setExpandedContactId] = useState(null); 
+	    // Forced Banner States
+	    const [showInstallBanner, setShowInstallBanner] = useState(false);
+	    
+	    const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
+	    const [expandedContactId, setExpandedContactId] = useState(null); 
 
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
@@ -331,12 +330,8 @@ export default function Home() {
         const savedAssn = localStorage.getItem('iub_completed_assignments');
         if (savedAssn) setCompletedAssignments(JSON.parse(savedAssn));
 
-        if ("Notification" in window && Notification.permission === "default") {
-            setShowNotifBanner(true);
-        }
-
-        fetchLiveSchedule();
-    }, []);
+	        fetchLiveSchedule();
+	    }, []);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -797,18 +792,10 @@ export default function Home() {
         setSearchedFreeRooms([...new Set(strictlyCancelledClasses.map(c => c.room))]);
     };
 
-    const forceNotificationPermission = async () => {
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
-            setShowNotifBanner(false);
-            new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
-        }
-    };
-
-    const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-    const todayStrCA = currentTime.toLocaleDateString('en-CA');
-    const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
-    const currentSecs = currentTime.getSeconds();
+	    const currentDayStr = currentTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+	    const todayStrCA = currentTime.toLocaleDateString('en-CA');
+	    const currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+	    const currentSecs = currentTime.getSeconds();
 
     const isPassedLectureNotification = (msg) => {
         const rawMyClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session);
@@ -1812,21 +1799,11 @@ export default function Home() {
                     </div>
                 )}
 
-                {showNotifBanner && (
-                    <div className="expand-anim" style={{ ...notifBannerStyle, margin: currentTab === 'ai_bot' ? '10px 12px 12px 12px' : '0 0 12px 0' }}>
-                        <div style={{ flex: 1, paddingRight: '10px' }}>
-                            <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>Stay Updated! {SVGS.bell}</b>
-                            <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Allow notifications for cancelled classes.</span>
-                        </div>
-                        <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
-                    </div>
-                )}
-
-                {showAlerts ? (
-                    <div className="expand-anim" style={{ ...whiteCard, margin: currentTab === 'ai_bot' ? '10px 12px' : '0 0 10px 0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>Alerts & Notifications</h4>
-                            <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
+	                {showAlerts ? (
+	                    <div className="expand-anim" style={{ ...whiteCard, margin: currentTab === 'ai_bot' ? '10px 12px' : '0 0 10px 0' }}>
+	                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+	                            <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#002147' }}>Alerts & Notifications</h4>
+	                            <button onClick={handleMarkAsRead} style={markReadBtn}>Mark as Read</button>
                         </div>
                         {relevantNotifs.length === 0 ? (
                             <div style={emptyState}>No new notifications.</div>

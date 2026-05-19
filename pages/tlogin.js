@@ -95,7 +95,6 @@ export default function TeacherLoginAndDashboard() {
     const [isStandalone, setIsStandalone] = useState(true);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
-    const [showNotifBanner, setShowNotifBanner] = useState(false);
 
     // --- NEW: Semesters, Milestones, Exams Data ---
     const [semesters, setSemesters] = useState([]);
@@ -308,10 +307,6 @@ export default function TeacherLoginAndDashboard() {
                 setSession(null); setProfile(null); setLoading(false); 
             }
         });
-
-        if ("Notification" in window && Notification.permission === "default") {
-            setShowNotifBanner(true);
-        }
 
         return () => {
             authListener.subscription.unsubscribe();
@@ -699,14 +694,6 @@ export default function TeacherLoginAndDashboard() {
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
             if (outcome === 'accepted') setDeferredPrompt(null);
-        }
-    };
-
-    const forceNotificationPermission = async () => {
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
-            setShowNotifBanner(false);
-            new Notification("Notifications Enabled!", { body: "You will now receive IUB alerts." });
         }
     };
 
@@ -1265,15 +1252,6 @@ export default function TeacherLoginAndDashboard() {
                             </div>
                         </div>
                         <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
-                    </div>
-                )}
-                {showNotifBanner && (
-                    <div className="expand-anim" style={notifBannerStyle}>
-                        <div style={{ flex: 1, paddingRight: '10px' }}>
-                            <b style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>Stay Updated! {SVGS.bell}</b>
-                            <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Allow notifications to get instant lecture reminders.</span>
-                        </div>
-                        <button onClick={forceNotificationPermission} style={enableBtnStyle}>Enable</button>
                     </div>
                 )}
 
