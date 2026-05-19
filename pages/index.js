@@ -369,6 +369,19 @@ export default function Home() {
         if (!('serviceWorker' in navigator)) return false;
         try {
             const reg = await navigator.serviceWorker.ready;
+            if (typeof reg.showNotification === 'function') {
+                const { title, body, icon, tag, url } = payload || {};
+                await reg.showNotification(title || 'IUB Assistant', {
+                    body: body || '',
+                    icon: icon || "/icon-192x192.png",
+                    badge: "/icon-192x192.png",
+                    tag,
+                    renotify: Boolean(tag),
+                    data: { url: url || '/', ...(payload?.data || {}) }
+                });
+                return true;
+            }
+
             const sw = reg.active || reg.waiting || reg.installing;
             if (!sw) return false;
             sw.postMessage({ type: 'SHOW_NOTIFICATION', payload });
@@ -401,7 +414,7 @@ export default function Home() {
 
                 if (isGlobal || (hasSection && hasSession)) {
                     if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
-                        showSystemNotification("IUB Update Alert", payload.new?.message || msg);
+                        void showSystemNotification("IUB Update Alert", payload.new?.message || msg);
                     }
                     setShowAlerts(true);
                     fetchLiveSchedule(); 
@@ -411,7 +424,7 @@ export default function Home() {
                 const pnew = payload.new || payload.old || {};
                 if (pnew.section === userSection.section && pnew.session === userSection.session) {
                     if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
-                        showSystemNotification("New Class Update", `${pnew.subject}: ${pnew.topics}`);
+                        void showSystemNotification("New Class Update", `${pnew.subject}: ${pnew.topics}`);
                     }
                     setShowAlerts(true);
                     fetchLiveSchedule(); 
