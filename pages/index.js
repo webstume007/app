@@ -294,6 +294,9 @@ export default function Home() {
                 if (parsed.announcements) setAnnouncements(parsed.announcements);
                 if (parsed.pointsData) setPointsData(parsed.pointsData);
                 if (parsed.lastUpdated) setLastUpdated(parsed.lastUpdated);
+                
+                // Set loading false instantly if we have cached data
+                setLoading(false);
             } catch(e) {}
         }
 
@@ -338,7 +341,7 @@ export default function Home() {
                     if (diffMins === 120 && !notifiedDeadlines.current.has(ann.id)) {
                         notifiedDeadlines.current.add(ann.id);
                         const msg = `⏰ DEADLINE ALERT: Only 2 hours left for ${ann.subject} Assignment (${ann.topics}).`;
-                        setNotifications(prev => [{ id: Date.now(), message: msg, created_at: new Date().toISOString() }, ...prev]);
+                        setNotifications(prev => [{ id: `deadline-${ann.id}`, message: msg, created_at: new Date().toISOString() }, ...prev]);
                         setShowAlerts(true); 
                         if (Notification.permission === "granted") {
                             new Notification("Assignment Due Soon!", { body: msg, icon: "/icon.png" });
@@ -413,96 +416,109 @@ export default function Home() {
     };
 
     const fetchLiveSchedule = async () => {
-        const savedSelection = localStorage.getItem('iub_user_selection');
-        let activeSession = null; let activeSection = null;
-        if (savedSelection) {
-            const parsed = JSON.parse(savedSelection);
-            activeSession = parsed.session || parsed.semester;
-            activeSection = parsed.section;
+        try {
+            const savedSelection = localStorage.getItem('iub_user_selection');
+            let activeSession = null; let activeSection = null;
+            if (savedSelection) {
+                const parsed = JSON.parse(savedSelection);
+                activeSession = parsed.session || parsed.semester;
+                activeSection = parsed.section;
+            }
+            const savedRoll = localStorage.getItem('iub_my_roll');
+
+            const { data: allBaseData } = await fetchAllRows('base_schedule');
+            const { data: allExcData } = await fetchAllRows('schedule_exceptions');
+            const { data: milestonesData } = await fetchAllRows('academic_milestones');
+            const { data: examData } = await fetchAllRows('exam_schedules');
+            
+            setAllBaseSchedule(allBaseData || []);
+            setExceptions(allExcData || []);
+            setMilestones(milestonesData || []);
+            setExamSchedules(examData || []);
+
+            const uniqueSessions = [...new Set((allBaseData || []).map(x => x.session))].filter(Boolean);
+            const uniqueRooms = [...new Set((allBaseData || []).map(x => x.room))].filter(Boolean).sort();
+            setDropdownMeta({ sessions: uniqueSessions, rooms: uniqueRooms, baseMeta: allBaseData || [] });
+
+            let myScheduleData = [];
+            let studentsReq = Promise.resolve({ data: [] });
+            let annReq = Promise.resolve({ data: [] });
+
+            if (activeSession && activeSection && activeSection !== 'GUEST') {
+                myScheduleData = (allBaseData || []).filter(c => c.session === activeSession && c.section === activeSection);
+                studentsReq = supabase.from('students').select('*').eq('session', activeSession).eq('section', activeSection);
+                annReq = supabase.from('class_announcements').select('*').eq('session', activeSession).eq('section', activeSection).order('created_at', { ascending: false });
+            }
+
+            const [notifRes, pointsRes, teachersRes, contactsRes, studentsRes, annRes] = await Promise.all([
+                supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
+                supabase.from('point_schedules').select('*'),
+                supabase.from('teacher_profiles').select('name, phone'),
+                fetchAllRows('contacts'), 
+                studentsReq,
+                annReq
+            ]);
+
+            setRawData(myScheduleData); 
+            
+            if (myScheduleData.length > 0) {
+                const ids = myScheduleData.map(c => c.id);
+                const { data: attSessData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', ids);
+                setAttSessions(attSessData || []);
+            }
+
+            if (savedRoll) {
+                const { data: attRecData } = await supabase.from('attendance_records').select('*').eq('student_id', savedRoll);
+                setAttRecords(attRecData || []);
+            }
+
+            let generatedNotifs = [];
+            if (activeSession && activeSection && activeSection !== 'GUEST') {
+                const today = new Date().toLocaleDateString('en-CA');
+                const relevantExc = (allExcData || []).filter(e => {
+                    return e.exception_date >= today && myScheduleData.some(c => String(c.id) === String(e.base_schedule_id));
+                });
+                generatedNotifs = relevantExc.map(e => {
+                    const cls = myScheduleData.find(c => String(c.id) === String(e.base_schedule_id));
+                    return {
+                        id: `exc-${e.id}-${e.status}`,
+                        message: `Schedule Update: ${cls.course} is ${e.status.toUpperCase()} for ${e.exception_date}. ${e.new_room ? 'Room: ' + e.new_room : ''}`,
+                        created_at: e.created_at || new Date().toISOString()
+                    };
+                });
+            }
+
+            const generatedAnnNotifs = (annRes.data || [])
+                .filter(a => a.section === activeSection && a.session === activeSession)
+                .map(a => ({
+                    id: `ann-${a.id}`,
+                    message: `New ${a.type === 'assignment' ? 'Assignment' : 'Update'} for ${a.subject}: ${a.topics}`,
+                    created_at: a.created_at || new Date().toISOString()
+                }));
+
+            setNotifications([...generatedNotifs, ...generatedAnnNotifs, ...(notifRes.data || [])]);
+            setPointsData(pointsRes.data || []); 
+            setTeachersData(teachersRes.data || []);
+            setContactsData(contactsRes.data || []);
+            setStudentsData(studentsRes.data || []);
+            setAnnouncements(annRes.data || []);
+            
+            const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setLastUpdated(nowTime);
+            localStorage.setItem('iub_offline_data', JSON.stringify({
+                rawData: myScheduleData,
+                allBaseSchedule: allBaseData || [],
+                notifications: [...generatedNotifs, ...generatedAnnNotifs, ...(notifRes.data || [])],
+                announcements: annRes.data || [],
+                pointsData: pointsRes.data || [],
+                lastUpdated: nowTime
+            }));
+
+            setLoading(false);
+        } catch (error) {
+            console.error("Error fetching live schedule:", error);
+            setLoading(false);
         }
-        const savedRoll = localStorage.getItem('iub_my_roll');
-
-        const { data: allBaseData } = await fetchAllRows('base_schedule');
-        const { data: allExcData } = await fetchAllRows('schedule_exceptions');
-        const { data: milestonesData } = await fetchAllRows('academic_milestones');
-        const { data: examData } = await fetchAllRows('exam_schedules');
-        
-        setAllBaseSchedule(allBaseData || []);
-        setExceptions(allExcData || []);
-        setMilestones(milestonesData || []);
-        setExamSchedules(examData || []);
-
-        const uniqueSessions = [...new Set((allBaseData || []).map(x => x.session))].filter(Boolean);
-        const uniqueRooms = [...new Set((allBaseData || []).map(x => x.room))].filter(Boolean).sort();
-        setDropdownMeta({ sessions: uniqueSessions, rooms: uniqueRooms, baseMeta: allBaseData || [] });
-
-        let myScheduleData = [];
-        let studentsReq = Promise.resolve({ data: [] });
-        let annReq = Promise.resolve({ data: [] });
-
-        if (activeSession && activeSection && activeSection !== 'GUEST') {
-            myScheduleData = (allBaseData || []).filter(c => c.session === activeSession && c.section === activeSection);
-            studentsReq = supabase.from('students').select('*').eq('session', activeSession).eq('section', activeSection);
-            annReq = supabase.from('class_announcements').select('*').eq('session', activeSession).eq('section', activeSection).order('created_at', { ascending: false });
-        }
-
-        const [notifRes, pointsRes, teachersRes, contactsRes, studentsRes, annRes] = await Promise.all([
-            supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
-            supabase.from('point_schedules').select('*'),
-            supabase.from('teacher_profiles').select('name, phone'),
-            fetchAllRows('contacts'), 
-            studentsReq,
-            annReq
-        ]);
-
-        setRawData(myScheduleData); 
-        
-        if (myScheduleData.length > 0) {
-            const ids = myScheduleData.map(c => c.id);
-            const { data: attSessData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', ids);
-            setAttSessions(attSessData || []);
-        }
-
-        if (savedRoll) {
-            const { data: attRecData } = await supabase.from('attendance_records').select('*').eq('student_id', savedRoll);
-            setAttRecords(attRecData || []);
-        }
-
-        let generatedNotifs = [];
-        if (activeSession && activeSection && activeSection !== 'GUEST') {
-            const today = new Date().toLocaleDateString('en-CA');
-            const relevantExc = (allExcData || []).filter(e => {
-                return e.exception_date >= today && myScheduleData.some(c => String(c.id) === String(e.base_schedule_id));
-            });
-            generatedNotifs = relevantExc.map(e => {
-                const cls = myScheduleData.find(c => String(c.id) === String(e.base_schedule_id));
-                return {
-                    id: `exc-${e.id}-${e.status}`,
-                    message: `Schedule Update: ${cls.course} is ${e.status.toUpperCase()} for ${e.exception_date}. ${e.new_room ? 'Room: ' + e.new_room : ''}`,
-                    created_at: e.created_at || new Date().toISOString()
-                };
-            });
-        }
-
-        setNotifications([...generatedNotifs, ...(notifRes.data || [])]);
-        setPointsData(pointsRes.data || []); 
-        setTeachersData(teachersRes.data || []);
-        setContactsData(contactsRes.data || []);
-        setStudentsData(studentsRes.data || []);
-        setAnnouncements(annRes.data || []);
-        
-        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        setLastUpdated(nowTime);
-        localStorage.setItem('iub_offline_data', JSON.stringify({
-            rawData: myScheduleData,
-            allBaseSchedule: allBaseData || [],
-            notifications: [...generatedNotifs, ...(notifRes.data || [])],
-            announcements: annRes.data || [],
-            pointsData: pointsRes.data || [],
-            lastUpdated: nowTime
-        }));
-
-        setLoading(false);
     };
 
     const handleInitialSelection = () => {
@@ -698,13 +714,17 @@ export default function Home() {
 
     const relevantNotifs = notifications.filter(n => {
         const msg = n.message || "";
+        const isGenerated = String(n.id).startsWith('exc-') || String(n.id).startsWith('ann-') || String(n.id).startsWith('deadline-');
         const sem = getSemesterFromSession(userSection?.session);
         const isGlobal = msg.includes('GLOBAL');
-        const hasSection = msg.includes(userSection?.section);
-        const hasSession = msg.includes(userSection?.session) || (sem && msg.includes(sem));
+        const hasSection = userSection?.section && msg.includes(userSection.section);
+        const hasSession = userSection?.session && (msg.includes(userSection.session) || (sem && msg.includes(sem)));
         const isCRUpdate = (msg.includes('Confirmed:') || msg.includes('Cancelled:') || msg.includes('Rescheduled:') || msg.includes('Schedule Update:')) && mySubjects.some(sub => msg.includes(sub)) && hasSection && hasSession;
+        const isAssignmentAlert = msg.includes('DEADLINE ALERT');
 
-        return (isGlobal || (hasSection && hasSession) || isCRUpdate) && !readNotifIds.includes(n.id) && !isPassedLectureNotification(msg);
+        const shouldShow = isGenerated || isGlobal || (hasSection && hasSession) || isCRUpdate || isAssignmentAlert;
+        
+        return shouldShow && !readNotifIds.includes(n.id) && !isPassedLectureNotification(msg);
     });
 
     const handleMarkAsRead = () => {
@@ -1567,7 +1587,7 @@ export default function Home() {
                             <span style={{opacity: 0.7}}>{SVGS.edit}</span>
                         </span>
                         <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {SVGS.clock} Update: {lastUpdated}
+                            {SVGS.clock} {isOffline ? 'Offline' : `Update: ${lastUpdated}`}
                         </span>
                     </div>
 
@@ -1585,7 +1605,7 @@ export default function Home() {
                     {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
                 </span>
                 <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {SVGS.clock} Update: {lastUpdated}
+                    {SVGS.clock} {isOffline ? 'Offline' : `Update: ${lastUpdated}`}
                 </span>
             </div>
 
@@ -1811,9 +1831,10 @@ export default function Home() {
                                                     const lastEventMins = targetEvent.type === 'lecture' ? targetEvent.endMins : targetEvent.timeMins;
                                                     if (currentMins >= lastEventMins + 30) {
                                                         const tmrwDayStr = new Date(currentTime.getTime() + 86400000).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-                                                        const tmrwPoints = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === (tmrwDayStr === 'SAT')).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
-                                                        const tmrwBestPoint = tmrwPoints.length > 0 ? convertTo12Hour(tmrwPoints[0].departure_time.slice(0,5)) : 'N/A';
-                                                        const hasTmrwLectures = allBaseSchedule.some(c => c.section === userSection?.section && c.session === userSection?.session && c.day === tmrwDayStr && !(getStatusStyles(c)?.label?.toLowerCase().includes('cancelled')));
+                                                        
+                                                        const tmrwClasses = allBaseSchedule.filter(c => c.section === userSection?.section && c.session === userSection?.session && c.day === tmrwDayStr && !(getStatusStyles(c)?.label?.toLowerCase().includes('cancelled'))).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+                                                        
+                                                        const hasTmrwLectures = tmrwClasses.length > 0;
 
                                                         if (!hasTmrwLectures) {
                                                             return eodToggle === 0 && activeAssignments.length > 0 ? (
@@ -1823,11 +1844,20 @@ export default function Home() {
                                                                 </div>
                                                             ) : (
                                                                 <div className="expand-anim">
-                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.05rem' }}>No Classes Tomorrow</h3>
-                                                                    <div style={{ fontSize: '0.85rem', color: '#666' }}>Enjoy your day off!</div>
+                                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.05rem' }}>Tomorrow is off</h3>
+                                                                    <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
                                                                 </div>
                                                             );
                                                         } else {
+                                                            const firstLecture = tmrwClasses[0];
+                                                            const targetMins = parseTime(firstLecture.start_time) - 30;
+                                                            
+                                                            const tmrwPoints = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === (tmrwDayStr === 'SAT') && parseDbTime(p.departure_time) <= targetMins).sort((a,b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time));
+                                                            const fallbackPoints = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === (tmrwDayStr === 'SAT')).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
+                                                            
+                                                            const tmrwBestPointObj = tmrwPoints.length > 0 ? tmrwPoints[0] : (fallbackPoints.length > 0 ? fallbackPoints[0] : null);
+                                                            const tmrwBestPoint = tmrwBestPointObj ? convertTo12Hour(tmrwBestPointObj.departure_time.slice(0,5)) : 'N/A';
+
                                                             return eodToggle === 0 && activeAssignments.length > 0 ? (
                                                                 <div className="expand-anim">
                                                                     <h3 style={{ margin: '0 0 10px 0', color: '#F2A900', fontSize: '1.05rem' }}>{activeAssignments.length} Assignments for Today</h3>
@@ -1837,6 +1867,7 @@ export default function Home() {
                                                                 <div className="expand-anim">
                                                                     <h3 style={{ margin: '0 0 10px 0', color: '#007bff', fontSize: '1.05rem' }}>Tomorrow Morning Point</h3>
                                                                     <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: '#002147' }}>{SVGS.bus} {tmrwBestPoint}</div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#666', marginTop: '6px' }}>For {firstLecture.course} at {convertTo12Hour(firstLecture.start_time)}</div>
                                                                 </div>
                                                             );
                                                         }
