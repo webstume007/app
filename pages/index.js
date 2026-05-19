@@ -447,8 +447,9 @@ export default function Home() {
 
             const { data: allBaseData, error: baseErr } = await fetchAllRows('base_schedule');
             
-            // If fetch completely failed (network error, CORS, etc.), maintain existing offline data and abort updates.
-            if (baseErr || !allBaseData) {
+            // STRICT GUARD: If fetch fails or returns unexpectedly empty data (a schedule is never 0 rows), 
+            // abort to protect the existing offline cache.
+            if (baseErr || !allBaseData || allBaseData.length === 0) {
                 setLoading(false);
                 return;
             }
@@ -535,6 +536,7 @@ export default function Home() {
             
             const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setLastUpdated(nowTime);
+            
             localStorage.setItem('iub_offline_data', JSON.stringify({
                 rawData: myScheduleData,
                 allBaseSchedule: allBaseData || [],
