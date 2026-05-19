@@ -1828,7 +1828,7 @@ export default function Home() {
                                                 </div>
                                                 <div>
                                                     <div style={{ fontSize: '0.85rem', fontWeight: '900', color: '#002147' }}>Roll Number Slip</div>
-                                                    <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Search: <b>{searchTerm}</b></div>
+                                                    <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Final Term Spring 2026</div>
                                                 </div>
                                             </div>
                                             <a href={searchUrl} target="_blank" rel="noreferrer" style={{
