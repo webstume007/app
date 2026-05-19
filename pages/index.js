@@ -265,7 +265,7 @@ export default function Home() {
     useEffect(() => {
         const interval = setInterval(() => {
             fetchLiveSchedule();
-        }, 60000);
+        }, 300000);
         return () => clearInterval(interval);
     }, []);
 
@@ -296,6 +296,16 @@ export default function Home() {
                 if (parsed.announcements) setAnnouncements(parsed.announcements);
                 if (parsed.pointsData) setPointsData(parsed.pointsData);
                 if (parsed.lastUpdated) setLastUpdated(parsed.lastUpdated);
+                
+                if (parsed.exceptions) setExceptions(parsed.exceptions);
+                if (parsed.milestones) setMilestones(parsed.milestones);
+                if (parsed.examSchedules) setExamSchedules(parsed.examSchedules);
+                if (parsed.teachersData) setTeachersData(parsed.teachersData);
+                if (parsed.contactsData) setContactsData(parsed.contactsData);
+                if (parsed.studentsData) setStudentsData(parsed.studentsData);
+                if (parsed.attSessions) setAttSessions(parsed.attSessions);
+                if (parsed.attRecords) setAttRecords(parsed.attRecords);
+                if (parsed.dropdownMeta) setDropdownMeta(parsed.dropdownMeta);
                 
                 // Set loading false instantly if we have cached data
                 setLoading(false);
@@ -477,15 +487,19 @@ export default function Home() {
 
             setRawData(myScheduleData); 
             
+            let finalAttSessData = [];
             if (myScheduleData.length > 0) {
                 const ids = myScheduleData.map(c => c.id);
                 const { data: attSessData } = await supabase.from('attendance_sessions').select('*').in('base_schedule_id', ids);
-                setAttSessions(attSessData || []);
+                finalAttSessData = attSessData || [];
+                setAttSessions(finalAttSessData);
             }
 
+            let finalAttRecData = [];
             if (savedRoll) {
                 const { data: attRecData } = await supabase.from('attendance_records').select('*').eq('student_id', savedRoll);
-                setAttRecords(attRecData || []);
+                finalAttRecData = attRecData || [];
+                setAttRecords(finalAttRecData);
             }
 
             let generatedNotifs = [];
@@ -527,7 +541,17 @@ export default function Home() {
                 notifications: [...generatedNotifs, ...generatedAnnNotifs, ...(notifRes.data || [])],
                 announcements: annRes.data || [],
                 pointsData: pointsRes.data || [],
-                lastUpdated: nowTime
+                lastUpdated: nowTime,
+                
+                exceptions: allExcData || [],
+                milestones: milestonesData || [],
+                examSchedules: examData || [],
+                teachersData: teachersRes.data || [],
+                contactsData: contactsRes.data || [],
+                studentsData: studentsRes.data || [],
+                attSessions: finalAttSessData,
+                attRecords: finalAttRecData,
+                dropdownMeta: { sessions: uniqueSessions, rooms: uniqueRooms, baseMeta: allBaseData || [] }
             }));
 
             setLoading(false);
