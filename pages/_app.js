@@ -56,9 +56,7 @@ function MyApp({ Component, pageProps }) {
   const shouldShowGlobalInstallBanner =
     Boolean(deferredPrompt) &&
     showInstallBanner &&
-    !isStandalone &&
-    router.pathname !== '/' &&
-    router.pathname !== '/tlogin';
+    !isStandalone;
 
   return (
     <>
