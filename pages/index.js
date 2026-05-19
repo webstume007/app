@@ -356,7 +356,7 @@ export default function Home() {
                         setNotifications(prev => [{ id: `deadline-${ann.id}`, message: msg, created_at: new Date().toISOString() }, ...prev]);
                         setShowAlerts(true); 
                         if (Notification.permission === "granted") {
-                            new Notification("Assignment Due Soon!", { body: msg, icon: "/icon.png" });
+                            new Notification("Assignment Due Soon!", { body: msg, icon: "/icon-192x192.png" });
                         }
                     }
                 }
@@ -364,6 +364,27 @@ export default function Home() {
         }, 1000);
         return () => clearInterval(timer);
     }, [announcements]);
+
+    const notifyViaServiceWorker = async (payload) => {
+        if (!('serviceWorker' in navigator)) return false;
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sw = reg.active || reg.waiting || reg.installing;
+            if (!sw) return false;
+            sw.postMessage({ type: 'SHOW_NOTIFICATION', payload });
+            return true;
+        } catch {
+            return false;
+        }
+    };
+
+    const showSystemNotification = async (title, body, url = '/') => {
+        if (!('Notification' in window) || Notification.permission !== "granted") return;
+        const payload = { title, body, url, icon: "/icon-192x192.png" };
+        const sent = await notifyViaServiceWorker(payload);
+        if (sent) return;
+        try { new Notification(title, { body, icon: "/icon-192x192.png" }); } catch {}
+    };
 
     useEffect(() => {
         if (!userSection || userSection.section === 'GUEST') return;
@@ -380,11 +401,7 @@ export default function Home() {
 
                 if (isGlobal || (hasSection && hasSession)) {
                     if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
-                        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                            navigator.serviceWorker.ready.then((reg) => reg.showNotification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" }));
-                        } else {
-                            new Notification("IUB Update Alert", { body: payload.new.message, icon: "/icon.png" });
-                        }
+                        showSystemNotification("IUB Update Alert", payload.new?.message || msg);
                     }
                     setShowAlerts(true);
                     fetchLiveSchedule(); 
@@ -394,7 +411,7 @@ export default function Home() {
                 const pnew = payload.new || payload.old || {};
                 if (pnew.section === userSection.section && pnew.session === userSection.session) {
                     if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
-                        new Notification("New Class Update", { body: `${pnew.subject}: ${pnew.topics}`, icon: "/icon.png" });
+                        showSystemNotification("New Class Update", `${pnew.subject}: ${pnew.topics}`);
                     }
                     setShowAlerts(true);
                     fetchLiveSchedule(); 
@@ -414,6 +431,51 @@ export default function Home() {
             navigator.serviceWorker.register('/sw.js').then((reg) => console.log('SW Registered')).catch(console.error);
         }
     }, []);
+
+    useEffect(() => {
+        if (!userSection || userSection.section === 'GUEST') return;
+        const storageKey = `iub_last_notif_ts_${userSection.session}_${userSection.section}`;
+
+        const fetchAndShowMissed = async () => {
+            if (!navigator.onLine) return;
+            if (!('Notification' in window) || Notification.permission !== "granted") return;
+
+            const lastSeen = localStorage.getItem(storageKey);
+            if (!lastSeen) {
+                localStorage.setItem(storageKey, new Date().toISOString());
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('id, message, created_at')
+                .gt('created_at', lastSeen)
+                .order('created_at', { ascending: true })
+                .limit(20);
+
+            if (error || !data || data.length === 0) return;
+
+            const sem = getSemesterFromSession(userSection.session);
+            const relevant = data.filter((n) => {
+                const msg = n.message || "";
+                const isGlobal = msg.includes('GLOBAL');
+                const hasSection = msg.includes(userSection.section);
+                const hasSession = msg.includes(userSection.session) || (sem && msg.includes(sem));
+                return isGlobal || (hasSection && hasSession);
+            });
+
+            for (const n of relevant.slice(0, 5)) {
+                await showSystemNotification("IUB Update Alert", n.message || "");
+            }
+
+            const newestTs = data[data.length - 1]?.created_at;
+            if (newestTs) localStorage.setItem(storageKey, newestTs);
+        };
+
+        fetchAndShowMissed();
+        window.addEventListener('online', fetchAndShowMissed);
+        return () => window.removeEventListener('online', fetchAndShowMissed);
+    }, [userSection]);
 
     const fetchAllRows = async (table, select = '*') => {
         let all = []; let from = 0; const step = 1000;

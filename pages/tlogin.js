@@ -680,10 +680,11 @@ export default function TeacherLoginAndDashboard() {
                             if (Notification.permission === "granted") {
                                 new Notification("Lecture Action Required", {
                                     body: `${cls.course} for Sec ${cls.section} starts in 3 hours. Please Confirm or Cancel.`,
-                                    icon: "/icon.png"
+                                    icon: "/icon-192x192.png"
                                 });
                             }
-                            supabase.from('notifications').insert([{ message: `Teacher Reminder: ${cls.course} (Sec ${cls.section}) is pending confirmation.` }]).then();
+                            const sessTag = cls.session ? ` | ${cls.session}` : '';
+                            supabase.from('notifications').insert([{ message: `Teacher Reminder: ${cls.course} (Section ${cls.section}${sessTag}) is pending confirmation.` }]).then();
                         }
                     }
                 }
@@ -712,13 +713,15 @@ export default function TeacherLoginAndDashboard() {
     const handleConfirmClass = async (classId, courseName, section, clsDay) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isConfirmed: true, isCancelled: false, isRescheduled: false } : c));
         const targetDate = getDateForCurrentWeekDay(clsDay);
+        const clsSession = schedule.find(c => c.id === classId)?.session;
+        const sessTag = clsSession ? ` | ${clsSession}` : '';
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId, exception_date: targetDate, status: 'confirmed', cancelled_by: session.user.id
         }]);
 
         if (error) showToast("Failed to update: " + error.message, "error");
         else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Confirmed: ${courseName} for Section ${section} will be held on ${targetDate}.` }]);
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Confirmed: ${courseName} for Section ${section}${sessTag} will be held on ${targetDate}.` }]);
             if (notifError) showToast("Updated, but notification failed.", "error");
             else showToast("Class confirmed & students notified!", "success");
         }
@@ -731,13 +734,15 @@ export default function TeacherLoginAndDashboard() {
 
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: true, isConfirmed: false, isRescheduled: false } : c));
         const targetDate = getDateForCurrentWeekDay(clsDay);
+        const clsSession = schedule.find(c => c.id === classId)?.session;
+        const sessTag = clsSession ? ` | ${clsSession}` : '';
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: classId, exception_date: targetDate, status: 'cancelled', cancelled_by: session.user.id
         }]);
 
         if (error) showToast("Failed to cancel: " + error.message, "error");
         else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Cancelled: ${courseName} for Section ${section} on ${targetDate} has been cancelled by ${profile.name}.` }]);
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Cancelled: ${courseName} for Section ${section}${sessTag} on ${targetDate} has been cancelled by ${profile.name}.` }]);
             if (notifError) showToast("Cancelled, but notification failed.", "error");
             else showToast("Class cancelled & students notified!", "success");
         }
@@ -747,13 +752,15 @@ export default function TeacherLoginAndDashboard() {
     const handleUndoException = async (classId, actionType, courseName, section, clsDay) => {
         setSchedule(prev => prev.map(c => c.id === classId ? { ...c, isCancelled: false, isConfirmed: false, isRescheduled: false, exceptionDetails: null } : c));
         const targetDate = getDateForCurrentWeekDay(clsDay);
+        const clsSession = schedule.find(c => c.id === classId)?.session;
+        const sessTag = clsSession ? ` | ${clsSession}` : '';
 
         const { error } = await supabase.from('schedule_exceptions').delete().match({ base_schedule_id: classId, exception_date: targetDate });
 
         if (error) showToast("Failed to undo: " + error.message, "error");
         else {
-            if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `Cancelled: ${courseName} for Section ${section} on ${targetDate} has been cancelled by ${profile.name}.`);
-            else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `Confirmed: ${courseName} for Section ${section} will be held on ${targetDate}.`);
+            if (actionType === 'cancelled') await supabase.from('notifications').delete().eq('message', `Cancelled: ${courseName} for Section ${section}${sessTag} on ${targetDate} has been cancelled by ${profile.name}.`);
+            else if (actionType === 'confirmed') await supabase.from('notifications').delete().eq('message', `Confirmed: ${courseName} for Section ${section}${sessTag} will be held on ${targetDate}.`);
             else if (actionType === 'rescheduled') await supabase.from('notifications').delete().ilike('message', `Rescheduled: ${courseName} for Section ${section}%`);
             showToast("Action reversed successfully.", "success");
         }
@@ -763,6 +770,7 @@ export default function TeacherLoginAndDashboard() {
     const submitReschedule = async (e) => {
         e.preventDefault();
         const targetDate = getDateForCurrentWeekDay(editingClass.day);
+        const sessTag = editingClass?.session ? ` | ${editingClass.session}` : '';
         const { error } = await supabase.from('schedule_exceptions').insert([{
             base_schedule_id: editingClass.id, exception_date: targetDate, status: 'rescheduled',
             new_start_time: newStartTime, new_end_time: newEndTime, new_room: newRoom, cancelled_by: session.user.id
@@ -770,7 +778,7 @@ export default function TeacherLoginAndDashboard() {
 
         if (error) showToast("Failed to reschedule: " + error.message, "error");
         else {
-            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Rescheduled: ${editingClass.course} for Section ${editingClass.section} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}) on ${targetDate}.` }]);
+            const { error: notifError } = await supabase.from('notifications').insert([{ message: `Rescheduled: ${editingClass.course} for Section ${editingClass.section}${sessTag} moved to Room ${newRoom} (${newStartTime} - ${newEndTime}) on ${targetDate}.` }]);
             if (notifError) showToast("Rescheduled, but notification failed.", "error");
             else showToast(`Class rescheduled & students notified!`, "success");
         }
@@ -871,8 +879,8 @@ export default function TeacherLoginAndDashboard() {
             }];
             notifyMessages = [
                 announcementForm.type === 'assignment'
-                ? `NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
-                : `MESSAGE from Teacher: ${announcementForm.topics}`
+                ? `GLOBAL NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
+                : `GLOBAL MESSAGE from Teacher: ${announcementForm.topics}`
             ];
         } else {
             payloads = validSelections.map(ssStr => {
@@ -891,8 +899,8 @@ export default function TeacherLoginAndDashboard() {
             notifyMessages = validSelections.map(ssStr => {
                 const ss = JSON.parse(ssStr);
                 return announcementForm.type === 'assignment'
-                ? `NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date}`
-                : `MESSAGE from Teacher: ${announcementForm.topics} - Section ${ss.section}`;
+                ? `NEW ASSIGNMENT: ${announcementForm.subject} - ${announcementForm.topics}. Due: ${announcementForm.deadline_date} | Section ${ss.section} | ${ss.session}`
+                : `MESSAGE from Teacher: ${announcementForm.topics} | Section ${ss.section} | ${ss.session}`;
             });
         }
 
