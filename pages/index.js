@@ -54,9 +54,11 @@ const SVGS = {
     users: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
     leftArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>,
     rightArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
+    arrowUp: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19V5M5 12l7-7 7 7"/></svg>,
+    arrowDown: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 5v14M5 12l7 7 7-7"/></svg>,
     sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>,
-    verified: <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2A900"><path d="M22.5 12.5c0 1.5-.7 2.8-1.8 3.5.2 1.3-.2 2.6-1.2 3.6-1 1-2.3 1.4-3.6 1.2-1.1 1.1-2.4 1.8-3.9 1.8s-2.8-.7-3.9-1.8c-1.3.2-2.6-.2-3.6-1.2-1-1-1.4-2.3-1.2-3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.2C9.2 3.7 10.5 3 12 3s2.8.7 3.9 1.8c1.3-.2 2.6.2 3.6 1.2 1 1 1.4 2.3 1.2 3.6 1.1.7 1.8 2 1.8 3.5zM10.5 16.5l6.5-6.5-1.5-1.5-5 5-2.5-2.5-1.5 1.5 4 4z"/></svg>,
+    verified: <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2A900"><path d="M22.5 12.5c0 1.5-.7 2.8-1.8 3.5.2 1.3-.2 2.6-1.2 3.6-1 1-2.3 1.4-3.6 1.2-1.1 1.1-2.4 1.8-3.9 1.8s-2.8-.7-3.9-1.8c-1.3.2-2.6-.2-3.6-1.2-1-1-1.4-2.3-1.2-3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.2C9.2 3.7 10.5 3 12 3s2.8.7 3.9 1.8c1.3-.2 2.6.2 3.6 1.2 1 1 1.4 2.3 1.2 3.6 1.1.7 1.8 2 1.8 3.5zM10.5 16.5l6.5-6.5-1.5-1.5-5 5-2.5-2.5-1.5 1.5 4 4z"/></svg>,
     bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     edit: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
@@ -407,7 +409,8 @@ export default function Home() {
         let all = []; let from = 0; const step = 1000;
         while(true) {
             const { data, error } = await supabase.from(table).select(select).order('id', { ascending: true }).range(from, from + step - 1);
-            if (error || !data || data.length === 0) break;
+            if (error) return { data: all.length ? all : null, error }; 
+            if (!data || data.length === 0) break;
             all = [...all, ...data];
             if (data.length < step) break;
             from += step;
@@ -417,6 +420,12 @@ export default function Home() {
 
     const fetchLiveSchedule = async () => {
         try {
+            // Strictly protect existing loaded data from being wiped during offline states.
+            if (!navigator.onLine) {
+                setLoading(false);
+                return;
+            }
+
             const savedSelection = localStorage.getItem('iub_user_selection');
             let activeSession = null; let activeSection = null;
             if (savedSelection) {
@@ -426,7 +435,14 @@ export default function Home() {
             }
             const savedRoll = localStorage.getItem('iub_my_roll');
 
-            const { data: allBaseData } = await fetchAllRows('base_schedule');
+            const { data: allBaseData, error: baseErr } = await fetchAllRows('base_schedule');
+            
+            // If fetch completely failed (network error, CORS, etc.), maintain existing offline data and abort updates.
+            if (baseErr || !allBaseData) {
+                setLoading(false);
+                return;
+            }
+
             const { data: allExcData } = await fetchAllRows('schedule_exceptions');
             const { data: milestonesData } = await fetchAllRows('academic_milestones');
             const { data: examData } = await fetchAllRows('exam_schedules');
@@ -1196,12 +1212,12 @@ export default function Home() {
                                 <div style={pointStripStyle}>
                                     <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
                                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#28a745"><path d="M12 2L4 10h5v12h6V10h5L12 2z"/></svg>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#28a745' }}>
+                                            {SVGS.arrowUp}
                                             {points.up}
                                         </span>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#007bff"><path d="M12 22l8-8h-5V2h-6v12H4l8 8z"/></svg>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#007bff' }}>
+                                            {SVGS.arrowDown}
                                             {points.down}
                                         </span>
                                     </div>
@@ -1587,7 +1603,8 @@ export default function Home() {
                             <span style={{opacity: 0.7}}>{SVGS.edit}</span>
                         </span>
                         <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {SVGS.clock} {isOffline ? 'Offline' : `Update: ${lastUpdated}`}
+                            {SVGS.clock} Update: {lastUpdated}
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOffline ? '#dc3545' : '#28a745', marginLeft: '2px' }}></span>
                         </span>
                     </div>
 
@@ -1605,7 +1622,8 @@ export default function Home() {
                     {SVGS.users} {isGuestUser ? 'GUEST' : `${getSemesterFromSession(userSection?.session)}-${userSection?.section}`}
                 </span>
                 <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {SVGS.clock} {isOffline ? 'Offline' : `Update: ${lastUpdated}`}
+                    {SVGS.clock} Update: {lastUpdated}
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOffline ? '#dc3545' : '#28a745', marginLeft: '2px' }}></span>
                 </span>
             </div>
 
@@ -1672,6 +1690,12 @@ export default function Home() {
                 flexDirection: 'column',
                 transition: 'all 0.3s ease'
             }}>
+
+                {isOffline && !isGuestUser && (
+                    <div className="expand-anim" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc3545', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {SVGS.alertCircle} You are offline, showing previously loaded data.
+                    </div>
+                )}
 
                 {/* Forced Install App Banner */}
                 {showInstallBanner && (
@@ -1948,12 +1972,16 @@ export default function Home() {
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', fontSize: '0.8rem', fontWeight: '900', color: '#002147', flexWrap: 'wrap' }}>
                                             <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                                <span style={{color: '#b27b00', fontSize: '0.7rem'}}>AC {SVGS.rightArrow} BJC:</span> 
+                                                <span style={{color: '#b27b00', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px'}}>
+                                                    AC <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg> BJC:
+                                                </span> 
                                                 <span style={{color: '#dc3545', letterSpacing: '1px'}}>{nextUpTimeStr}</span>
                                             </div>
                                             <div style={{width: '2px', height: '12px', background: '#eab308', opacity: 0.5}}></div>
                                             <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
-                                                <span style={{color: '#b27b00', fontSize: '0.7rem'}}>BJC {SVGS.rightArrow} AC:</span> 
+                                                <span style={{color: '#b27b00', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px'}}>
+                                                    BJC <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg> AC:
+                                                </span> 
                                                 <span style={{color: '#dc3545', letterSpacing: '1px'}}>{nextDownTimeStr}</span>
                                             </div>
                                         </div>
@@ -2245,9 +2273,22 @@ export default function Home() {
                                 )}
                                 
                                 <div style={{...dayFilter, marginTop: '8px', marginBottom: '15px'}}>
-                                    {filterDays.map(day => (
-                                        <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(selectedDay === day), background: selectedDay === day ? '#002147' : '#f8f9fa'}}>{day}</button>
-                                    ))}
+                                    {filterDays.map(day => {
+                                        const isActive = teacherSchedule.some(c => c.day === day);
+                                        const isSelected = selectedDay === day;
+                                        let bg = '#f1f5f9';
+                                        let col = '#94a3b8';
+                                        if (isSelected) {
+                                            bg = '#002147';
+                                            col = '#F2A900';
+                                        } else if (day === 'ALL' || isActive) {
+                                            bg = '#dcfce7';
+                                            col = '#15803d';
+                                        }
+                                        return (
+                                            <button key={day} onClick={() => setSelectedDay(day)} style={{...dayBtnStyle(isSelected), background: bg, color: col}}>{day}</button>
+                                        );
+                                    })}
                                 </div>
 
                                 {selectedTeacher && (
