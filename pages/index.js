@@ -1693,7 +1693,7 @@ export default function Home() {
 
                 {isOffline && !isGuestUser && (
                     <div className="expand-anim" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc3545', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {SVGS.alertCircle} You are offline, showing previously loaded data.
+                        {SVGS.alertCircle} You are offline, showing previously loaded data, Don't Refresh.
                     </div>
                 )}
 
