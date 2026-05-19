@@ -1783,7 +1783,7 @@ export default function Home() {
                                         </>
                                     )}
                                 </div>
-                /* DOWNLOAD ROLL NUMBER SLIPS CODE */
+                                {/* DOWNLOAD ROLL NUMBER SLIPS CODE */}
                                 {examCountdownElement}
                                 {!isGuestUser && (
                                     <div className="expand-anim" style={{
@@ -1831,7 +1831,7 @@ export default function Home() {
                                         </a>
                                     </div>
                                 )}
-        /* ENDING DOWNLOAD ROLL NUMBER SLIPS CODE */
+                                {/* ENDING DOWNLOAD ROLL NUMBER SLIPS CODE */}
                                 <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
                                     <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                                         {SVGS.bell} Notice Board
