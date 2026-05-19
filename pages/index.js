@@ -1891,7 +1891,7 @@ export default function Home() {
                                                 </div>
                                                 <div>
                                                     <div style={{ fontSize: '0.85rem', fontWeight: '900', color: '#002147' }}>Roll Number Slips</div>
-                                                    <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Mid Term Examinations</div>
+                                                    <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Final Term - Spring 2026</div>
                                                 </div>
                                             </div>
                                             <a href={MAIN_DRIVE_LINK} target="_blank" rel="noreferrer" style={{
@@ -1912,7 +1912,7 @@ export default function Home() {
                                                 <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                                 </svg>
-                                                Open Folder
+                                                Download
                                             </a>
                                         </div>
                                     );
