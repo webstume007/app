@@ -1865,22 +1865,10 @@ export default function Home() {
                                     // Put your main drive link here. If you leave it empty (""), the whole bar will hide.
                                     const MAIN_DRIVE_LINK = "https://drive.google.com/drive/folders/1cD7lWVJEoB-sxOUUQOJKYPL4GRJqwYij?usp=sharing";
                                 
-                                    // Hide if no link is provided, or if the user is a guest / hasn't selected a section
-                                    if (!MAIN_DRIVE_LINK || isGuestUser || !userSection?.session || !userSection?.section) {
+                                    // Hide if no link is provided, or if the user is a guest
+                                    if (!MAIN_DRIVE_LINK || isGuestUser) {
                                         return null;
                                     }
-                                
-                                    // 1. Calculate the semester (e.g., "3RD")
-                                    const currentSemester = getSemesterFromSession(userSection.session);
-                                    
-                                    // 2. Combine semester and section to create the search term (e.g., "3RD-3M")
-                                    const searchTerm = `${currentSemester}-${userSection.section}`;
-                                
-                                    // 3. Extract the folder ID from your link and build a strict Google Drive search URL
-                                    const folderIdMatch = MAIN_DRIVE_LINK.match(/folders\/([a-zA-Z0-9_-]+)/);
-                                    const searchUrl = folderIdMatch 
-                                        ? `https://drive.google.com/drive/search?q=${encodeURIComponent(`"${searchTerm}" parent:${folderIdMatch[1]}`)}`
-                                        : MAIN_DRIVE_LINK;
                                 
                                     return (
                                         <div className="expand-anim" style={{
@@ -1902,11 +1890,11 @@ export default function Home() {
                                                     </svg>
                                                 </div>
                                                 <div>
-                                                    <div style={{ fontSize: '0.85rem', fontWeight: '900', color: '#002147' }}>Roll Number Slip</div>
-                                                    <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Final Term Spring 2026</div>
+                                                    <div style={{ fontSize: '0.85rem', fontWeight: '900', color: '#002147' }}>Roll Number Slips</div>
+                                                    <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Mid Term Examinations</div>
                                                 </div>
                                             </div>
-                                            <a href={searchUrl} target="_blank" rel="noreferrer" style={{
+                                            <a href={MAIN_DRIVE_LINK} target="_blank" rel="noreferrer" style={{
                                                 background: '#002147',
                                                 color: '#F2A900',
                                                 padding: '8px 16px',
@@ -1924,7 +1912,7 @@ export default function Home() {
                                                 <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                                                 </svg>
-                                                Download
+                                                Open Folder
                                             </a>
                                         </div>
                                     );
