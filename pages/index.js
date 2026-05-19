@@ -59,6 +59,8 @@ const SVGS = {
     sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>,
     verified: <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2A900"><path d="M22.5 12.5c0 1.5-.7 2.8-1.8 3.5.2 1.3-.2 2.6-1.2 3.6-1 1-2.3 1.4-3.6 1.2-1.1 1.1-2.4 1.8-3.9 1.8s-2.8-.7-3.9-1.8c-1.3.2-2.6-.2-3.6-1.2-1-1-1.4-2.3-1.2-3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.2C9.2 3.7 10.5 3 12 3s2.8.7 3.9 1.8c1.3-.2 2.6.2 3.6 1.2 1 1 1.4 2.3 1.2 3.6 1.1.7 1.8 2 1.8 3.5zM10.5 16.5l6.5-6.5-1.5-1.5-5 5-2.5-2.5-1.5 1.5 4 4z"/></svg>,    edit: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+    bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+    botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
 
 // --- Custom Realtime Dropdown Search Component ---
