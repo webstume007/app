@@ -1783,7 +1783,7 @@ export default function Home() {
                                         </>
                                     )}
                                 </div>
-
+                /* DOWNLOAD ROLL NUMBER SLIPS CODE */
                                 {examCountdownElement}
                                 {!isGuestUser && (
                                     <div className="expand-anim" style={{
@@ -1806,7 +1806,7 @@ export default function Home() {
                                             </div>
                                             <div>
                                                 <div style={{ fontSize: '0.85rem', fontWeight: '900', color: '#002147' }}>Roll Number Slip</div>
-                                                <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Mid Term Examinations</div>
+                                                <div style={{ fontSize: '0.65rem', color: '#666', marginTop: '2px' }}>Spring 2026 FInal Term Exams</div>
                                             </div>
                                         </div>
                                         <a href="https://drive.google.com/drive/folders/1cD7lWVJEoB-sxOUUQOJKYPL4GRJqwYij?usp=sharing" target="_blank" rel="noreferrer" style={{
@@ -1831,7 +1831,7 @@ export default function Home() {
                                         </a>
                                     </div>
                                 )}
-
+        /* ENDING DOWNLOAD ROLL NUMBER SLIPS CODE */
                                 <div style={{ ...whiteCard, padding: 0, overflow: 'hidden' }}>
                                     <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                                         {SVGS.bell} Notice Board
