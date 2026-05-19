@@ -54,8 +54,9 @@ const SVGS = {
     users: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
     leftArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>,
     rightArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
-    arrowUp: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19V5M5 12l7-7 7 7"/></svg>,
-    arrowDown: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 5v14M5 12l7 7 7-7"/></svg>,
+    arrowUpPoint: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>,
+    arrowDownPoint: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>,
+    arrowRightInline: <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
     sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
     mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>,
     verified: <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2A900"><path d="M22.5 12.5c0 1.5-.7 2.8-1.8 3.5.2 1.3-.2 2.6-1.2 3.6-1 1-2.3 1.4-3.6 1.2-1.1 1.1-2.4 1.8-3.9 1.8s-2.8-.7-3.9-1.8c-1.3.2-2.6-.2-3.6-1.2-1-1-1.4-2.3-1.2-3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.2C9.2 3.7 10.5 3 12 3s2.8.7 3.9 1.8c1.3-.2 2.6.2 3.6 1.2 1 1 1.4 2.3 1.2 3.6 1.1.7 1.8 2 1.8 3.5zM10.5 16.5l6.5-6.5-1.5-1.5-5 5-2.5-2.5-1.5 1.5 4 4z"/></svg>,
@@ -229,11 +230,15 @@ export default function Home() {
     }
 
     useEffect(() => {
-        setIsOffline(!navigator.onLine);
-        const handleOnline = () => setIsOffline(false);
+        const handleOnline = () => {
+            setIsOffline(false);
+            fetchLiveSchedule(); // Auto refresh data strictly when returning online
+        };
         const handleOffline = () => setIsOffline(true);
+        
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        setIsOffline(!navigator.onLine);
 
         if (typeof window !== 'undefined') {
             setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
@@ -297,7 +302,7 @@ export default function Home() {
                 if (parsed.pointsData) setPointsData(parsed.pointsData);
                 if (parsed.lastUpdated) setLastUpdated(parsed.lastUpdated);
                 
-                // Set loading false instantly if we have cached data
+                // Immediately turn off loader and render UI with cache
                 setLoading(false);
             } catch(e) {}
         }
@@ -409,7 +414,7 @@ export default function Home() {
         let all = []; let from = 0; const step = 1000;
         while(true) {
             const { data, error } = await supabase.from(table).select(select).order('id', { ascending: true }).range(from, from + step - 1);
-            if (error) return { data: all.length ? all : null, error }; 
+            if (error) return { error }; 
             if (!data || data.length === 0) break;
             all = [...all, ...data];
             if (data.length < step) break;
@@ -435,13 +440,14 @@ export default function Home() {
             }
             const savedRoll = localStorage.getItem('iub_my_roll');
 
-            const { data: allBaseData, error: baseErr } = await fetchAllRows('base_schedule');
+            const baseRes = await fetchAllRows('base_schedule');
             
-            // If fetch completely failed (network error, CORS, etc.), maintain existing offline data and abort updates.
-            if (baseErr || !allBaseData) {
+            // If fetch completely failed (network error, CORS, etc.), maintain existing offline cache and abort securely.
+            if (baseRes.error || !baseRes.data) {
                 setLoading(false);
                 return;
             }
+            const allBaseData = baseRes.data;
 
             const { data: allExcData } = await fetchAllRows('schedule_exceptions');
             const { data: milestonesData } = await fetchAllRows('academic_milestones');
@@ -859,7 +865,7 @@ export default function Home() {
 
                 const ptsFirst = getNearestPoints({ start_time: firstExam.start_time, end_time: firstExam.end_time, day: currentDayStr });
                 if (ptsFirst.up !== 'N/A') {
-                    events.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+                    events.push({ type: 'point_up', title: <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}>Morning Bus (AC {SVGS.arrowRightInline} BJC)</span>, time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
                 }
 
                 sortedExams.forEach(ex => {
@@ -868,7 +874,7 @@ export default function Home() {
 
                 const ptsLast = getNearestPoints({ start_time: lastExam.start_time, end_time: lastExam.end_time, day: currentDayStr });
                 if (ptsLast.down !== 'N/A') {
-                    events.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+                    events.push({ type: 'point_down', title: <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}>Return Bus (BJC {SVGS.arrowRightInline} AC)</span>, time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
                 }
             } else {
                 events.push({ type: 'milestone', title: 'No Exams Today', desc: 'Enjoy your preparation time.', raw: activeMilestone });
@@ -891,7 +897,7 @@ export default function Home() {
 
                     const ptsFirst = getNearestPoints(firstCls);
                     if (ptsFirst.up !== 'N/A') {
-                        events.push({ type: 'point_up', title: 'Morning Bus (AC ➔ BJC)', time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
+                        events.push({ type: 'point_up', title: <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}>Morning Bus (AC {SVGS.arrowRightInline} BJC)</span>, time: ptsFirst.up, timeMins: parseTime(ptsFirst.up) });
                     }
 
                     myTodayClasses.forEach(c => {
@@ -900,7 +906,7 @@ export default function Home() {
 
                     const ptsLast = getNearestPoints(lastCls);
                     if (ptsLast.down !== 'N/A') {
-                        events.push({ type: 'point_down', title: 'Return Bus (BJC ➔ AC)', time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
+                        events.push({ type: 'point_down', title: <span style={{display: 'flex', alignItems: 'center', gap: '4px'}}>Return Bus (BJC {SVGS.arrowRightInline} AC)</span>, time: ptsLast.down, timeMins: parseTime(ptsLast.down) });
                     }
                 }
             }
@@ -1213,11 +1219,11 @@ export default function Home() {
                                     <span style={{ fontWeight: 900, marginRight: '8px', color: '#ccc' }}>Nearest Points:</span>
                                     <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#28a745' }}>
-                                            {SVGS.arrowUp}
+                                            {SVGS.arrowUpPoint}
                                             {points.up}
                                         </span>
                                         <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#007bff' }}>
-                                            {SVGS.arrowDown}
+                                            {SVGS.arrowDownPoint}
                                             {points.down}
                                         </span>
                                     </div>
@@ -1604,7 +1610,7 @@ export default function Home() {
                         </span>
                         <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             {SVGS.clock} Update: {lastUpdated}
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOffline ? '#dc3545' : '#28a745', marginLeft: '2px' }}></span>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOffline ? '#dc3545' : '#28a745', marginLeft: '4px', boxShadow: isOffline ? '0 0 4px #dc3545' : '0 0 4px #28a745' }}></span>
                         </span>
                     </div>
 
@@ -1623,7 +1629,7 @@ export default function Home() {
                 </span>
                 <span style={{ background: '#334155', color: '#f8fafc', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', border: '1px solid #475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {SVGS.clock} Update: {lastUpdated}
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isOffline ? '#dc3545' : '#28a745', marginLeft: '2px' }}></span>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isOffline ? '#dc3545' : '#28a745', marginLeft: '4px', boxShadow: isOffline ? '0 0 4px #dc3545' : '0 0 4px #28a745' }}></span>
                 </span>
             </div>
 
@@ -1973,14 +1979,14 @@ export default function Home() {
                                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', fontSize: '0.8rem', fontWeight: '900', color: '#002147', flexWrap: 'wrap' }}>
                                             <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
                                                 <span style={{color: '#b27b00', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px'}}>
-                                                    AC <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg> BJC:
+                                                    AC <span style={{display: 'flex', alignItems: 'center'}}>{SVGS.arrowRightInline}</span> BJC:
                                                 </span> 
                                                 <span style={{color: '#dc3545', letterSpacing: '1px'}}>{nextUpTimeStr}</span>
                                             </div>
                                             <div style={{width: '2px', height: '12px', background: '#eab308', opacity: 0.5}}></div>
                                             <div style={{display: 'flex', alignItems: 'center', gap: '5px'}}>
                                                 <span style={{color: '#b27b00', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '3px'}}>
-                                                    BJC <svg width="10" height="10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="4"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg> AC:
+                                                    BJC <span style={{display: 'flex', alignItems: 'center'}}>{SVGS.arrowRightInline}</span> AC:
                                                 </span> 
                                                 <span style={{color: '#dc3545', letterSpacing: '1px'}}>{nextDownTimeStr}</span>
                                             </div>
