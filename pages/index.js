@@ -301,10 +301,11 @@ export default function Home() {
         return () => clearInterval(t);
     }, []);
 
+    // Transformed interval logic strictly conforming to 6-hour caching thresholds
     useEffect(() => {
         const interval = setInterval(() => {
-            fetchLiveSchedule();
-        }, 300000);
+            fetchLiveSchedule(true); // Explicit payload trigger bypassing strict cache
+        }, 21600000); // 6 Hours refresh cycle (21,600,000ms)
         return () => clearInterval(interval);
     }, []);
 
@@ -370,7 +371,7 @@ export default function Home() {
         const savedAssn = localStorage.getItem('iub_completed_assignments');
         if (savedAssn) setCompletedAssignments(JSON.parse(savedAssn));
 
-        fetchLiveSchedule();
+        fetchLiveSchedule(); // Invoked with cache-evaluating (false) default token
     }, []);
 
     useEffect(() => {
@@ -448,23 +449,43 @@ export default function Home() {
                 const hasSession = msg.includes(userSection.session) || (sem && msg.includes(sem));
 
                 if (isGlobal || (hasSection && hasSession)) {
-                    if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
-                        void showSystemNotification("IUB Update Alert", payload.new?.message || msg);
+                    if (payload.eventType === 'INSERT') {
+                        if (Notification.permission === "granted") void showSystemNotification("IUB Update Alert", payload.new?.message || msg);
+                        setNotifications(prev => [payload.new, ...prev]);
+                    } else if (payload.eventType === 'DELETE') {
+                        setNotifications(prev => prev.filter(n => n.id !== payload.old?.id));
                     }
-                    fetchLiveSchedule(); 
                 }
             })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'class_announcements' }, (payload) => {
                 const pnew = payload.new || payload.old || {};
                 if (pnew.section === userSection.section && pnew.session === userSection.session) {
-                    if (payload.eventType === 'INSERT' && Notification.permission === "granted") {
-                        void showSystemNotification("New Class Update", `${pnew.subject}: ${pnew.topics}`);
+                    if (payload.eventType === 'INSERT') {
+                        if (Notification.permission === "granted") void showSystemNotification("New Class Update", `${pnew.subject}: ${pnew.topics}`);
+                        setAnnouncements(prev => [pnew, ...prev]);
+                        
+                        const annNotif = {
+                            id: `ann-${pnew.id}`,
+                            message: `New ${pnew.type === 'assignment' ? 'Assignment' : 'Update'} for ${pnew.subject}: ${pnew.topics}`,
+                            created_at: pnew.created_at || new Date().toISOString()
+                        };
+                        setNotifications(prev => [annNotif, ...prev]);
+                    } else if (payload.eventType === 'DELETE') {
+                        setAnnouncements(prev => prev.filter(a => a.id !== payload.old?.id));
+                    } else if (payload.eventType === 'UPDATE') {
+                        setAnnouncements(prev => prev.map(a => a.id === pnew.id ? pnew : a));
                     }
-                    fetchLiveSchedule(); 
                 }
             })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, () => {
-                fetchLiveSchedule(); 
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'schedule_exceptions' }, (payload) => {
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    setExceptions(prev => {
+                        const filtered = prev.filter(e => e.id !== payload.new.id);
+                        return [...filtered, payload.new];
+                    });
+                } else if (payload.eventType === 'DELETE') {
+                    setExceptions(prev => prev.filter(e => e.id !== payload.old?.id));
+                }
             })
             .subscribe();
 
@@ -535,12 +556,28 @@ export default function Home() {
         return { data: all };
     };
 
-    const fetchLiveSchedule = async () => {
+    const fetchLiveSchedule = async (forceBypass = false) => {
         try {
             // Strictly protect existing loaded data from being wiped during offline states.
             if (!navigator.onLine) {
                 setLoading(false);
                 return;
+            }
+
+            const CACHE_KEY_TS = 'iub_last_fetch_ts';
+            const CACHE_WINDOW_MS = 21600000; // 6-Hour Cache Window
+
+            if (!forceBypass) {
+                const lastFetchTs = localStorage.getItem(CACHE_KEY_TS);
+                const savedOffline = localStorage.getItem('iub_offline_data');
+
+                if (lastFetchTs && savedOffline) {
+                    const elapsedMs = Date.now() - parseInt(lastFetchTs, 10);
+                    if (elapsedMs < CACHE_WINDOW_MS) {
+                        setLoading(false);
+                        return; // Bypass network footprint entirety due to valid cache envelope
+                    }
+                }
             }
 
             const savedSelection = localStorage.getItem('iub_user_selection');
@@ -644,6 +681,7 @@ export default function Home() {
             const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setLastUpdated(nowTime);
             
+            localStorage.setItem(CACHE_KEY_TS, Date.now().toString());
             localStorage.setItem('iub_offline_data', JSON.stringify({
                 rawData: myScheduleData,
                 allBaseSchedule: allBaseData || [],
@@ -682,7 +720,7 @@ export default function Home() {
         setIsFirstVisit(false);
         setCurrentTab('home');
         setLoading(true);
-        fetchLiveSchedule();
+        fetchLiveSchedule(true); // Explicity trigger heavy fetch to populate new scope bypass
     };
 
     const handleGuestSelection = () => {
