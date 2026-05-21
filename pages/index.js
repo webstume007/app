@@ -1860,6 +1860,20 @@ export default function Home() {
                     </div>
                 )}
 
+                {/* Forced Install App Banner */}
+                {showInstallBanner && (
+                    <div className="expand-anim" style={{ ...notifBannerStyle, background: '#17a2b8', borderColor: '#117a8b', margin: currentTab === 'ai_bot' ? '10px 12px 12px 12px' : '0 0 12px 0' }}>
+                        <div style={{ flex: 1, paddingRight: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ opacity: 0.9 }}>{SVGS.mobile}</div>
+                            <div>
+                                <b style={{ display: 'block', marginBottom: '2px', fontSize: '0.75rem' }}>Install App</b>
+                                <span style={{ fontSize: '0.65rem', opacity: 0.9 }}>Add IUB Assistant to your home screen.</span>
+                            </div>
+                        </div>
+                        <button onClick={handleInstallClick} style={{ ...enableBtnStyle, background: '#fff', color: '#17a2b8' }}>Install</button>
+                    </div>
+                )}
+
                 {!showAlerts && relevantNotifs.length > 0 && currentTab !== 'ai_bot' && (
                     <div
                         className="expand-anim"
