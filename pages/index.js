@@ -2041,7 +2041,7 @@ export default function Home() {
                                     <div style={{ background: '#f8f9fa', padding: '10px 15px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
                                         {SVGS.bell} Notice Board
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', justify-content: 'space-between', padding: '15px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px' }}>
                                         {todayEvents.length > 0 && (
                                             <button onClick={prevNotice} style={{ background: 'transparent', border: 'none', color: '#002147', cursor: 'pointer', padding: '5px' }}>{SVGS.leftArrow}</button>
                                         )}
@@ -2049,7 +2049,7 @@ export default function Home() {
                                         <div style={{ flex: 1, textAlign: 'center', margin: '0 10px' }}>
                                             {todayEvents.length === 0 ? (
                                                 <div>
-                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.05rem', display: 'flex', alignItems: 'center', justify-content: 'center', gap: '6px' }}>
+                                                    <h3 style={{ margin: '0 0 10px 0', color: '#28a745', fontSize: '1.05rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                                                         {SVGS.sparkle} Today is Off
                                                     </h3>
                                                     <button onClick={() => setCurrentTab('announcements')} style={{ ...searchBtn, width: 'auto', padding: '8px 20px', display: 'inline-block' }}>See Assignments</button>
