@@ -290,20 +290,23 @@ export default function AdminDashboard() {
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoadingAuth(true);
-        if (loginUsername === 'admin' && loginPassword === 'admin123') {
-            setIsAuthenticated(true);
-            setAuthError('');
-            fetchDeepDatabase();
+        
+        // Use Supabase Auth directly instead of hardcoded credentials
+        const { error, data } = await supabase.auth.signInWithPassword({ email: loginUsername, password: loginPassword });
+        
+        if (error) {
+            setAuthError('Unauthorized. Invalid credentials.');
+            setIsAuthenticated(false);
         } else {
-            // Attempt Supabase fallback if local fails
-            const { error } = await supabase.auth.signInWithPassword({ email: loginUsername, password: loginPassword });
-            if (error) {
-                setAuthError('Unauthorized. Access Restricted to HOD Personnel.');
-                setIsAuthenticated(false);
-            } else {
+            // Check if the authenticated user is an admin
+            if (data.session && data.session.user && (data.session.user.email === 'admin@iub.edu.pk' || data.session.user.email.includes('admin'))) {
                 setIsAuthenticated(true);
                 setAuthError('');
                 fetchDeepDatabase();
+            } else {
+                setAuthError('Unauthorized. Access Restricted to Admin Personnel.');
+                setIsAuthenticated(false);
+                await supabase.auth.signOut();
             }
         }
         setLoadingAuth(false);

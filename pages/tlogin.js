@@ -353,7 +353,7 @@ export default function TeacherLoginAndDashboard() {
 
     const fetchUnclaimedTeachers = async () => {
         const { data: allLectures } = await supabase.from('base_schedule').select('teacher');
-        const { data: claimedProfiles } = await supabase.from('teacher_profiles').select('name');
+        const { data: claimedProfiles } = await supabase.from('v_public_teacher_profiles').select('name');
         
         if (allLectures) {
             const allTeacherNames = [...new Set(allLectures.map(x => x.teacher))].filter(Boolean);
@@ -378,7 +378,7 @@ export default function TeacherLoginAndDashboard() {
             email, 
             password,
             options: {
-                emailRedirectTo: 'https://mohsinakhtar.me/verify-success',
+                emailRedirectTo: `${window.location.origin}/tlogin`,
                 data: { full_name: signupName } 
             }
         });

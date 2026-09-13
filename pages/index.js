@@ -624,8 +624,8 @@ export default function Home() {
             const [notifRes, pointsRes, teachersRes, contactsRes, studentsRes, annRes] = await Promise.all([
                 supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
                 supabase.from('point_schedules').select('*'),
-                supabase.from('teacher_profiles').select('name, phone'),
-                fetchAllRows('contacts'), 
+                supabase.from('v_public_teacher_profiles').select('name'),
+                fetchAllRows('v_public_contacts'), 
                 studentsReq,
                 annReq
             ]);
