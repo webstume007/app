@@ -1025,7 +1025,7 @@ export default function AdminDashboard() {
     const TABS = [
         { id: 'overview', label: 'HOD Radar', icon: SVGS.chart },
         { id: 'academic', label: 'Terms & Rules', icon: SVGS.flag }, // NEW TAB
-        { id: 'users', label: 'Directory', icon: SVGS.users, badge: crProfiles.filter(c=>!c.is_approved).length + teachers.filter(t=>!t.is_approved).length },
+        { id: 'users', label: 'Manage CRs / Directory', icon: SVGS.users, badge: crProfiles.filter(c=>!c.is_approved).length + teachers.filter(t=>!t.is_approved).length },
         { id: 'leaves', label: 'Leaves & Cancel', icon: SVGS.userTie },
         { id: 'schedule', label: 'Global Matrix', icon: SVGS.calendar },
         { id: 'broadcast', label: 'Network Alert', icon: SVGS.broadcast },
