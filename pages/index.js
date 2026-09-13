@@ -8,24 +8,24 @@ import AIBot from './ai_bot';
 const getSemesterFromSession = (session) => {
     if (!session) return "";
     const match = session.match(/20\d{2}/);
-    if (!match) return session; 
+    if (!match) return session;
 
     const startYear = parseInt(match[0], 10);
     const isSpringStart = session.toLowerCase().includes('spring') || session.toLowerCase().includes('sp');
-    
+
     const d = new Date();
     const currYear = d.getFullYear();
-    const currMonth = d.getMonth(); 
-    
+    const currMonth = d.getMonth();
+
     let semestersPassed = (currYear - startYear) * 2;
     if (currMonth >= 7) semestersPassed += 1;
     if (isSpringStart) semestersPassed += 1;
     if (semestersPassed <= 0) return "1ST";
-    
+
     const suffixes = ["TH", "ST", "ND", "RD"];
     const v = semestersPassed % 100;
     const suffix = suffixes[(v - 20) % 10] || suffixes[v] || suffixes[0];
-    
+
     return `${semestersPassed}${suffix}`;
 };
 
@@ -38,30 +38,30 @@ const SVGS = {
     chevronUp: <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg>,
     bell: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>,
     whatsapp: <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.696c1.001.572 2.135.881 3.288.881 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.764-5.242-5.764zm12 5.766c0 6.627-5.373 12-12 12s-12-5.373-12-12 5.373-12 12-12 12 5.373 12 12zm-4.322 3.012c-.255-.128-1.509-.745-1.742-.83-.233-.085-.403-.127-.573.128-.17.255-.658.83-.807 1.002-.149.17-.297.191-.552.063-.255-.127-1.077-.397-2.053-1.266-.757-.674-1.268-1.507-1.416-1.762-.149-.255-.016-.393.111-.52.115-.114.255-.297.382-.446.128-.148.17-.255.255-.425.085-.17.043-.319-.021-.446-.064-.128-.573-1.382-.786-1.892-.208-.497-.419-.43-.573-.438-.149-.008-.319-.008-.489-.008-.17 0-.446.064-.679.319-.234.255-.893.872-.893 2.126 0 1.254.914 2.466 1.042 2.636.128.17 1.799 2.747 4.359 3.853.609.263 1.085.42 1.458.538.618.196 1.181.168 1.628.102.497-.073 1.509-.617 1.722-1.212.212-.595.212-1.105.149-1.212-.064-.107-.234-.17-.489-.298z" /></svg>,
-    calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/></svg>,
+    calendar: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2" /><line x1="16" y1="2" x2="16" y2="6" strokeWidth="2" /><line x1="8" y1="2" x2="8" y2="6" strokeWidth="2" /></svg>,
     attendance: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>,
     updates: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path></svg>,
-    clock: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><polyline points="12 6 12 12 16 14" strokeWidth="2"/></svg>,
-    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round"/></svg>,
-    door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-    userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round"/><circle cx="12" cy="7" r="4" strokeWidth="2"/><path d="M12 11v10" strokeWidth="2" strokeLinecap="round"/></svg>,
+    clock: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2" /><polyline points="12 6 12 12 16 14" strokeWidth="2" /></svg>,
+    alertCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2" /><line x1="12" y1="8" x2="12" y2="12" strokeWidth="2" strokeLinecap="round" /><line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="3" strokeLinecap="round" /></svg>,
+    door: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 20V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16M2 20h20M14 12v.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+    userTie: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round" /><circle cx="12" cy="7" r="4" strokeWidth="2" /><path d="M12 11v10" strokeWidth="2" strokeLinecap="round" /></svg>,
     bus: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h8M8 11h8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2zM8 19v2a1 1 0 01-2 0v-2M18 19v2a1 1 0 01-2 0v-2"></path></svg>,
     home: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>,
-    cap: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6"/></svg>,
-    location: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
-    live: <svg width="10" height="10" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>,
-    tickCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
-    note: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>,
-    users: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
-    leftArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>,
-    rightArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
-    arrowUp: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19V5M5 12l7-7 7 7"/></svg>,
-    arrowDown: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 5v14M5 12l7 7 7-7"/></svg>,
-    sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
-    mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>,
-    verified: <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2A900"><path d="M22.5 12.5c0 1.5-.7 2.8-1.8 3.5.2 1.3-.2 2.6-1.2 3.6-1 1-2.3 1.4-3.6 1.2-1.1 1.1-2.4 1.8-3.9 1.8s-2.8-.7-3.9-1.8c-1.3.2-2.6-.2-3.6-1.2-1-1-1.4-2.3-1.2-3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.2C9.2 3.7 10.5 3 12 3s2.8.7 3.9 1.8c1.3-.2 2.6.2 3.6 1.2 1 1 1.4 2.3 1.2 3.6 1.1.7 1.8 2 1.8 3.5zM10.5 16.5l6.5-6.5-1.5-1.5-5 5-2.5-2.5-1.5 1.5 4 4z"/></svg>,
-    bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
-    botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
+    cap: <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 14v6m-3-6v6m6-6v6" /></svg>,
+    location: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+    live: <svg width="10" height="10" fill="#dc3545" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /></svg>,
+    tickCircle: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+    note: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+    users: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+    leftArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>,
+    rightArrow: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>,
+    arrowUp: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 19V5M5 12l7-7 7 7" /></svg>,
+    arrowDown: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 5v14M5 12l7 7 7-7" /></svg>,
+    sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z" /></svg>,
+    mobile: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>,
+    verified: <svg width="18" height="18" viewBox="0 0 24 24" fill="#F2A900"><path d="M22.5 12.5c0 1.5-.7 2.8-1.8 3.5.2 1.3-.2 2.6-1.2 3.6-1 1-2.3 1.4-3.6 1.2-1.1 1.1-2.4 1.8-3.9 1.8s-2.8-.7-3.9-1.8c-1.3.2-2.6-.2-3.6-1.2-1-1-1.4-2.3-1.2-3.6-1.1-.7-1.8-2-1.8-3.5 0-1.5.7-2.8 1.8-3.5-.2-1.3.2-2.6 1.2-3.6 1-1 2.3-1.4 3.6-1.2C9.2 3.7 10.5 3 12 3s2.8.7 3.9 1.8c1.3-.2 2.6.2 3.6 1.2 1 1 1.4 2.3 1.2 3.6 1.1.7 1.8 2 1.8 3.5zM10.5 16.5l6.5-6.5-1.5-1.5-5 5-2.5-2.5-1.5 1.5 4 4z" /></svg>,
+    bot: <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z" /></svg>,
+    botGradient: <svg width="18" height="18" fill="none" stroke="url(#aiGradient)" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z" /></svg>,
     edit: <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
 };
 
@@ -86,13 +86,13 @@ const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
 
     return (
         <div ref={wrapperRef} style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
-            <input 
-                type="text" 
-                placeholder={placeholder} 
-                value={search} 
+            <input
+                type="text"
+                placeholder={placeholder}
+                value={search}
                 onChange={e => { setSearch(e.target.value); setIsOpen(true); }}
                 onFocus={() => setIsOpen(true)}
-                style={searchInput} 
+                style={searchInput}
             />
             {isOpen && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', maxHeight: '200px', overflowY: 'auto', background: '#fff', border: '1px solid #dee2e6', borderRadius: '6px', zIndex: 50, boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
@@ -100,7 +100,7 @@ const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
                         const val = typeof opt === 'string' ? opt : opt.value;
                         const label = typeof opt === 'string' ? opt : opt.label;
                         return (
-                            <div key={i} 
+                            <div key={i}
                                 onClick={() => { onChange(val); setSearch(label); setIsOpen(false); }}
                                 style={{ padding: '10px', fontSize: '0.8rem', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', color: '#333' }}
                                 onMouseEnter={(e) => e.target.style.background = '#f8f9fa'}
@@ -119,7 +119,7 @@ const RealtimeSearchSelect = ({ value, onChange, options, placeholder }) => {
 export default function Home() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isStandalone, setIsStandalone] = useState(true);
-    
+
     // Swipe to Delete States
     const [swipeOffsets, setSwipeOffsets] = useState({});
     const [isSwiping, setIsSwiping] = useState(null);
@@ -146,18 +146,18 @@ export default function Home() {
     ];
 
     const allTabs = isCR ? [...baseTabs, { id: 'cr_panel', label: 'CR PANEL', icon: SVGS.shield }] : baseTabs;
-    
+
     const availableTabs = isGuestUser ? allTabs.filter(t => ['room', 'teacher', 'transport'].includes(t.id)) : allTabs;
 
     const [dropdownMeta, setDropdownMeta] = useState({ sessions: [], rooms: [], baseMeta: [] });
-    const [allBaseSchedule, setAllBaseSchedule] = useState([]); 
+    const [allBaseSchedule, setAllBaseSchedule] = useState([]);
     const [rawData, setRawData] = useState([]);
     const [exceptions, setExceptions] = useState([]);
     const [notifications, setNotifications] = useState([]);
-    const [pointsData, setPointsData] = useState([]); 
-    const [announcements, setAnnouncements] = useState([]); 
-    const [teachersData, setTeachersData] = useState([]); 
-    const [contactsData, setContactsData] = useState([]); 
+    const [pointsData, setPointsData] = useState([]);
+    const [announcements, setAnnouncements] = useState([]);
+    const [teachersData, setTeachersData] = useState([]);
+    const [contactsData, setContactsData] = useState([]);
     const [milestones, setMilestones] = useState([]);
     const [examSchedules, setExamSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -168,7 +168,7 @@ export default function Home() {
     const [completedAssignments, setCompletedAssignments] = useState([]);
 
     const [isFirstVisit, setIsFirstVisit] = useState(true);
-    const [currentTime, setCurrentTime] = useState(new Date()); 
+    const [currentTime, setCurrentTime] = useState(new Date());
     const [readNotifIds, setReadNotifIds] = useState([]);
     const [myRollNumber, setMyRollNumber] = useState(null);
 
@@ -181,11 +181,11 @@ export default function Home() {
     const notifiedDeadlines = useRef(new Set());
 
     // Active View States
-    const [currentTab, setCurrentTab] = useState('home'); 
+    const [currentTab, setCurrentTab] = useState('home');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    
-    const [roomSubTab, setRoomSubTab] = useState('schedule'); 
-    const [roomViewType, setRoomViewType] = useState('All Rooms'); 
+
+    const [roomSubTab, setRoomSubTab] = useState('schedule');
+    const [roomViewType, setRoomViewType] = useState('All Rooms');
     const [roomTimeFilter, setRoomTimeFilter] = useState('');
 
     const [selectedDay, setSelectedDay] = useState(() => {
@@ -193,12 +193,12 @@ export default function Home() {
         return today === 'SUN' ? 'ALL' : today;
     });
     const [showAlerts, setShowAlerts] = useState(false);
-    
+
     // Forced Banner States
     const [showInstallBanner, setShowInstallBanner] = useState(false);
-    
+
     const [expandedAssignmentId, setExpandedAssignmentId] = useState(null);
-    const [expandedContactId, setExpandedContactId] = useState(null); 
+    const [expandedContactId, setExpandedContactId] = useState(null);
 
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
@@ -215,9 +215,9 @@ export default function Home() {
     const [selectedRoom, setSelectedRoom] = useState('');
 
     const [selectedRollInput, setSelectedRollInput] = useState('');
-    const [attFilter, setAttFilter] = useState('All'); 
+    const [attFilter, setAttFilter] = useState('All');
     const [updatesFilter, setUpdatesFilter] = useState('Last Month');
-    const [selectedAttSubject, setSelectedAttSubject] = useState(''); 
+    const [selectedAttSubject, setSelectedAttSubject] = useState('');
 
     // Offline / Connectivity States
     const [isOffline, setIsOffline] = useState(false);
@@ -263,7 +263,7 @@ export default function Home() {
             setReadNotifIds(newReadIds);
             localStorage.setItem('iub_read_notifs', JSON.stringify(newReadIds));
             setSwipeOffsets(prev => {
-                const newOffsets = {...prev};
+                const newOffsets = { ...prev };
                 delete newOffsets[id];
                 return newOffsets;
             });
@@ -285,9 +285,9 @@ export default function Home() {
             setIsStandalone(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
         }
 
-        return () => { 
-            window.removeEventListener('online', handleOnline); 
-            window.removeEventListener('offline', handleOffline); 
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
         };
     }, []);
 
@@ -343,7 +343,7 @@ export default function Home() {
                 if (parsed.announcements) setAnnouncements(parsed.announcements);
                 if (parsed.pointsData) setPointsData(parsed.pointsData);
                 if (parsed.lastUpdated) setLastUpdated(parsed.lastUpdated);
-                
+
                 if (parsed.exceptions) setExceptions(parsed.exceptions);
                 if (parsed.milestones) setMilestones(parsed.milestones);
                 if (parsed.examSchedules) setExamSchedules(parsed.examSchedules);
@@ -353,10 +353,10 @@ export default function Home() {
                 if (parsed.attSessions) setAttSessions(parsed.attSessions);
                 if (parsed.attRecords) setAttRecords(parsed.attRecords);
                 if (parsed.dropdownMeta) setDropdownMeta(parsed.dropdownMeta);
-                
+
                 // Set loading false instantly if we have cached data
                 setLoading(false);
-            } catch(e) {}
+            } catch (e) { }
         }
 
         const savedSelection = localStorage.getItem('iub_user_selection');
@@ -405,13 +405,13 @@ export default function Home() {
                     const deadlineDate = new Date(ann.deadline_date);
                     const deadlineMins = parseTime(ann.deadline_time);
                     deadlineDate.setHours(Math.floor(deadlineMins / 60), deadlineMins % 60, 0, 0);
-                    
+
                     const diffMins = Math.floor((deadlineDate - now) / 60000);
                     if (diffMins === 120 && !notifiedDeadlines.current.has(ann.id)) {
                         notifiedDeadlines.current.add(ann.id);
                         const msg = `⏰ DEADLINE ALERT: Only 2 hours left for ${ann.subject} Assignment (${ann.topics}).`;
                         setNotifications(prev => [{ id: `deadline-${ann.id}`, message: msg, created_at: new Date().toISOString() }, ...prev]);
-                        
+
                         if (Notification.permission === "granted") {
                             new Notification("Assignment Due Soon!", { body: msg, icon: "/icon-192x192.png" });
                         }
@@ -453,7 +453,7 @@ export default function Home() {
         const payload = { title, body, url, icon: "/icon-192x192.png" };
         const sent = await notifyViaServiceWorker(payload);
         if (sent) return;
-        try { new Notification(title, { body, icon: "/icon-192x192.png" }); } catch {}
+        try { new Notification(title, { body, icon: "/icon-192x192.png" }); } catch { }
     };
 
     useEffect(() => {
@@ -464,7 +464,7 @@ export default function Home() {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
                 const msg = (payload.new?.message || payload.old?.message || "");
                 const sem = getSemesterFromSession(userSection.session);
-                
+
                 const isGlobal = msg.includes('GLOBAL');
                 const hasSection = msg.includes(userSection.section);
                 const hasSession = msg.includes(userSection.session) || (sem && msg.includes(sem));
@@ -484,7 +484,7 @@ export default function Home() {
                     if (payload.eventType === 'INSERT') {
                         if (Notification.permission === "granted") void showSystemNotification("New Class Update", `${pnew.subject}: ${pnew.topics}`);
                         setAnnouncements(prev => [pnew, ...prev]);
-                        
+
                         const annNotif = {
                             id: `ann-${pnew.id}`,
                             message: `New ${pnew.type === 'assignment' ? 'Assignment' : 'Update'} for ${pnew.subject}: ${pnew.topics}`,
@@ -566,9 +566,9 @@ export default function Home() {
 
     const fetchAllRows = async (table, select = '*') => {
         let all = []; let from = 0; const step = 1000;
-        while(true) {
+        while (true) {
             const { data, error } = await supabase.from(table).select(select).order('id', { ascending: true }).range(from, from + step - 1);
-            if (error) return { data: all.length ? all : null, error }; 
+            if (error) return { data: all.length ? all : null, error };
             if (!data || data.length === 0) break;
             all = [...all, ...data];
             if (data.length < step) break;
@@ -611,7 +611,7 @@ export default function Home() {
             const savedRoll = localStorage.getItem('iub_my_roll');
 
             const { data: allBaseData, error: baseErr } = await fetchAllRows('base_schedule');
-            
+
             // STRICT GUARD: If fetch fails or returns unexpectedly empty data (a schedule is never 0 rows), 
             // abort to protect the existing offline cache.
             if (baseErr || !allBaseData || allBaseData.length === 0) {
@@ -622,7 +622,7 @@ export default function Home() {
             const { data: allExcData } = await fetchAllRows('schedule_exceptions');
             const { data: milestonesData } = await fetchAllRows('academic_milestones');
             const { data: examData } = await fetchAllRows('exam_schedules');
-            
+
             setAllBaseSchedule(allBaseData || []);
             setExceptions(allExcData || []);
             setMilestones(milestonesData || []);
@@ -646,13 +646,13 @@ export default function Home() {
                 supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(200),
                 supabase.from('point_schedules').select('*'),
                 supabase.from('v_public_teacher_profiles').select('name'),
-                fetchAllRows('v_public_contacts'), 
+                fetchAllRows('v_public_contacts'),
                 studentsReq,
                 annReq
             ]);
 
-            setRawData(myScheduleData); 
-            
+            setRawData(myScheduleData);
+
             let finalAttSessData = [];
             if (myScheduleData.length > 0) {
                 const ids = myScheduleData.map(c => c.id);
@@ -693,15 +693,15 @@ export default function Home() {
                 }));
 
             setNotifications([...generatedNotifs, ...generatedAnnNotifs, ...(notifRes.data || [])]);
-            setPointsData(pointsRes.data || []); 
+            setPointsData(pointsRes.data || []);
             setTeachersData(teachersRes.data || []);
             setContactsData(contactsRes.data || []);
             setStudentsData(studentsRes.data || []);
             setAnnouncements(annRes.data || []);
-            
+
             const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setLastUpdated(nowTime);
-            
+
             localStorage.setItem(CACHE_KEY_TS, Date.now().toString());
             localStorage.setItem('iub_offline_data', JSON.stringify({
                 rawData: myScheduleData,
@@ -710,7 +710,7 @@ export default function Home() {
                 announcements: annRes.data || [],
                 pointsData: pointsRes.data || [],
                 lastUpdated: nowTime,
-                
+
                 exceptions: allExcData || [],
                 milestones: milestonesData || [],
                 examSchedules: examData || [],
@@ -832,24 +832,24 @@ export default function Home() {
     });
 
     const getSectionsForSession = (sess) => [...new Set(dropdownMeta.baseMeta.filter(x => x.session === sess).map(x => x.section))].sort();
-    
+
     const allTeachers = [...new Set([
-        ...teachersData.map(x => x.name), 
+        ...teachersData.map(x => x.name),
         ...dropdownMeta.baseMeta.map(x => x.teacher)
     ])].filter(Boolean).sort();
-    
+
     const allRooms = dropdownMeta.rooms;
 
     const getStatusStyles = (cls) => {
         const todayStr = new Date().toLocaleDateString('en-CA');
         const exc = exceptions
             .filter(e => String(e.base_schedule_id) === String(cls.id) && e.exception_date >= todayStr)
-            .sort((a,b) => new Date(a.exception_date) - new Date(b.exception_date))[0];
-            
+            .sort((a, b) => new Date(a.exception_date) - new Date(b.exception_date))[0];
+
         if (exc?.status === 'cancelled') return { label: `Cancelled on ${exc.exception_date}`, color: '#721c24', bg: '#f8d7da', border: '#dc3545' };
         if (exc?.status === 'confirmed') return { label: `Confirmed for ${exc.exception_date}`, color: '#155724', bg: '#d4edda', border: '#28a745' };
         if (exc?.status === 'rescheduled') return { label: `Moved to ${exc.new_room} on ${exc.exception_date}`, color: '#004085', bg: '#e7f1ff', border: '#007bff' };
-        return null; 
+        return null;
     };
 
     const getNearestPoints = (cls) => {
@@ -859,11 +859,11 @@ export default function Home() {
         const clsEndMins = parseTime(cls.end_time);
 
         const targetUpMins = clsStartMins - 30;
-        const validUp = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins).sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time)); 
+        const validUp = pointsData.filter(p => p.route === 'AC_to_BJC' && p.is_saturday === isSat && parseDbTime(p.departure_time) <= targetUpMins).sort((a, b) => parseDbTime(b.departure_time) - parseDbTime(a.departure_time));
         const bestUp = validUp.length > 0 ? convertTo12Hour(validUp[0].departure_time.slice(0, 5)) : 'N/A';
 
         const targetDownMins = clsEndMins;
-        const validDown = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time)); 
+        const validDown = pointsData.filter(p => p.route === 'BJC_to_AC' && p.is_saturday === isSat && parseDbTime(p.departure_time) >= targetDownMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time));
         const bestDown = validDown.length > 0 ? convertTo12Hour(validDown[0].departure_time.slice(0, 5)) : 'N/A';
 
         return { up: bestUp, down: bestDown };
@@ -923,7 +923,7 @@ export default function Home() {
         const isAssignmentAlert = msg.includes('DEADLINE ALERT');
 
         const shouldShow = isGenerated || isGlobal || (hasSection && hasSession) || isCRUpdate || isAssignmentAlert;
-        
+
         return shouldShow && !readNotifIds.includes(n.id) && !isPassedLectureNotification(msg);
     });
 
@@ -956,9 +956,9 @@ export default function Home() {
     });
 
     const generateWaLink = (phone, defaultText) => {
-        if(!phone) return `https://wa.me/?text=${encodeURIComponent(defaultText)}`;
+        if (!phone) return `https://wa.me/?text=${encodeURIComponent(defaultText)}`;
         let p = String(phone).replace(/\D/g, '');
-        if(p.startsWith('0')) p = '92' + p.substring(1);
+        if (p.startsWith('0')) p = '92' + p.substring(1);
         return `https://wa.me/${p}?text=${encodeURIComponent(defaultText)}`;
     };
 
@@ -966,12 +966,12 @@ export default function Home() {
         let classes = sourceData.filter(c => c[filterKey] === filterValue);
         if (filterKey === 'section') classes = classes.filter(c => c.session === userSection?.session);
         if (selectedDay !== 'ALL') classes = classes.filter(c => c.day === selectedDay);
-        return classes; 
+        return classes;
     };
 
     const mySchedule = getFilteredClasses('section', userSection?.section, rawData);
     const teacherSchedule = getFilteredClasses('teacher', selectedTeacher, allBaseSchedule);
-    
+
     let roomSchedule = [];
     if (roomViewType === 'Specified') {
         roomSchedule = getFilteredClasses('room', selectedRoom, allBaseSchedule);
@@ -979,14 +979,14 @@ export default function Home() {
         const timeFilterMins = parseTime(roomTimeFilter);
         roomSchedule = allBaseSchedule.filter(c => (selectedDay === 'ALL' || c.day === selectedDay) && (roomTimeFilter ? parseTime(c.start_time) <= timeFilterMins && parseTime(c.end_time) > timeFilterMins : true));
     }
-    
+
     const ongoingAllLectures = allBaseSchedule.filter(c => c.day === currentDayStr && parseTime(c.start_time) <= currentMins && parseTime(c.end_time) > currentMins);
 
     const upcomingExams = examSchedules.filter(e => {
-        if(!userSection || userSection.section === 'GUEST') return false;
+        if (!userSection || userSection.section === 'GUEST') return false;
         const isMySection = e.target_group.includes(userSection.section) && e.target_group.includes(getSemesterFromSession(userSection.session));
-        if(!isMySection) return false;
-        
+        if (!isMySection) return false;
+
         const examDateTime = new Date(`${e.exam_date}T${e.start_time || '00:00:00'}`);
         return examDateTime > currentTime;
     }).sort((a, b) => new Date(`${a.exam_date}T${a.start_time || '00:00:00'}`) - new Date(`${b.exam_date}T${b.start_time || '00:00:00'}`));
@@ -997,13 +997,13 @@ export default function Home() {
         const examDateTime = new Date(`${nextExam.exam_date}T${nextExam.start_time || '00:00:00'}`);
         const diffMs = examDateTime - currentTime;
         const diffDays = diffMs / (1000 * 60 * 60 * 24);
-        
+
         if (diffDays <= 20 && diffMs > 0) {
             const d = Math.floor(diffDays);
             const h = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
             const m = Math.floor((diffMs / 1000 / 60) % 60);
             const s = Math.floor((diffMs / 1000) % 60);
-            
+
             examCountdownElement = (
                 <div className="expand-anim" style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', color: '#fff', padding: '12px 15px', borderRadius: '12px', marginBottom: '15px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 15px rgba(59,130,246,0.3)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1018,7 +1018,7 @@ export default function Home() {
                         </div>
                     </div>
                     <div style={{ fontSize: '0.65rem', background: '#F2A900', color: '#002147', padding: '4px 8px', borderRadius: '6px', fontWeight: 'bold', textAlign: 'center' }}>
-                        {new Date(nextExam.exam_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}<br/>
+                        {new Date(nextExam.exam_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}<br />
                         {convertTo12Hour(nextExam.start_time)}
                     </div>
                 </div>
@@ -1030,14 +1030,14 @@ export default function Home() {
         const events = [];
 
         if (isExamMode) {
-            const todayExams = examSchedules.filter(e => 
-                e.exam_date === todayStrCA && 
-                e.target_group.includes(userSection?.section) && 
+            const todayExams = examSchedules.filter(e =>
+                e.exam_date === todayStrCA &&
+                e.target_group.includes(userSection?.section) &&
                 e.target_group.includes(getSemesterFromSession(userSection?.session))
             );
 
             if (todayExams.length > 0) {
-                const sortedExams = todayExams.sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+                const sortedExams = todayExams.sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
                 const firstExam = sortedExams[0];
                 const lastExam = sortedExams[sortedExams.length - 1];
 
@@ -1067,7 +1067,7 @@ export default function Home() {
                     const status = getStatusStyles(c);
                     if (status && status.label.toLowerCase().includes('cancelled')) return false;
                     return true;
-                }).sort((a,b) => parseTime(a.start_time) - parseTime(b.start_time));
+                }).sort((a, b) => parseTime(a.start_time) - parseTime(b.start_time));
 
                 if (myTodayClasses.length > 0) {
                     const firstCls = myTodayClasses[0];
@@ -1091,12 +1091,12 @@ export default function Home() {
         }
         return events;
     }, [allBaseSchedule, examSchedules, currentDayStr, todayStrCA, exceptions, pointsData, userSection, activeMilestone, isExamMode]);
-    
+
     useEffect(() => {
         if (todayEvents.length > 0 && currentTab === 'home') {
             const currentTotalSecs = new Date().getHours() * 3600 + new Date().getMinutes() * 60 + new Date().getSeconds();
             let activeIdx = todayEvents.findIndex(e => {
-                if (e.type === 'vacation' || e.type === 'milestone') return true; 
+                if (e.type === 'vacation' || e.type === 'milestone') return true;
                 if (e.type === 'lecture' || e.type === 'exam') return (e.endMins * 60) > currentTotalSecs;
                 return (e.timeMins * 60) > currentTotalSecs;
             });
@@ -1112,10 +1112,10 @@ export default function Home() {
     const getFilteredAttendance = () => {
         const myClasses = rawData.filter(c => c.section === userSection?.section && c.session === userSection?.session);
         const allMySubjects = [...new Set(myClasses.map(c => c.course))];
-        
+
         let allValidSessions = attSessions.filter(sess => myClasses.some(c => c.id === sess.base_schedule_id));
         let validSessions = allValidSessions;
-        
+
         if (attFilter !== 'All') {
             const now = new Date();
             const daysMap = { 'Last Week': 7, 'Last Month': 30 };
@@ -1126,7 +1126,7 @@ export default function Home() {
         const subjectStats = allMySubjects.map(sub => {
             const subClassIds = myClasses.filter(c => c.course === sub).map(c => c.id);
             const subSessions = allValidSessions.filter(s => subClassIds.includes(s.base_schedule_id));
-            
+
             let presentCount = 0;
             let totalCount = 0;
 
@@ -1194,8 +1194,8 @@ export default function Home() {
     };
 
     const renderExamCards = () => {
-        const myExams = examSchedules.filter(e => 
-            e.target_group.includes(userSection?.section) && 
+        const myExams = examSchedules.filter(e =>
+            e.target_group.includes(userSection?.section) &&
             e.target_group.includes(getSemesterFromSession(userSection?.session))
         ).sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date));
 
@@ -1211,10 +1211,10 @@ export default function Home() {
             const examDateStr = new Date(ex.exam_date).toLocaleDateString('en-CA');
             const isToday = examDateStr === todayStrCA;
             const isPast = new Date(ex.exam_date) < new Date(todayStrCA);
-            
+
             let bgCol = '#fff';
             let borderCol = '#F2A900';
-            
+
             if (isToday) {
                 bgCol = '#fff9e6';
                 borderCol = '#dc3545';
@@ -1258,10 +1258,10 @@ export default function Home() {
     const renderClassCards = (scheduleList, displayContext) => {
         if (displayContext === 'class' && userSection?.section === 'GUEST') {
             return (
-                <div style={{...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px'}}>
-                    <p style={{fontSize: '1rem', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'}}>{SVGS.users} Guest Mode Active</p>
-                    <p style={{fontSize: '0.8rem'}}>You can search for Teacher schedules and Free Rooms above.</p>
-                    <p style={{fontSize: '0.8rem'}}>To view a personalized schedule, click <b>"Change Section"</b>.</p>
+                <div style={{ ...whiteCard, textAlign: 'center', color: '#666', marginTop: '20px' }}>
+                    <p style={{ fontSize: '1rem', fontWeight: 'bold', color: '#002147', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>{SVGS.users} Guest Mode Active</p>
+                    <p style={{ fontSize: '0.8rem' }}>You can search for Teacher schedules and Free Rooms above.</p>
+                    <p style={{ fontSize: '0.8rem' }}>To view a personalized schedule, click <b>"Change Section"</b>.</p>
                 </div>
             );
         }
@@ -1279,19 +1279,19 @@ export default function Home() {
                     <div style={dayHeaderStrip}>{day}</div>
                     {dayClasses.map((cls, idx) => {
                         const status = getStatusStyles(cls);
-                        const points = getNearestPoints(cls); 
+                        const points = getNearestPoints(cls);
                         const bgCol = status ? status.bg : '#fff';
                         const borderCol = status ? status.border : '#F2A900';
 
                         const activeSubjectAssignments = activeAssignments.filter(a => a.subject === cls.course && a.section === cls.section);
                         const allAssignmentsComplete = activeSubjectAssignments.length > 0 && activeSubjectAssignments.every(a => completedAssignments.includes(a.id));
-                        
+
                         let assignmentBannerBg = allAssignmentsComplete ? '#dcfce7' : '#fff9e6';
                         let assignmentBannerBorder = allAssignmentsComplete ? '#86efac' : '#fde68a';
                         let assignmentBannerLeftBorder = allAssignmentsComplete ? '#28a745' : '#F2A900';
                         let assignmentTextColor = allAssignmentsComplete ? '#15803d' : '#b27b00';
                         let assignmentIconColor = allAssignmentsComplete ? '#15803d' : '#856404';
-                        
+
                         let dueText = 'Done';
                         if (!allAssignmentsComplete && activeSubjectAssignments.length > 0) {
                             const ann = activeSubjectAssignments[0];
@@ -1326,15 +1326,15 @@ export default function Home() {
                             if (teacherFromProfiles && teacherFromProfiles.phone) teacherContactNumber = teacherFromProfiles.phone;
                         }
 
-                        const crContact = contactsData.find(c => 
-                            c.role && c.role.toLowerCase().includes('cr') && 
-                            c.session?.trim().toLowerCase() === cls.session?.trim().toLowerCase() && 
+                        const crContact = contactsData.find(c =>
+                            c.role && c.role.toLowerCase().includes('cr') &&
+                            c.session?.trim().toLowerCase() === cls.session?.trim().toLowerCase() &&
                             c.section?.trim().toLowerCase() === cls.section?.trim().toLowerCase()
                         );
 
                         return (
                             <div key={idx} style={{ marginBottom: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.04)', borderRadius: '10px', overflow: 'hidden', border: '1px solid #eee' }}>
-                                <div 
+                                <div
                                     onClick={() => setExpandedContactId(isContactExpanded ? null : cls.id)}
                                     style={{ ...cardBase, marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, boxShadow: 'none', background: bgCol, borderLeft: `5px solid ${borderCol}`, cursor: 'pointer' }}
                                 >
@@ -1349,9 +1349,9 @@ export default function Home() {
                                     </div>
                                     {status && <div style={{ marginTop: '8px', fontSize: '0.65rem', fontWeight: 'bold', color: status.color, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>{SVGS.live} {status.label}</div>}
                                 </div>
-                                
+
                                 {activeSubjectAssignments.length > 0 && (
-                                    <div 
+                                    <div
                                         onClick={(e) => { e.stopPropagation(); setExpandedAssignmentId(expandedAssignmentId === cls.id ? null : cls.id); }}
                                         style={{ background: assignmentBannerBg, borderTop: `1px solid ${assignmentBannerBorder}`, borderLeft: `5px solid ${assignmentBannerLeftBorder}`, padding: '8px 12px', cursor: 'pointer' }}
                                     >
@@ -1415,11 +1415,11 @@ export default function Home() {
                                                     {SVGS.whatsapp} Contact Teacher: {cls.teacher}
                                                 </a>
                                             ) : (
-                                                <div style={{...contactBtnStyle, background: '#e2e8f0', color: '#64748b', cursor: 'not-allowed', boxShadow: 'none'}}>{SVGS.whatsapp} Contact Teacher: N/A</div>
+                                                <div style={{ ...contactBtnStyle, background: '#e2e8f0', color: '#64748b', cursor: 'not-allowed', boxShadow: 'none' }}>{SVGS.whatsapp} Contact Teacher: N/A</div>
                                             )}
-                                            
+
                                             {crContact && crContact.contact && (
-                                                <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{...contactBtnStyle, background: '#002147', color: '#F2A900'}}>
+                                                <a href={generateWaLink(crContact.contact, `Salam ${crContact.name}`)} target="_blank" rel="noreferrer" style={{ ...contactBtnStyle, background: '#002147', color: '#F2A900' }}>
                                                     {SVGS.whatsapp} Contact CR: {crContact.name}
                                                 </a>
                                             )}
@@ -1503,11 +1503,11 @@ export default function Home() {
                     {setupSession && setupSession !== 'GUEST' && setupSection && !myRollNumber && (
                         <div className="expand-anim" style={{ marginTop: '5px' }}>
                             <p style={{ fontSize: '0.75rem', color: '#666', margin: '0 0 6px 0', textAlign: 'left' }}>Your Roll Number (For Attendance)</p>
-                            <RealtimeSearchSelect 
-                                value={setupRollNo} 
-                                onChange={setSetupRollNo} 
-                                options={setupStudentsList.map(s => ({ value: s.registration_number, label: `${s.registration_number} - ${s.student_name}` }))} 
-                                placeholder="🔍 Search Roll No..." 
+                            <RealtimeSearchSelect
+                                value={setupRollNo}
+                                onChange={setSetupRollNo}
+                                options={setupStudentsList.map(s => ({ value: s.registration_number, label: `${s.registration_number} - ${s.student_name}` }))}
+                                placeholder="🔍 Search Roll No..."
                             />
                         </div>
                     )}
@@ -1518,10 +1518,10 @@ export default function Home() {
                         ) : (
                             <button onClick={handleInitialSelection} style={bigBtn}>Show My Schedule</button>
                         )}
-                        
+
                         {setupSession !== 'GUEST' && (
                             <>
-                                <div style={{color: '#999', fontSize: '0.7rem'}}>— OR —</div>
+                                <div style={{ color: '#999', fontSize: '0.7rem' }}>— OR —</div>
                                 <button onClick={handleGuestSelection} style={{ ...bigBtn, background: '#e2e8f0', color: '#334155' }}>Continue as Guest</button>
                             </>
                         )}
@@ -1544,19 +1544,19 @@ export default function Home() {
     let nextUpTimeStr = '--:--:--';
     let nextDownTimeStr = '--:--:--';
     if (showPointsBar && currentTab === 'home') {
-        const nextUp = todayPoints.filter(p => p.route === 'AC_to_BJC' && parseDbTime(p.departure_time) >= currentMins).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time))[0];
-        const nextDown = todayPoints.filter(p => p.route === 'BJC_to_AC' && parseDbTime(p.departure_time) >= currentMins).sort((a,b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time))[0];
-        
+        const nextUp = todayPoints.filter(p => p.route === 'AC_to_BJC' && parseDbTime(p.departure_time) >= currentMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time))[0];
+        const nextDown = todayPoints.filter(p => p.route === 'BJC_to_AC' && parseDbTime(p.departure_time) >= currentMins).sort((a, b) => parseDbTime(a.departure_time) - parseDbTime(b.departure_time))[0];
+
         if (nextUp) {
-            const [h,m] = nextUp.departure_time.split(':').map(Number);
-            const d = new Date(currentTime); d.setHours(h,m,0,0);
-            const s = Math.floor((d - currentTime)/1000);
+            const [h, m] = nextUp.departure_time.split(':').map(Number);
+            const d = new Date(currentTime); d.setHours(h, m, 0, 0);
+            const s = Math.floor((d - currentTime) / 1000);
             nextUpTimeStr = s > 0 ? formatCountdown(s) : '00:00:00';
         }
         if (nextDown) {
-            const [h,m] = nextDown.departure_time.split(':').map(Number);
-            const d = new Date(currentTime); d.setHours(h,m,0,0);
-            const s = Math.floor((d - currentTime)/1000);
+            const [h, m] = nextDown.departure_time.split(':').map(Number);
+            const d = new Date(currentTime); d.setHours(h, m, 0, 0);
+            const s = Math.floor((d - currentTime) / 1000);
             nextDownTimeStr = s > 0 ? formatCountdown(s) : '00:00:00';
         }
     }
@@ -2853,15 +2853,14 @@ export default function Home() {
                                 <CRPanel profile={crProfile} session={{user: {id: crProfile.id}}} />
                             </div>
                         )}
-                    </div>
-                </main>
+                </>
                 )}
             </div>
 
             <footer className={currentTab === 'ai_bot' ? 'ai-bot-active-footer' : ''} style={footerStyle}>
-                Made with ❤️ by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin | Muntaha | Waleeja | Nazakat — BSAI 3RD 3M</a> 
+                Made with ❤️ by <a href="http://wa.me/923053296062" target="_blank" rel="noreferrer" style={{ color: '#002147', fontWeight: '900', textDecoration: 'none' }}>Mohsin | Muntaha | Waleeja | Nazakat — BSAI 4TH - 3M</a> 
             </footer>
-        </div>
+        </div >
     );
 }
 
