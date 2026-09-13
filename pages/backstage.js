@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 // ==========================================
 // 1. EXTENSIVE SVG ASSET LIBRARY
@@ -213,7 +214,7 @@ export default function AdminDashboard() {
     const [baseForm, setBaseForm] = useState({ id: null, session: '', section: '', course: '', teacher: '', room: '', day: 'MON', start_time: '08:00 AM', end_time: '09:30 AM' });
 
     const [isUserEditModalOpen, setIsUserEditModalOpen] = useState(false);
-    const [userEditForm, setUserEditForm] = useState({ id: null, type: 'cr', first_name: '', last_name: '', name: '', department: '', session: '', section: '', phone: '', email: '', cnic: '' });
+    const [userEditForm, setUserEditForm] = useState({ id: null, type: 'cr', first_name: '', last_name: '', name: '', department: '', session: '', section: '', phone: '', email: '', cnic: '', registration_number: '', password: '' });
 
     const [isPointModalOpen, setIsPointModalOpen] = useState(false);
     const [pointForm, setPointForm] = useState({ id: null, route: 'AC_to_BJC', departure_time: '08:00', is_saturday: false });
@@ -510,7 +511,9 @@ export default function AdminDashboard() {
                 section: profile.section || '',
                 phone: profile.phone || '',
                 email: profile.email || '',
-                cnic: ''
+                cnic: profile.cnic || '',
+                registration_number: profile.registration_number || '',
+                password: ''
             });
         } else {
             setUserEditForm({
@@ -524,7 +527,9 @@ export default function AdminDashboard() {
                 section: '',
                 phone: profile.phone || '',
                 email: profile.email || '',
-                cnic: profile.cnic || ''
+                cnic: profile.cnic || '',
+                registration_number: '',
+                password: ''
             });
         }
         setIsUserEditModalOpen(true);
@@ -542,7 +547,9 @@ export default function AdminDashboard() {
             section: '',
             phone: '',
             email: '',
-            cnic: ''
+            cnic: '',
+            registration_number: '',
+            password: ''
         });
         setIsUserEditModalOpen(true);
     };
@@ -551,11 +558,62 @@ export default function AdminDashboard() {
         e.preventDefault();
         setActionProcessing(true);
         const table = userEditForm.type === 'cr' ? 'cr_profiles' : 'teacher_profiles';
-        let payload = userEditForm.type === 'cr' 
-            ? { first_name: userEditForm.first_name, last_name: userEditForm.last_name, department: userEditForm.department, session: userEditForm.session, section: userEditForm.section, phone: userEditForm.phone, is_approved: true }
-            : { name: userEditForm.name, phone: userEditForm.phone, cnic: userEditForm.cnic, email: userEditForm.email, is_approved: true };
-        if (userEditForm.id) await supabase.from(table).update(payload).eq('id', userEditForm.id);
-        else await supabase.from(table).insert([payload]);
+        
+        if (userEditForm.type === 'cr' && !userEditForm.id) {
+            // New CR Provisioning via Auth
+            const tempClient = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+                { auth: { persistSession: false, autoRefreshToken: false } }
+            );
+
+            const email = `${userEditForm.cnic.replace(/\D/g, '')}@cr.iub.edu`;
+            const { data: authData, error: authError } = await tempClient.auth.signUp({
+                email,
+                password: userEditForm.password
+            });
+
+            if (authError) {
+                setUploadStatus({ type: 'error', text: `Auth Error: ${authError.message}` });
+                setActionProcessing(false);
+                return;
+            }
+
+            const authId = authData.user?.id;
+            if (authId) {
+                let payload = { 
+                    id: authId,
+                    first_name: userEditForm.first_name, 
+                    last_name: userEditForm.last_name, 
+                    department: userEditForm.department, 
+                    session: userEditForm.session, 
+                    section: userEditForm.section, 
+                    phone: userEditForm.phone, 
+                    is_approved: true,
+                    registration_number: userEditForm.registration_number
+                };
+                await supabase.from(table).upsert(payload);
+            }
+        } else if (userEditForm.type === 'cr' && userEditForm.id) {
+            // Edit existing CR
+            let payload = { 
+                first_name: userEditForm.first_name, 
+                last_name: userEditForm.last_name, 
+                department: userEditForm.department, 
+                session: userEditForm.session, 
+                section: userEditForm.section, 
+                phone: userEditForm.phone, 
+                is_approved: true,
+                registration_number: userEditForm.registration_number
+            };
+            await supabase.from(table).update(payload).eq('id', userEditForm.id);
+        } else {
+            // Teacher Profile
+            let payload = { name: userEditForm.name, phone: userEditForm.phone, cnic: userEditForm.cnic, email: userEditForm.email, is_approved: true };
+            if (userEditForm.id) await supabase.from(table).update(payload).eq('id', userEditForm.id);
+            else await supabase.from(table).insert([payload]);
+        }
+
         setIsUserEditModalOpen(false);
         await fetchDeepDatabase();
         setUploadStatus({ type: 'success', text: `${userEditForm.type === 'cr' ? 'CR' : 'Teacher'} contact ${userEditForm.id ? 'updated' : 'added'} and saved to Supabase.` });
@@ -1722,12 +1780,17 @@ export default function AdminDashboard() {
                         <form onSubmit={handleSaveUserEdit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {userEditForm.type === 'cr' ? (
                                 <>
-                                    <div style={{display:'flex', gap:'10px'}}>
+                                    <div style={{display: 'flex', gap: '10px'}}>
                                         <div style={{flex: 1}}><label style={styles.label}>First Name</label><input type="text" required value={userEditForm.first_name} onChange={e=>setUserEditForm({...userEditForm, first_name:e.target.value})} style={styles.inputBox} /></div>
                                         <div style={{flex: 1}}><label style={styles.label}>Last Name</label><input type="text" required value={userEditForm.last_name} onChange={e=>setUserEditForm({...userEditForm, last_name:e.target.value})} style={styles.inputBox} /></div>
                                     </div>
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <div style={{flex: 1}}><label style={styles.label}>Registration No. (CR REG)</label><input type="text" required value={userEditForm.registration_number} onChange={e=>setUserEditForm({...userEditForm, registration_number:e.target.value})} style={styles.inputBox} /></div>
+                                        <div style={{flex: 1}}><label style={styles.label}>CNIC (Login ID)</label><input type="text" required={!userEditForm.id} disabled={!!userEditForm.id} value={userEditForm.cnic} onChange={e=>setUserEditForm({...userEditForm, cnic:e.target.value})} style={styles.inputBox} placeholder="e.g. 31202..." /></div>
+                                    </div>
+                                    {!userEditForm.id && <div><label style={styles.label}>Password</label><input type="text" required value={userEditForm.password} onChange={e=>setUserEditForm({...userEditForm, password:e.target.value})} style={styles.inputBox} /></div>}
                                     <div><label style={styles.label}>Department Node</label><input type="text" required value={userEditForm.department} onChange={e=>setUserEditForm({...userEditForm, department:e.target.value})} style={styles.inputBox} /></div>
-                                    <div style={{display:'flex', gap:'10px'}}>
+                                    <div style={{display: 'flex', gap: '10px'}}>
                                         <div style={{flex: 1}}><label style={styles.label}>Session</label><input type="text" required value={userEditForm.session} onChange={e=>setUserEditForm({...userEditForm, session:e.target.value})} style={styles.inputBox} /></div>
                                         <div style={{flex: 1}}><label style={styles.label}>Section</label><input type="text" required value={userEditForm.section} onChange={e=>setUserEditForm({...userEditForm, section:e.target.value})} style={styles.inputBox} /></div>
                                     </div>

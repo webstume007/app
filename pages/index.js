@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { supabase } from '../lib/supabase';
+import CRPanel from '../components/CRPanel';
 import AIBot from './ai_bot';
 
 // Helper function to dynamically calculate Semester
@@ -129,7 +130,11 @@ export default function Home() {
     const [userSection, setUserSection] = useState(null);
     const isGuestUser = userSection?.section === 'GUEST';
 
-    const allTabs = [
+    // CR State
+    const [crProfile, setCrProfile] = useState(null);
+    const isCR = !!crProfile;
+
+    const baseTabs = [
         { id: 'home', label: 'HOME', icon: SVGS.home },
         { id: 'class', label: 'SCHEDULE', icon: SVGS.calendar },
         { id: 'attendance', label: 'ATTENDANCE', icon: SVGS.attendance },
@@ -139,6 +144,8 @@ export default function Home() {
         { id: 'transport', label: 'TRANSPORT', icon: SVGS.bus },
         { id: 'ai_bot', label: 'AI TUTOR', icon: SVGS.bot }
     ];
+
+    const allTabs = isCR ? [...baseTabs, { id: 'cr_panel', label: 'CR PANEL', icon: SVGS.shield }] : baseTabs;
     
     const availableTabs = isGuestUser ? allTabs.filter(t => ['room', 'teacher', 'transport'].includes(t.id)) : allTabs;
 
@@ -372,6 +379,20 @@ export default function Home() {
         if (savedAssn) setCompletedAssignments(JSON.parse(savedAssn));
 
         fetchLiveSchedule(); // Invoked with cache-evaluating (false) default token
+
+        // CR Auth Check
+        const checkCrSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                const { data } = await supabase.from('cr_profiles').select('*').eq('id', session.user.id).single();
+                if (data && data.is_approved) {
+                    setCrProfile(data);
+                    setUserSection({ session: data.session, section: data.section });
+                    setIsFirstVisit(false);
+                }
+            }
+        };
+        checkCrSession();
     }, []);
 
     useEffect(() => {
@@ -1963,16 +1984,23 @@ export default function Home() {
                         {currentTab === 'home' && (
                             <div className="expand-anim">
                                 <div style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '15px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
-                                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        Welcome, {isGuestUser ? 'Guest' : studentsData.find(s => s.registration_number === myRollNumber)?.student_name?.split(' ')[0] || 'Student'}
-                                        {!isGuestUser && <span style={{display: 'flex', alignItems: 'center'}}>{SVGS.verified}</span>}
+                                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            Welcome, {isCR ? crProfile.first_name : (isGuestUser ? 'Guest' : studentsData.find(s => s.registration_number === myRollNumber)?.student_name?.split(' ')[0] || 'Student')}
+                                            {!isGuestUser && <span style={{display: 'flex', alignItems: 'center'}}>{SVGS.verified}</span>}
+                                        </div>
+                                        {isCR && (
+                                            <button onClick={async () => { await supabase.auth.signOut(); window.location.href = '/login'; }} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>Logout</button>
+                                        )}
                                     </h2>
-                                    {!isGuestUser && myRollNumber && (
+                                    {!isGuestUser && (myRollNumber || isCR) && (
                                         <>
-                                            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{myRollNumber}</div>
-                                            <div style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                                {SVGS.attendance} Attendance: {overallPct}%
-                                            </div>
+                                            <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>{isCR ? crProfile.registration_number : myRollNumber}</div>
+                                            {!isCR && (
+                                                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '8px', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                    {SVGS.attendance} Attendance: {overallPct}%
+                                                </div>
+                                            )}
                                         </>
                                     )}
                                 </div>
@@ -2186,8 +2214,15 @@ export default function Home() {
                                                             {SVGS.location} Room {targetEvent.room}
                                                         </div>
                                                         {noticeState !== 'Finished' && (
-                                                            <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
-                                                                {formatCountdown(remainingSecs)} <span style={{fontSize: '0.65rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                                                                <div style={{ background: noticeState === 'Ongoing' ? '#fef2f2' : '#e7f1ff', border: `1px solid ${noticeState === 'Ongoing' ? '#fecaca' : '#b8daff'}`, display: 'inline-block', padding: '5px 15px', borderRadius: '20px', color: noticeState === 'Ongoing' ? '#991b1b' : '#004085', fontWeight: '900', fontSize: '1.1rem' }}>
+                                                                    {formatCountdown(remainingSecs)} <span style={{fontSize: '0.65rem'}}>{noticeState === 'Ongoing' ? 'Remaining' : 'Starts In'}</span>
+                                                                </div>
+                                                                {isCR && noticeState === 'Ongoing' && (
+                                                                    <button onClick={() => setCurrentTab('cr_panel')} style={{ background: '#F2A900', color: '#002147', border: 'none', padding: '8px 15px', borderRadius: '20px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+                                                                        {SVGS.attendance} Mark Attendance
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -2807,11 +2842,19 @@ export default function Home() {
                         
                         {/* ======================= AI TUTOR TAB ======================= */}
                         {currentTab === 'ai_bot' && !isGuestUser && (
-                            <div className="expand-anim">
-                                <AIBot />
+                            <div className="expand-anim" style={{...whiteCard, padding: 0, height: '80vh', display: 'flex', flexDirection: 'column'}}>
+                                <iframe src="/aibot" style={{width: '100%', height: '100%', border: 'none', borderRadius: '12px'}} title="AI Tutor"/>
                             </div>
                         )}
-                    </>
+                        
+                        {/* ======================= CR PANEL ======================= */}
+                        {currentTab === 'cr_panel' && isCR && (
+                            <div className="expand-anim" style={{ height: '100%' }}>
+                                <CRPanel profile={crProfile} session={{user: {id: crProfile.id}}} />
+                            </div>
+                        )}
+                    </div>
+                </main>
                 )}
             </div>
 

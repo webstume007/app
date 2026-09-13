@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'; 
-import Head from 'next/head';
+
 import { supabase } from '../lib/supabase';
 import AttendanceSheet from '../components/AttendanceSheet';
 
@@ -37,7 +37,7 @@ const SVGS = {
     sparkle: <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3 6 6 3-6 3-3 6-3-6-6-3 6-3 3-6z"/></svg>,
 };
 
-export default function Dashboard() {
+export default function CRPanel() {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
     const [schedule, setSchedule] = useState([]); 
@@ -817,12 +817,7 @@ export default function Dashboard() {
     });
 
     return (
-        <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
-            <Head>
-                <title>CR Dashboard | IUB</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
-            </Head>
-
+        <div style={{ background: 'transparent', minHeight: '100%', fontFamily: "'Roboto', sans-serif", display: 'flex', flexDirection: 'column' }}>
             <style>{`
                 @keyframes slideFade {
                     from { opacity: 0; transform: translateY(-5px); }
@@ -835,76 +830,11 @@ export default function Dashboard() {
                 }
                 .scroll-hide::-webkit-scrollbar { display: none; }
                 
-                .desktop-nav { display: none; }
-                .mobile-nav { display: flex; }
-                @media (min-width: 768px) {
-                    .desktop-nav { display: flex; align-items: center; gap: 15px; }
-                    .mobile-nav { display: none !important; }
-                    .hamburger-btn { display: none !important; }
-                }
                 .custom-spinner { width: 45px; height: 45px; border: 4px solid rgba(0, 33, 71, 0.1); border-left-color: #F2A900; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px auto; }
                 @keyframes spin { to { transform: rotate(360deg); } }
             `}</style>
 
-            <header style={headerStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div className="hamburger-btn" onClick={() => setIsSidebarOpen(true)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#F2A900">
-                            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
-                        </svg>
-                    </div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '1.2rem', display: 'flex' }}>{SVGS.cap}</span> 
-                        CR DASHBOARD
-                    </div>
-                </div>
-
-                <div className="desktop-nav">
-                    {visibleTabs.map(tab => (
-                        <div 
-                            key={tab.id} 
-                            onClick={() => setActiveTab(tab.id)}
-                            style={{
-                                cursor: 'pointer', padding: '6px 10px', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.75rem',
-                                background: activeTab === tab.id ? '#F2A900' : 'transparent',
-                                color: activeTab === tab.id ? '#002147' : '#fff',
-                                transition: 'all 0.3s ease', display: 'flex', alignItems: 'center', gap: '6px'
-                            }}
-                        >
-                            {tab.icon} {tab.label}
-                        </div>
-                    ))}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <a href="/notifications" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {SVGS.bell} <span className="mobile-hide">Alerts</span>
-                    </a>
-                    <button onClick={handleLogout} style={enableBtnStyle}>Logout</button>
-                </div>
-            </header>
-
-            {isSidebarOpen && (
-                <div style={sidebarOverlay} onClick={() => setIsSidebarOpen(false)}>
-                    <div style={sidebarMenu} onClick={e => e.stopPropagation()}>
-                        <div style={{ padding: '15px 20px', borderBottom: '1px solid #eee', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ margin: 0, color: '#002147', fontSize: '1rem' }}>Menu</h3>
-                            <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#999' }}>✖</button>
-                        </div>
-                        {[{id: 'weekly', label: 'Weekly Timetable', icon: SVGS.calendar}, {id: 'permanent', label: 'Base Schedule', icon: SVGS.home}, {id: 'students', label: 'Manage Students', icon: SVGS.users}, {id: 'attendance', label: 'Attendance', icon: SVGS.attendance}, {id: 'announcements', label: 'Announcements', icon: SVGS.updates}].map(tab => (
-                            <button 
-                                key={tab.id} 
-                                onClick={() => { setActiveTab(tab.id); setIsSidebarOpen(false); }} 
-                                style={sidebarBtn(activeTab === tab.id)}
-                            >
-                                <span style={{ opacity: 0.7 }}>{tab.icon}</span> <span style={{ marginLeft: '10px' }}>{tab.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            <div className="mobile-nav" style={tabBar}>
+            <div style={tabBar}>
                 {visibleTabs.map(tab => (
                     <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={tabBtn(activeTab === tab.id)}>
                         <div style={{ marginBottom: '2px', opacity: activeTab === tab.id ? 1 : 0.6 }}>{tab.icon}</div>
@@ -915,58 +845,7 @@ export default function Dashboard() {
 
             <div style={{ padding: '15px 12px', maxWidth: '800px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' }}>
                 
-                <div className="expand-anim" style={{ background: 'linear-gradient(135deg, #002147 0%, #003366 100%)', borderRadius: '15px', padding: '20px', color: '#fff', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,33,71,0.2)' }}>
-                    <h2 style={{ margin: '0 0 5px 0', fontSize: '1.2rem', fontWeight: '900', color: '#F2A900', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        Welcome, {profile?.first_name} {profile?.last_name}
-                    </h2>
-                    <p style={{ margin: 0, color: '#e0e0e0', fontSize: '0.85rem' }}>Managing: <strong>{profile?.session} | Section {profile?.section}</strong></p>
-                </div>
 
-                {ongoingClasses.length > 0 && (
-                    <div style={{ marginBottom: '20px' }}>
-                        {ongoingClasses.map(ongoingClass => {
-                            const sessionToday = ongoingClass.attendanceSession;
-                            let canEdit = false;
-                            
-                            if (sessionToday) {
-                                const sessionTime = new Date(sessionToday.created_at).getTime();
-                                const now = new Date().getTime();
-                                const diffMins = (now - sessionTime) / 60000;
-                                if (diffMins <= 30 && sessionToday.status === 'pending') canEdit = true;
-                            }
-
-                            return (
-                                <div key={`global-ongoing-${ongoingClass.id}`} className="expand-anim" style={{ background: 'linear-gradient(135deg, #15803d 0%, #166534 100%)', padding: '15px 20px', borderRadius: '12px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(21, 128, 61, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                                    <div style={{ color: 'white' }}>
-                                        <h3 style={{ margin: '0 0 5px 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
-                                            {SVGS.live} Ongoing: {ongoingClass.course}
-                                        </h3>
-                                        <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            {SVGS.clock} {convertTo12Hour(ongoingClass.start_time)} - {convertTo12Hour(ongoingClass.end_time)} | {SVGS.location} Room {ongoingClass.room}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        {!sessionToday && (
-                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '8px 15px', background: 'white', color: '#15803d', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
-                                                {SVGS.note} Mark Attendance
-                                            </button>
-                                        )}
-                                        {sessionToday && canEdit && (
-                                            <button onClick={() => setActiveAttendanceLecture(ongoingClass)} style={{ padding: '8px 15px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
-                                                {SVGS.edit} Edit Attendance
-                                            </button>
-                                        )}
-                                        {sessionToday && !canEdit && (
-                                            <button disabled style={{ padding: '8px 15px', background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
-                                                {SVGS.lock} Locked ({sessionToday.status === 'approved' ? 'Approved' : 'Pending'})
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
 
                 {/* ================= WEEKLY SCHEDULE TAB ================= */}
                 {activeTab === 'weekly' && (
